@@ -22,6 +22,7 @@ export default async function StockDetail({ params }) {
   }
 
   if (errorMsg) {
+    // Intentionally no HistoryTracker here — failed analysis page loads should not pollute the user's search history.
     return (
       <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
         <Header />

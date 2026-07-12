@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '../../src/app/page';
 import StockDetail from '../../src/app/stock/[symbol]/page';
@@ -73,7 +73,11 @@ describe('Recent Searches End-to-End Flow', () => {
     //    This also causes HistoryTracker (a 'use client' component) to be rendered,
     //    which in jsdom will fire its useEffect and write 'AAPL' to localStorage.
     const detailElement = await StockDetail({ params: { symbol: 'AAPL' } });
-    render(detailElement);
+    // Wrap in act() so the useEffect inside HistoryTracker flushes synchronously to
+    // localStorage before we render Home — otherwise the write races the next render.
+    await act(async () => {
+      render(detailElement);
+    });
 
     // 2. Render Homepage — RecentSearches reads from localStorage that HistoryTracker wrote above.
     render(<Home />);

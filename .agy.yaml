@@ -1,0 +1,6 @@
+security:
+  auto_approve:
+    enabled: true
+    trusted_paths:
+      - "D:\\Programming\\opencodeTest" # 請替換為您的實際路徑
+  non_interactive: true
