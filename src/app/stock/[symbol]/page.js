@@ -6,6 +6,7 @@ import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisCha
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
+import HistoryTracker from '../../../components/HistoryTracker';
 const { performFullAnalysis } = require('../../../lib/integration');
 
 export default async function StockDetail({ params }) {
@@ -104,6 +105,10 @@ export default async function StockDetail({ params }) {
           />
         </CustomizableLayout>
       </main>
+
+      {/* Invisible History Tracker — writes this visit to localStorage so the homepage
+          Recent Searches section can surface it on the next homepage load. */}
+      <HistoryTracker symbol={symbol} name={data.name} />
     </div>
   );
 }
