@@ -13,5 +13,5 @@ node_modules/
 # data
 data/
 
-# superpowers
+# superpowers SDD workspace (task briefs/reports during execution)
 .superpowers/
