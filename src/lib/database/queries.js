@@ -232,11 +232,57 @@ function getLatestAnalysisResults(db, symbol) {
   });
 }
 
+/**
+ * Fetches all stocks that have saved analysis reports.
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @returns {Promise<Object[]>} Array of analyzed stock records
+ */
+function getAllAnalyzedStocks(db) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT s.symbol, s.name, s.market, ar.date, ar.advice
+      FROM analysis_results ar
+      JOIN stocks s ON ar.stock_id = s.id
+      GROUP BY s.symbol
+      ORDER BY ar.date DESC;
+    `;
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        return reject(new Error(`Failed to fetch analyzed stocks: ${err.message}`));
+      }
+      resolve(
+        (rows || []).map(row => {
+          try {
+            return {
+              symbol: row.symbol,
+              name: row.name,
+              market: row.market,
+              date: row.date,
+              advice: row.advice ? JSON.parse(row.advice) : null
+            };
+          } catch (e) {
+            return {
+              symbol: row.symbol,
+              name: row.name,
+              market: row.market,
+              date: row.date,
+              advice: null
+            };
+          }
+        })
+      );
+    });
+  });
+}
+
 module.exports = {
   saveStock,
   saveStockData,
   saveAnalysisResults,
   getStock,
   getStockData,
-  getLatestAnalysisResults
+  getLatestAnalysisResults,
+  getAllAnalyzedStocks
 };
+
