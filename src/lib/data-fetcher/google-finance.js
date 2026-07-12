@@ -77,21 +77,29 @@ async function fetchHistoricalData(symbol, period = '1mo') {
   const lines = text.split('\n');
   const data = [];
   let baseTimestamp = 0;
+  let timezoneOffset = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('TIMEZONE_OFFSET=') || trimmed.startsWith('COLUMNS=') || trimmed.startsWith('DATA=')) {
+    if (!trimmed || trimmed.startsWith('COLUMNS=') || trimmed.startsWith('DATA=')) {
+      continue;
+    }
+
+    if (trimmed.startsWith('TIMEZONE_OFFSET=')) {
+      timezoneOffset = parseInt(trimmed.split('=')[1], 10) || 0;
       continue;
     }
 
     if (trimmed.startsWith('a')) {
       // Line with absolute timestamp: aTIMESTAMP,OPEN,HIGH,LOW,CLOSE,VOLUME
+      // TIMESTAMP is exchange-local; adjust to UTC using timezoneOffset
       const parts = trimmed.split(',');
       if (parts.length >= 6) {
         baseTimestamp = parseInt(parts[0].substring(1), 10);
         if (!isNaN(baseTimestamp)) {
+          const utcTimestamp = baseTimestamp - timezoneOffset * 60;
           data.push({
-            date: new Date(baseTimestamp * 1000).toISOString().split('T')[0],
+            date: new Date(utcTimestamp * 1000).toISOString().split('T')[0],
             open: parseFloat(parts[1]),
             high: parseFloat(parts[2]),
             low: parseFloat(parts[3]),
@@ -102,13 +110,14 @@ async function fetchHistoricalData(symbol, period = '1mo') {
       }
     } else if (baseTimestamp > 0 && trimmed.includes(',')) {
       // Relative offset line: OFFSET,OPEN,HIGH,LOW,CLOSE,VOLUME
+      // OFFSET is days from baseTimestamp; both are exchange-local
       const parts = trimmed.split(',');
       if (parts.length >= 6) {
         const offset = parseInt(parts[0], 10);
         if (!isNaN(offset)) {
-          const timestamp = baseTimestamp + offset * 86400;
+          const utcTimestamp = (baseTimestamp - timezoneOffset * 60) + offset * 86400;
           data.push({
-            date: new Date(timestamp * 1000).toISOString().split('T')[0],
+            date: new Date(utcTimestamp * 1000).toISOString().split('T')[0],
             open: parseFloat(parts[1]),
             high: parseFloat(parts[2]),
             low: parseFloat(parts[3]),

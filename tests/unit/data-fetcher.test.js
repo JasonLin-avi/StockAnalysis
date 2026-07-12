@@ -184,6 +184,28 @@ describe('Data Fetcher Module', () => {
       expect(calls[1][0]).toContain('finance.google.com');
     });
 
+    test('Google Finance produces correct stock data fields in fallback mode', async () => {
+      global.fetch = createMockFetch({ yahooStockOk: false });
+
+      const result = await fetchStockData('AAPL');
+
+      expect(result).toHaveProperty('symbol', 'AAPL');
+      expect(result).toHaveProperty('price', 150.25);
+      expect(result).toHaveProperty('change', 1.75);
+      expect(result).toHaveProperty('changePercent', 1.18);
+      expect(result).toHaveProperty('volume', 85231400);
+      expect(result).toHaveProperty('high', 151.80);
+      expect(result).toHaveProperty('low', 148.90);
+      expect(result).toHaveProperty('open', 149.10);
+      expect(result).toHaveProperty('previousClose', 148.50);
+      expect(result).toHaveProperty('timestamp', expect.any(Number));
+
+      const calls = global.fetch.mock.calls;
+      expect(calls.length).toBe(2);
+      expect(calls[0][0]).toContain('query1.finance.yahoo.com');
+      expect(calls[1][0]).toContain('finance.google.com');
+    });
+
     test('throws error when both sources fail', async () => {
       global.fetch = createMockFetch({
         yahooStockOk: false,
