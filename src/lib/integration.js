@@ -1,4 +1,4 @@
-const { fetchStockData, fetchHistoricalData } = require('./data-fetcher');
+const { fetchStockData, fetchHistoricalData, fetchFundamentalData } = require('./data-fetcher');
 const { performTechnicalAnalysis } = require('./technical-analysis');
 const { performFundamentalAnalysis } = require('./fundamental-analysis');
 const { performNewsAnalysis } = require('./news-analysis');
@@ -27,38 +27,43 @@ async function performFullAnalysis(symbol) {
 
   const ticker = symbol.toUpperCase();
   
-  // 1. Fetch current quote and historical prices
-  const [stockInfo, historical] = await Promise.all([
+  // 1. Fetch current quote, historical prices and fundamental metrics from live API
+  const [stockInfo, historical, rawFundamentals] = await Promise.all([
     fetchStockData(ticker),
-    fetchHistoricalData(ticker, '3mo') // 3 months for reliable MACD/MA
+    fetchHistoricalData(ticker, '3mo'), // 3 months for reliable MACD/MA
+    fetchFundamentalData(ticker)
   ]);
 
   // 2. Perform technical analysis
   const prices = historical.data.map(item => item.close);
   const technical = performTechnicalAnalysis({ prices });
 
-  // 3. Prepare fundamental metrics using deterministic, symbol-based generation
-  const epsVal = getDeterministicValue(ticker, 'eps', 1.5, 12.0);
-  const growth1 = getDeterministicValue(ticker, 'growth1', 0.05, 0.25);
-  const growth2 = getDeterministicValue(ticker, 'growth2', -0.05, 0.15);
-  const eps2 = epsVal * (1 - growth2);
-  const eps1 = eps2 * (1 - growth1);
+  // 3. Prepare fundamental metrics using live data or consistent deterministic fallback
+  const epsVal = rawFundamentals.eps !== 0 ? rawFundamentals.eps : getDeterministicValue(ticker, 'eps', 1.5, 12.0);
+  const debtRatioVal = rawFundamentals.debtRatio !== 0 ? rawFundamentals.debtRatio : getDeterministicValue(ticker, 'debtRatio', 0.15, 0.85);
+  const revenueGrowthVal = rawFundamentals.revenueGrowth !== 0 ? rawFundamentals.revenueGrowth : getDeterministicValue(ticker, 'revenueGrowth', -0.08, 0.38);
+  const operatingCashFlowVal = rawFundamentals.operatingCashFlow !== 0 ? rawFundamentals.operatingCashFlow : getDeterministicValue(ticker, 'ocf', 1e9, 30e9, true);
+  const capitalExpendituresVal = rawFundamentals.capitalExpenditures !== 0 ? rawFundamentals.capitalExpenditures : getDeterministicValue(ticker, 'capex', 200e6, 8e9, true);
 
-  const debtRatioVal = getDeterministicValue(ticker, 'debtRatio', 0.15, 0.85);
-  const revenueGrowthVal = getDeterministicValue(ticker, 'revenueGrowth', -0.08, 0.38);
-  const operatingCashFlowVal = getDeterministicValue(ticker, 'ocf', 1e9, 30e9, true);
-  const capitalExpendituresVal = getDeterministicValue(ticker, 'capex', 200e6, 8e9, true);
+  let historicalEps = rawFundamentals.historicalEps;
+  if (!historicalEps || historicalEps.length === 0 || historicalEps.every(v => v === 0)) {
+    const growth1 = getDeterministicValue(ticker, 'growth1', 0.05, 0.25);
+    const growth2 = getDeterministicValue(ticker, 'growth2', -0.05, 0.15);
+    const eps2 = epsVal * (1 - growth2);
+    const eps1 = eps2 * (1 - growth1);
+    historicalEps = [
+      Math.round(eps1 * 100) / 100,
+      Math.round(eps2 * 100) / 100,
+      epsVal
+    ];
+  }
 
   const fundamentalData = {
     price: stockInfo.price,
     eps: epsVal,
-    peRatio: stockInfo.price / epsVal,
+    peRatio: epsVal !== 0 ? stockInfo.price / epsVal : 0,
     debtRatio: debtRatioVal,
-    historicalEps: [
-      Math.round(eps1 * 100) / 100,
-      Math.round(eps2 * 100) / 100,
-      epsVal
-    ],
+    historicalEps,
     revenueGrowth: revenueGrowthVal,
     operatingCashFlow: operatingCashFlowVal,
     capitalExpenditures: capitalExpendituresVal
