@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
+import RecentSearches from '../components/RecentSearches';
 
 export default function Home() {
   const popularStocks = [
@@ -63,6 +64,8 @@ export default function Home() {
             ))}
           </div>
         </div>
+
+        <RecentSearches />
       </main>
     </div>
   );

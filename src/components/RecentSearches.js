@@ -22,9 +22,11 @@ export default function RecentSearches() {
       if (storedStr) {
         const parsed = JSON.parse(storedStr);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setStocks(parsed);
+          // Slice defensively here too — the cap must hold even if localStorage was modified outside
+          // of our write path (e.g., manually, by another tab, or by a future migration bug).
+          setStocks(parsed.slice(0, 8));
           // Batch fetch live prices immediately for the history list to show updated values.
-          fetchPrices(parsed);
+          fetchPrices(parsed.slice(0, 8));
           return;
         }
       }
