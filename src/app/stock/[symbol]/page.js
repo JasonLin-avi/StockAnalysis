@@ -5,6 +5,7 @@ import TechnicalIndicatorsChart from '../../../components/TechnicalIndicatorsCha
 import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisChart';
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
+import CustomizableLayout from '../../../components/CustomizableLayout';
 const { performFullAnalysis } = require('../../../lib/integration');
 
 export default async function StockDetail({ params }) {
@@ -82,26 +83,28 @@ export default async function StockDetail({ params }) {
         <InvestmentAdvicePanel advice={data.advice} />
 
         {/* Analytical Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <CustomizableLayout>
           <TechnicalIndicatorsChart 
+            widgetId="technical"
             historicalData={data.historicalData} 
             maData={data.technical.ma} 
             symbol={data.symbol} 
           />
           
           <FundamentalAnalysisChart 
+            widgetId="fundamental"
             fundamentalData={data.fundamental} 
             symbol={data.symbol} 
           />
           
-          <div className="lg:col-span-2">
-            <NewsSentimentChart 
-              newsData={data.news} 
-              symbol={data.symbol} 
-            />
-          </div>
-        </div>
+          <NewsSentimentChart 
+            widgetId="news"
+            newsData={data.news} 
+            symbol={data.symbol} 
+          />
+        </CustomizableLayout>
       </main>
     </div>
   );
 }
+
