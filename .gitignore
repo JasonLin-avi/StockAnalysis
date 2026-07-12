@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+
+# environment
+.env.local
+
+# logs
+*.log
+
+# data
+data/
+
+# superpowers
+.superpowers/
