@@ -12,10 +12,10 @@
 
 ### 1. 構建並啟動服務
 
-使用隨附的 `docker-compose.prod.yml` 以生產模式啟動平台：
+使用主目錄下的 `docker-compose.yml` 啟動平台：
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose up -d --build
 ```
 
 這會：
@@ -37,7 +37,7 @@ sqlite3 ./data/stock.db ".backup './backup/stock_backup.db'"
 
 ### 3. 配置選項 (環境變數)
 
-在 `docker-compose.prod.yml` 的 `environment` 區段可以配置以下變數：
+在 `docker-compose.yml` 的 `environment` 區段可以配置以下變數：
 - `NODE_ENV`: 設為 `production` 可啟用 Next.js 的高吞吐量生產模式。
 - `PORT`: 自定義容器內監聽的端口（預設 3000）。
 

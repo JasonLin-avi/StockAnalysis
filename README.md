@@ -54,7 +54,7 @@
 在專案根目錄下執行以下指令以生產模式編譯並啟動服務：
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose up -d 
 ```
 
 ### 2. 存取平台
@@ -91,7 +91,7 @@ npm run test
 
 ```text
 ├── DEPLOYMENT.md             # 生產環境部署與資料備份指南
-├── docker-compose.prod.yml   # 生產環境 Docker Compose 配置
+├── docker-compose.yml        # Docker Compose 容器配置
 ├── Dockerfile                # 多階段構建 Dockerfile
 ├── package.json              # 專案套件及腳本配置
 ├── tailwind.config.js        # Tailwind CSS 內容對應設定
