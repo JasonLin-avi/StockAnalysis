@@ -1,0 +1,62 @@
+/**
+ * Database Connection Module
+ * Handles SQLite database initialization, connection pooling (single file), and schema application.
+ * 
+ * Why this configuration is selected:
+ * - `sqlite3.Database` is asynchronous by default. Wrapping initialization in a Promise ensures 
+ *   that downstream modules do not attempt queries before tables are fully initialized.
+ * - Enabling Foreign Keys explicitly (`PRAGMA foreign_keys = ON`) is necessary in SQLite because 
+ *   it is disabled by default for backwards compatibility. Without it, cascade deletions won't work.
+ * - Supporting dynamic `dbPath` allows tests to instantiate `:memory:` databases for clean test isolation.
+ * 
+ * @module database/connection
+ */
+
+const fs = require('fs');
+const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+const { schema } = require('./schema');
+
+/**
+ * Establishes a connection to the SQLite database and runs initial DDL schema scripts.
+ * 
+ * @param {string} [dbPath] - Absolute/relative path to database file, or ':memory:' for tests
+ * @returns {Promise<sqlite3.Database>} Initialized SQLite database instance
+ */
+function connectToDatabase(dbPath = 'data/stock.db') {
+  return new Promise((resolve, reject) => {
+    // Ensure the parent directory exists if initializing a physical database file on disk.
+    if (dbPath !== ':memory:') {
+      const dir = path.dirname(path.isAbsolute(dbPath) ? dbPath : path.resolve(process.cwd(), dbPath));
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
+
+    const db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        return reject(new Error(`Failed to open database at ${dbPath}: ${err.message}`));
+      }
+
+      // We run connections in serialized mode to ensure schema setup runs sequentially.
+      db.serialize(() => {
+        // Enable foreign keys for referential integrity constraint enforcement.
+        db.run('PRAGMA foreign_keys = ON;', (pragmaErr) => {
+          if (pragmaErr) {
+            return reject(new Error(`Failed to enable foreign keys: ${pragmaErr.message}`));
+          }
+
+          // Apply schema DDL script.
+          db.exec(schema, (execErr) => {
+            if (execErr) {
+              return reject(new Error(`Failed to apply schema DDL: ${execErr.message}`));
+            }
+            resolve(db);
+          });
+        });
+      });
+    });
+  });
+}
+
+module.exports = { connectToDatabase };
