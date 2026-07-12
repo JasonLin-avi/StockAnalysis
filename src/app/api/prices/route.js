@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { fetchStockData } from '../../../lib/data-fetcher/yahoo-finance';
+import yahooFinance from '../../../lib/data-fetcher/yahoo-finance';
+const { fetchStockData } = yahooFinance;
 
 export async function GET(request) {
   try {
@@ -18,12 +19,21 @@ export async function GET(request) {
     await Promise.all(symbols.map(async (symbol) => {
       try {
         const data = await fetchStockData(symbol);
+        if (!data) return;
+
+        // Why: Verify the values are valid numbers before formatting with toFixed(2) to prevent potential TypeErrors.
+        const isPriceValid = typeof data.price === 'number' && !isNaN(data.price);
+        const isChangePercentValid = typeof data.changePercent === 'number' && !isNaN(data.changePercent);
+
+        const priceVal = isPriceValid ? data.price : 0;
+        const changePercentVal = isChangePercentValid ? data.changePercent : 0;
+
         // Why: Select colors dynamically (rose for negative, emerald for positive changes) to conform to design aesthetic standards.
-        const color = data.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400';
-        const sign = data.changePercent >= 0 ? '+' : '';
+        const color = changePercentVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const sign = changePercentVal >= 0 ? '+' : '';
         results[symbol] = {
-          price: `$${data.price.toFixed(2)}`,
-          change: `${sign}${data.changePercent.toFixed(2)}%`,
+          price: `$${priceVal.toFixed(2)}`,
+          change: `${sign}${changePercentVal.toFixed(2)}%`,
           color
         };
       } catch (err) {

@@ -34,6 +34,7 @@ async function fetchStockData(symbol) {
 
   return {
     symbol,
+    name: meta.longName ?? meta.shortName ?? symbol,
     price,
     change: Math.round(change * 100) / 100,
     changePercent: Math.round(changePercent * 100) / 100,

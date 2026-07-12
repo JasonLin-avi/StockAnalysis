@@ -89,6 +89,7 @@ async function performFullAnalysis(symbol) {
 
   return {
     symbol: ticker,
+    name: stockInfo.name || ticker,
     price: stockInfo.price,
     changePercent: stockInfo.changePercent,
     date: new Date().toISOString().split('T')[0],
