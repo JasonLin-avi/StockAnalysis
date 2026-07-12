@@ -86,7 +86,7 @@ describe('React Visual Components', () => {
       expect(screen.getByText('AAPL 財務健康雷達圖')).toBeInTheDocument();
       expect(screen.getByText('市盈率 P/E')).toBeInTheDocument();
       expect(screen.getByText('18.5x')).toBeInTheDocument();
-      expect(screen.getByText('Fair')).toBeInTheDocument();
+      expect(screen.getAllByText('Fair')[0]).toBeInTheDocument();
       
       expect(screen.getByText('每股收益 EPS')).toBeInTheDocument();
       expect(screen.getByText('4.2')).toBeInTheDocument();

@@ -113,24 +113,92 @@ async function fetchHistoricalData(symbol, period = '1mo') {
   };
 }
 
+let cachedCookie = null;
+let cachedCrumb = null;
+
+async function getSession() {
+  if (cachedCookie && cachedCrumb) {
+    return { cookie: cachedCookie, crumb: cachedCrumb };
+  }
+
+  // 1. Get cookie from fc.yahoo.com
+  const fcResponse = await fetch('https://fc.yahoo.com', {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+  });
+  
+  const cookie = fcResponse.headers.get('set-cookie');
+  if (!cookie) {
+    throw new Error('No set-cookie header received from fc.yahoo.com');
+  }
+
+  // 2. Get crumb from getcrumb endpoint
+  const crumbResponse = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
+    headers: {
+      'Cookie': cookie,
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+  });
+
+  if (!crumbResponse.ok) {
+    throw new Error(`Failed to fetch crumb from Yahoo: ${crumbResponse.status}`);
+  }
+
+  const crumb = await crumbResponse.text();
+  if (!crumb) {
+    throw new Error('No crumb received from Yahoo');
+  }
+
+  cachedCookie = cookie;
+  cachedCrumb = crumb;
+  return { cookie, crumb };
+}
+
 /**
  * Fetches actual stock fundamental metrics (key statistics, financial data, earnings) from Yahoo Finance.
  * @param {string} symbol - Stock symbol
  * @returns {Promise<Object>} Fundamental metrics object
  */
 async function fetchFundamentalData(symbol) {
-  const url = `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings`;
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  try {
+    const { cookie, crumb } = await getSession();
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings&crumb=${crumb}`;
+    const response = await fetch(url, {
+      headers: {
+        'Cookie': cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        cachedCookie = null;
+        cachedCrumb = null;
+        // Retry once after clearing cache
+        const retrySession = await getSession();
+        const retryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings&crumb=${retrySession.crumb}`;
+        const retryResponse = await fetch(retryUrl, {
+          headers: {
+            'Cookie': retrySession.cookie,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+        if (!retryResponse.ok) {
+          throw new Error(`Yahoo Finance quoteSummary API retry error: ${retryResponse.status}`);
+        }
+        return processSummaryResponse(await retryResponse.json(), symbol);
+      }
+      throw new Error(`Yahoo Finance quoteSummary API error: ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Yahoo Finance quoteSummary API error: ${response.status}`);
+    return processSummaryResponse(await response.json(), symbol);
+  } catch (err) {
+    throw new Error(`Failed to fetch fundamental data for ${symbol}: ${err.message}`);
   }
+}
 
-  const data = await response.json();
+function processSummaryResponse(data, symbol) {
   if (!data.quoteSummary || !data.quoteSummary.result || data.quoteSummary.result.length === 0) {
     throw new Error(`No fundamental data found for symbol: ${symbol}`);
   }
@@ -194,4 +262,5 @@ async function fetchFundamentalData(symbol) {
 }
 
 module.exports = { fetchStockData, fetchHistoricalData, fetchFundamentalData };
+
 
