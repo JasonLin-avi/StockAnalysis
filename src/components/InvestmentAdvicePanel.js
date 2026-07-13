@@ -11,6 +11,29 @@ import React from 'react';
  *   prompting defensive investment habits.
  */
 export default function InvestmentAdvicePanel({ advice = {} }) {
+  // We track the active modal type using a React state to control which details (rating, weight, confidence) 
+  // are currently shown to the user. Setting it to null indicates that no modal should be visible.
+  const [activeModal, setActiveModal] = React.useState(null);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Users expect modal dialogs to be closable via the keyboard for better accessibility and convenience.
+      // Intercepting 'Escape' allows quick dismiss without requiring precise mouse clicks on the close button.
+      if (e.key === 'Escape') setActiveModal(null);
+    };
+
+    // Event listener is only attached when a modal is active to optimize performance and prevent unnecessary CPU cycles.
+    if (activeModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    // We must remove the keydown listener on cleanup to prevent memory leaks and redundant execution of event handlers 
+    // when the active state changes or the panel unmounts.
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeModal]);
+
   const { portfolio, buySell, risk } = advice;
 
   if (!portfolio && !buySell && !risk) {
@@ -126,6 +149,93 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * AdvisoryModal Sub-component
+ * 
+ * Why this sub-component is defined:
+ * - Decoupling: Separating the presentation logic of detailed explanations keeps the main panel logic clean and maintainable.
+ * - Reusability: Formats rating, weight, and confidence metrics uniformly based on a shared template and structural properties.
+ */
+function AdvisoryModal({ type, onClose }) {
+  const contentMap = {
+    rating: {
+      title: '評級策略 (Rating) 指標說明',
+      formula: '總分 (100) = 基本面評分 (50) + 技術面評分 (30) + 情緒評分 (20)',
+      details: [
+        '基本面 (50分): 依據 PE 估值、EPS 增長、負債比、營收成長與現金流進行判定。',
+        '技術面 (30分): 依據 RSI 動能、MA 趨勢與 MACD 柱狀體判定。',
+        '情緒面 (20分): 轉換新聞輿情與社群熱度指數計分。',
+        '總分 >= 70 為 Buy，<= 40 為 Sell，介於兩者之間為 Hold。'
+      ]
+    },
+    weight: {
+      title: '配置權重 (Weight) 指標說明',
+      formula: '配置權重 = 財務健康評估 (Health Score) + 市場情緒修飾 (Sentiment Modifier)',
+      details: [
+        '單一股票配置上限為 15%，避免過度集中風險。',
+        'Avoid (0%): 負債比率為 High Risk 時觸發（一票否決制）。',
+        'Overweight (12%): 財務極佳（Health Score >= 8）且市場看好時配置。',
+        'Equal Weight (5% - 8%): 財務與情緒穩定，作為防禦型核心持股。',
+        'Underweight (2%): 基本面偏弱或情緒冰冷，調降權重防範下行。'
+      ]
+    },
+    confidence: {
+      title: '評估置信度 (Confidence) 指標說明',
+      formula: '置信度反映 AI 對評級決策的信心程度（區間 50% ~ 95%）',
+      details: [
+        '當評級為 Buy 時: 置信度 = 70% + ((總分 - 70) / 30) * 25%',
+        '當評級為 Sell 時: 置信度 = 70% + ((40 - 總分) / 40) * 25%',
+        '當評級為 Hold 時: 置信度 = 50% + ((總分 - 40) / 30) * 20%',
+        '因子方向越共振（接近 0 或 100 分），置信度越高；評分接近中性時，置信度則會降至 50% 附近。'
+      ]
+    }
+  };
+
+  const content = contentMap[type];
+  if (!content) return null;
+
+  return (
+    <div 
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/80 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col p-6 relative animate-scale-up"
+        // We stop click event propagation here so that clicking inside the modal container does not bubble up 
+        // to the backdrop's click-to-close handler. This prevents the modal from accidentally closing when users 
+        // interact with or select text within the dialog itself.
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all duration-300 hover:rotate-90 focus:outline-none"
+          aria-label="關閉說明彈窗"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        
+        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 pr-8 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+          {content.title}
+        </h4>
+
+        <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3.5 mb-4 text-xs font-mono text-sky-600 dark:text-sky-400 break-words leading-relaxed">
+          {content.formula}
+        </div>
+
+        <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 list-disc pl-4 leading-relaxed overflow-y-auto">
+          {content.details.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

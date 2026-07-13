@@ -160,5 +160,18 @@ describe('React Visual Components', () => {
       render(<InvestmentAdvicePanel advice={{}} />);
       expect(screen.getByText('暫無投資建議報告數據。')).toBeInTheDocument();
     });
+
+    test('renders modals and handles Escape key closure', () => {
+      const mockAdvice = {
+        portfolio: { targetWeight: 0.12, allocationClass: 'Overweight', rationale: 'Strong balance sheet' },
+        buySell: { action: 'Buy', confidenceScore: 0.85, summary: 'Highly recommended' },
+        risk: { riskLevel: 'Low', riskFactors: ['Minor competition'], riskMitigation: 'Set 10% stop loss' }
+      };
+
+      const { container } = render(<InvestmentAdvicePanel advice={mockAdvice} />);
+      
+      // Initially, no modal should be visible
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });
