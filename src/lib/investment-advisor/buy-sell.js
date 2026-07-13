@@ -29,25 +29,25 @@ function generateBuySellAdvice(analysisResults) {
       action: 'Hold',
       confidenceScore: 0.5,
       summary: 'No data provided. Defaulting to Hold.',
-      totalScore: 50,
-      sentimentScore: 10,
+      totalScore: 0,
+      sentimentScore: 0,
       breakdown: {
         technical: {
-          rsi: { value: null, status: 'Neutral', score: 5 },
-          ma: { value: null, ma: null, status: 'Bearish', score: 5 },
-          macd: { value: null, status: 'Bearish', score: 5 }
+          rsi: { value: null, status: 'Neutral', score: 0 },
+          ma: { value: null, ma: null, status: 'Bearish', score: 0 },
+          macd: { value: null, status: 'Bearish', score: 0 }
         },
         fundamental: {
-          pe: { status: 'N/A', score: 5 },
-          eps: { status: 'N/A', score: 5 },
-          debtRatio: { status: 'N/A', score: 5 },
-          revenueGrowth: { status: 'N/A', score: 5 },
-          cashFlow: { status: 'N/A', score: 5 }
+          pe: { status: 'N/A', score: 0 },
+          eps: { status: 'N/A', score: 0 },
+          debtRatio: { status: 'N/A', score: 0 },
+          revenueGrowth: { status: 'N/A', score: 0 },
+          cashFlow: { status: 'N/A', score: 0 }
         },
         sentiment: {
-          score: 10,
-          news: { value: 0, score: 5 },
-          social: { value: 0, score: 5 }
+          score: 0,
+          news: { value: 0, score: 0 },
+          social: { value: 0, score: 0 }
         }
       }
     };
@@ -59,29 +59,29 @@ function generateBuySellAdvice(analysisResults) {
   // rather than accumulating into a single global score variable immediately.
   // This isolated variable schema is critical to populate the detailed 'breakdown'
   // object without losing the identity and granular score of each indicator.
-  let rsiScore = 5;
+  let rsiScore = 0;
   let rsiValue = null;
   let rsiStatus = 'Neutral';
-  let maScore = 5;
+  let maScore = 0;
   let maValue = null;
   let maStatus = 'Bearish';
-  let macdScore = 5;
+  let macdScore = 0;
   let macdValue = null;
   let macdStatus = 'Bearish';
 
-  let peScore = 5;
+  let peScore = 0;
   let peStatus = 'N/A';
-  let epsScore = 5;
+  let epsScore = 0;
   let epsStatus = 'N/A';
-  let debtScore = 5;
+  let debtScore = 0;
   let debtStatus = 'N/A';
-  let revenueScore = 5;
+  let revenueScore = 0;
   let revenueStatus = 'N/A';
-  let cashScore = 5;
+  let cashScore = 0;
   let cashStatus = 'N/A';
 
-  let newsScoreNormalized = 5;
-  let socialScoreNormalized = 5;
+  let newsScoreNormalized = 0;
+  let socialScoreNormalized = 0;
 
   // We evaluate technical metrics and override their default neutral settings
   // if relevant indicators are provided in the input payload.
@@ -222,11 +222,14 @@ function generateBuySellAdvice(analysisResults) {
         macd: { value: macdValue, status: macdStatus, score: macdScore }
       },
       fundamental: {
-        pe: { status: peStatus, score: peScore },
-        eps: { status: epsStatus, score: epsScore },
-        debtRatio: { status: debtStatus, score: debtScore },
-        revenueGrowth: { status: revenueStatus, score: revenueScore },
-        cashFlow: { status: cashStatus, score: cashScore }
+        // Why: We carry the raw value from each sub-module so the UI can display the actual
+        // metric number (e.g. PE = 24.5x, EPS = $3.12) alongside its score, making the
+        // scoring process fully transparent. Without value, every cell would render as N/A.
+        pe: { value: fundamental && fundamental.pe ? fundamental.pe.value : null, status: peStatus, score: peScore },
+        eps: { value: fundamental && fundamental.eps ? fundamental.eps.value : null, status: epsStatus, score: epsScore },
+        debtRatio: { value: fundamental && fundamental.debtRatio ? fundamental.debtRatio.value : null, status: debtStatus, score: debtScore },
+        revenueGrowth: { value: fundamental && fundamental.revenueGrowth ? fundamental.revenueGrowth.value : null, status: revenueStatus, score: revenueScore },
+        cashFlow: { value: fundamental && fundamental.cashFlow ? (fundamental.cashFlow.freeCashFlow ?? fundamental.cashFlow.operatingCashFlow) : null, status: cashStatus, score: cashScore }
       },
       sentiment: {
         score: sentScore,
