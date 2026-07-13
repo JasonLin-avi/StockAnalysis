@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ChartContainer from '../../src/components/ChartContainer';
 import TechnicalIndicatorsChart from '../../src/components/TechnicalIndicatorsChart';
@@ -168,10 +168,27 @@ describe('React Visual Components', () => {
         risk: { riskLevel: 'Low', riskFactors: ['Minor competition'], riskMitigation: 'Set 10% stop loss' }
       };
 
-      const { container } = render(<InvestmentAdvicePanel advice={mockAdvice} />);
+      render(<InvestmentAdvicePanel advice={mockAdvice} />);
       
-      // Initially, no modal should be visible
+      // Initially, no modal should be visible and body style overflow should be clean
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('');
+
+      // Find the rating trigger button using its descriptive aria-label and trigger click
+      const ratingBtn = screen.getByLabelText('查看評級策略公式與說明');
+      fireEvent.click(ratingBtn);
+
+      // Verify that the rating explanation modal is rendered and background body scroll lock is applied
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('評級策略 (Rating) 指標說明')).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      // Simulate Escape keydown on window to trigger modal dismissal
+      fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+
+      // Verify modal is closed and body scroll is restored to original state
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('');
     });
   });
 });

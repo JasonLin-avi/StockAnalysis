@@ -25,12 +25,17 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
     // Event listener is only attached when a modal is active to optimize performance and prevent unnecessary CPU cycles.
     if (activeModal) {
       window.addEventListener('keydown', handleKeyDown);
+      // Disable background body scrolling when the modal is open.
+      // This prevents the underlying page content from moving or scrolling when the user scrolls within the modal container.
+      document.body.style.overflow = 'hidden';
     }
 
-    // We must remove the keydown listener on cleanup to prevent memory leaks and redundant execution of event handlers 
-    // when the active state changes or the panel unmounts.
+    // We must remove the keydown listener and restore the body scroll style on cleanup.
+    // Restoring the overflow style to empty string is critical to prevent the page from being permanently locked 
+    // in a non-scrollable state after the modal is closed or the component is unmounted.
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
     };
   }, [activeModal]);
 
@@ -76,7 +81,19 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
         {/* Buy/Sell/Hold Rating Card */}
         <div className={`border rounded-xl p-4 flex flex-col justify-between ${actionStyles[currentAction]}`}>
           <div>
-            <div className="text-xs opacity-75 uppercase tracking-wider mb-1">評級策略 (Rating)</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs opacity-75 uppercase tracking-wider">評級策略 (Rating)</div>
+              <button
+                type="button"
+                onClick={() => setActiveModal('rating')}
+                className="opacity-75 hover:opacity-100 focus:outline-none transition-opacity ml-1 flex items-center justify-center"
+                aria-label="查看評級策略公式與說明"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+              </button>
+            </div>
             <div className="text-3xl font-extrabold tracking-tight">{currentAction}</div>
           </div>
           <div className="text-xs mt-3 opacity-90 leading-relaxed">
@@ -87,7 +104,19 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
         {/* Portfolio Target Weight Card */}
         <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between">
           <div>
-            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">配置權重 (Weight)</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs text-slate-400 uppercase tracking-wider">配置權重 (Weight)</div>
+              <button
+                type="button"
+                onClick={() => setActiveModal('weight')}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none transition-colors ml-1 flex items-center justify-center"
+                aria-label="查看配置權重公式與說明"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+              </button>
+            </div>
             <div className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
               {portfolio?.targetWeight !== undefined ? `${(portfolio.targetWeight * 100).toFixed(0)}%` : '0%'}
             </div>
@@ -103,7 +132,19 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
         {/* Confidence Score Gauge */}
         <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between">
           <div>
-            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">評估置信度 (Confidence)</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs text-slate-400 uppercase tracking-wider">評估置信度 (Confidence)</div>
+              <button
+                type="button"
+                onClick={() => setActiveModal('confidence')}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none transition-colors ml-1 flex items-center justify-center"
+                aria-label="查看評估置信度公式與說明"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+              </button>
+            </div>
             <div className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
               {buySell?.confidenceScore !== undefined ? `${(buySell.confidenceScore * 100).toFixed(0)}%` : '50%'}
             </div>
@@ -149,6 +190,7 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
           </div>
         </div>
       )}
+      {activeModal && <AdvisoryModal type={activeModal} onClose={() => setActiveModal(null)} />}
     </div>
   );
 }
