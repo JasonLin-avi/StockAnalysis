@@ -1,87 +1,103 @@
 /**
  * Social Media Sentiment Analysis Module
- * Analyzes discussions on platforms like Reddit, Twitter/X, and finance forums.
- * 
- * Why social sentiment is analyzed separately from traditional news:
- * - Retail investor sentiment (e.g. wallstreetbets) often moves speculative or high-beta stocks 
- *   prior to mainstream financial media publication (meme stock dynamics).
- * - "Mention Volume" acts as a proxy for market liquidity and retail participation. High mention volume 
- *   coupled with highly positive or negative sentiment often leads to short-term price volatility.
- * 
+ * Fetches social sentiment data from Finnhub's /stock/social-sentiment endpoint.
+ *
+ * Why Finnhub social-sentiment instead of mock:
+ * - Aggregates Reddit and Twitter/X mention volumes and computed positivity scores per day,
+ *   giving a real signal of retail investor attention and directional bias.
+ * - This is a meaningful leading indicator for high-beta or meme-adjacent stocks where social
+ *   discourse often precedes price movement.
+ *
  * @module news-analysis/social-sentiment
  */
 
-const MOCK_SOCIAL_POSTS = {
-  TSLA: [
-    { text: 'Tesla is going to the moon with this new FSD release, loading up on calls!', source: 'Reddit' },
-    { text: 'Unpopular opinion: TSLA is overpriced, bubble has to pop eventually. Bearish.', source: 'Twitter' },
-    { text: 'Love my Model Y, and loving this stock performance. Buy and hold!', source: 'Reddit' },
-    { text: 'TSLA has too much competition now, dumping my shares.', source: 'Twitter' }
-  ],
-  AAPL: [
-    { text: 'Apple intelligence is going to spark a massive upgrade cycle. Very bullish.', source: 'Reddit' },
-    { text: 'AAPL is a safe haven in this choppy market. Good hold.', source: 'Twitter' },
-    { text: 'Is it just me or is AAPL losing its innovation edge? Puts on AAPL.', source: 'Reddit' }
-  ]
-};
-
-const DEFAULT_POSTS = [
-  { text: 'Macro trends look uncertain, holding cash for now.', source: 'Reddit' },
-  { text: 'Looking for undervalued stocks, any recommendations?', source: 'Twitter' }
-];
-
-const POSITIVE_WORDS = ['moon', 'call', 'calls', 'buy', 'hold', 'love', 'bull', 'bullish', 'undervalued', 'gem'];
-const NEGATIVE_WORDS = ['pop', 'bear', 'bearish', 'put', 'puts', 'sell', 'dump', 'overvalued', 'trash', 'scam', 'bubble'];
+/**
+ * Returns ISO date string for N days ago.
+ * @param {number} daysAgo
+ * @returns {string} YYYY-MM-DD
+ */
+function dateNDaysAgo(daysAgo) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+}
 
 /**
- * Analyzes social media sentiment and volume for a specific stock symbol.
- * 
- * @param {string} symbol - Stock ticker symbol
- * @returns {Promise<Object>} Social sentiment results containing score, sentiment, and mentionVolume
+ * Computes a single weighted average sentiment score from Finnhub's daily social data array.
+ * Finnhub provides positiveMention, negativeMention, and score per day.
+ * We weight each day's score by its total mention volume to reflect days with more
+ * market activity more heavily.
+ *
+ * @param {Array<Object>} data - Array of daily social sentiment entries from Finnhub
+ * @returns {number} Weighted average score ∈ [-1.0, 1.0]
  */
-async function analyzeSocialSentiment(symbol) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 50));
+function computeWeightedScore(data) {
+  let totalMentions = 0;
+  let weightedSum = 0;
 
-  const ticker = (symbol || '').toUpperCase();
-  const posts = MOCK_SOCIAL_POSTS[ticker] || DEFAULT_POSTS;
-  const mentionVolume = posts.length;
-
-  let totalScore = 0;
-  let matchesCount = 0;
-
-  posts.forEach(post => {
-    const textLower = post.text.toLowerCase();
-    
-    POSITIVE_WORDS.forEach(word => {
-      if (textLower.includes(word)) {
-        totalScore += 1;
-        matchesCount += 1;
-      }
-    });
-
-    NEGATIVE_WORDS.forEach(word => {
-      if (textLower.includes(word)) {
-        totalScore -= 1;
-        matchesCount += 1;
-      }
-    });
+  data.forEach(entry => {
+    const mentions = (entry.positiveMention || 0) + (entry.negativeMention || 0);
+    const dayScore = entry.score ?? 0;
+    weightedSum += dayScore * mentions;
+    totalMentions += mentions;
   });
 
-  const score = matchesCount > 0 ? Math.round((totalScore / matchesCount) * 100) / 100 : 0;
+  if (totalMentions === 0) return 0;
+  return Math.round((weightedSum / totalMentions) * 100) / 100;
+}
 
-  let sentiment = 'Neutral';
-  if (score > 0.15) {
-    sentiment = 'Positive';
-  } else if (score < -0.15) {
-    sentiment = 'Negative';
+/**
+ * Fetches and analyzes social media sentiment for a stock symbol from Finnhub.
+ * Returns null score when data is unavailable so the caller can exclude this
+ * dimension from the portfolio scoring rather than assign a misleading neutral.
+ *
+ * @param {string} symbol - Stock ticker symbol
+ * @returns {Promise<Object>} { score, sentiment, mentionVolume } or { score: null, sentiment: 'N/A', mentionVolume: 0 }
+ */
+async function analyzeSocialSentiment(symbol) {
+  const apiKey = process.env.FINNHUB_API_KEY;
+  if (!apiKey) {
+    return { score: null, sentiment: 'N/A', mentionVolume: 0 };
   }
 
-  return {
-    score,
-    sentiment,
-    mentionVolume
-  };
+  const ticker = (symbol || '').toUpperCase();
+  const from = dateNDaysAgo(7);
+  const url = `https://finnhub.io/api/v1/stock/social-sentiment?symbol=${encodeURIComponent(ticker)}&from=${from}&token=${apiKey}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'stock-analysis-platform/1.0' }
+    });
+
+    if (!response.ok) {
+      // Why null instead of 0: a failed request means we have no data, not that sentiment is neutral.
+      // Returning null allows buy-sell.js to skip this dimension in score accumulation.
+      console.warn(`Finnhub social-sentiment API error for ${ticker}: ${response.status}`);
+      return { score: null, sentiment: 'N/A', mentionVolume: 0 };
+    }
+
+    const data = await response.json();
+    // Finnhub returns { reddit: [...], twitter: [...] }
+    const redditData = Array.isArray(data.reddit) ? data.reddit : [];
+    const twitterData = Array.isArray(data.twitter) ? data.twitter : [];
+    const allData = [...redditData, ...twitterData];
+
+    if (allData.length === 0) {
+      return { score: null, sentiment: 'N/A', mentionVolume: 0 };
+    }
+
+    const score = computeWeightedScore(allData);
+    const mentionVolume = allData.reduce((sum, e) => sum + (e.positiveMention || 0) + (e.negativeMention || 0), 0);
+
+    let sentiment = 'Neutral';
+    if (score > 0.15) sentiment = 'Positive';
+    else if (score < -0.15) sentiment = 'Negative';
+
+    return { score, sentiment, mentionVolume };
+  } catch (err) {
+    console.warn(`analyzeSocialSentiment fetch failed for ${ticker}: ${err.message}`);
+    return { score: null, sentiment: 'N/A', mentionVolume: 0 };
+  }
 }
 
 module.exports = { analyzeSocialSentiment };

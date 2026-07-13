@@ -1,90 +1,109 @@
 /**
  * Financial News Analysis Module
- * Fetches and analyzes current financial news articles for sentiment.
- * 
- * Why this dictionary-based approach is used:
- * - It provides a deterministic, lightweight, and dependency-free method to evaluate sentiment 
- *   without incurring API latency or LLM costs in a local environment.
- * - By mapping key financial verbs (e.g. profit, layoff) to weights, we can compute an overall 
- *   sentiment score between -1.0 (bearish) and 1.0 (bullish).
- * 
+ * Fetches recent financial news from Finnhub and computes sentiment using keyword scoring.
+ *
+ * Why Finnhub /company-news instead of mock:
+ * - Provides real, ticker-specific news headlines updated continuously throughout the trading day.
+ * - Keyword-based scoring over real headlines produces a sentiment signal that reflects genuine
+ *   market discourse, rather than deterministic mock output that never changes.
+ *
  * @module news-analysis/financial-news
  */
 
-// Mock database containing simulated news articles for major stocks to facilitate testing.
-const MOCK_NEWS_DATABASE = {
-  TSLA: [
-    { title: 'Tesla delivers record number of vehicles in Q2, beating expectations', date: '2026-07-10' },
-    { title: 'Tesla faces regulatory scrutiny over new autopilot software update', date: '2026-07-08' },
-    { title: 'Analysts upgrade Tesla stock to buy following battery technology breakthrough', date: '2026-07-05' }
-  ],
-  AAPL: [
-    { title: 'Apple revenue increases as new AI features drive strong iPhone sales', date: '2026-07-11' },
-    { title: 'EU launches fresh antitrust investigation into Apple App Store policies', date: '2026-07-09' },
-    { title: 'Apple suppliers cut production forecasts due to global chip shortages', date: '2026-07-04' }
-  ]
-};
-
-const DEFAULT_NEWS = [
-  { title: 'Stock market indexes steady ahead of federal reserve interest rate decision', date: '2026-07-12' },
-  { title: 'Global economic report expected to release in the second half of the year', date: '2026-07-11' }
-];
-
-const POSITIVE_WORDS = ['record', 'beat', 'upgrade', 'breakthrough', 'increase', 'profit', 'growth', 'success', 'buy', 'win'];
-const NEGATIVE_WORDS = ['scrutiny', 'investigation', 'cut', 'shortage', 'loss', 'decline', 'drop', 'risk', 'warning', 'sell'];
+const POSITIVE_WORDS = ['record', 'beat', 'upgrade', 'breakthrough', 'increase', 'profit', 'growth', 'success', 'buy', 'win', 'surge', 'rally', 'strong'];
+const NEGATIVE_WORDS = ['scrutiny', 'investigation', 'cut', 'shortage', 'loss', 'decline', 'drop', 'risk', 'warning', 'sell', 'fall', 'crash', 'weak', 'miss'];
 
 /**
- * Fetches and analyzes financial news for a specific stock symbol.
- * 
- * @param {string} symbol - Stock ticker symbol
- * @returns {Promise<Object>} Financial news analysis results containing score, sentiment classification, and articles
+ * Returns ISO date string for N days ago.
+ * @param {number} daysAgo
+ * @returns {string} YYYY-MM-DD
  */
-async function analyzeFinancialNews(symbol) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 50));
+function dateNDaysAgo(daysAgo) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+}
 
-  const ticker = (symbol || '').toUpperCase();
-  const articles = MOCK_NEWS_DATABASE[ticker] || DEFAULT_NEWS;
-
+/**
+ * Computes sentiment score from an array of article titles.
+ * Returns { score, sentiment } where score ∈ [-1.0, 1.0].
+ * @param {Array<{title: string}>} articles
+ * @returns {{ score: number, sentiment: string }}
+ */
+function scoreArticles(articles) {
   let totalScore = 0;
   let matchesCount = 0;
 
   articles.forEach(article => {
-    const titleLower = article.title.toLowerCase();
-    
-    // Check for positive word occurrences
+    const titleLower = (article.headline || article.title || '').toLowerCase();
     POSITIVE_WORDS.forEach(word => {
-      if (titleLower.includes(word)) {
-        totalScore += 1;
-        matchesCount += 1;
-      }
+      if (titleLower.includes(word)) { totalScore += 1; matchesCount += 1; }
     });
-
-    // Check for negative word occurrences
     NEGATIVE_WORDS.forEach(word => {
-      if (titleLower.includes(word)) {
-        totalScore -= 1;
-        matchesCount += 1;
-      }
+      if (titleLower.includes(word)) { totalScore -= 1; matchesCount += 1; }
     });
   });
 
-  // Calculate average score, normalized between -1.0 and 1.0.
-  // If no sentiment keywords are matched, the default score is 0.0 (neutral).
   const score = matchesCount > 0 ? Math.round((totalScore / matchesCount) * 100) / 100 : 0;
-
   let sentiment = 'Neutral';
-  if (score > 0.15) {
-    sentiment = 'Positive';
-  } else if (score < -0.15) {
-    sentiment = 'Negative';
+  if (score > 0.15) sentiment = 'Positive';
+  else if (score < -0.15) sentiment = 'Negative';
+
+  return { score, sentiment };
+}
+
+/**
+ * Fetches and analyzes financial news for a specific stock symbol from Finnhub.
+ * Returns null score components when data is unavailable to avoid polluting the sentiment rating.
+ *
+ * @param {string} symbol - Stock ticker symbol
+ * @returns {Promise<Object>} Financial news analysis: { score, sentiment, articles } or { score: null, sentiment: 'N/A', articles: [] }
+ */
+async function analyzeFinancialNews(symbol) {
+  const apiKey = process.env.FINNHUB_API_KEY;
+  // Why we skip fetch without a key: making an authenticated request without credentials would
+  // return a 401 and provide no value; returning null signals to the scoring engine to ignore
+  // this dimension rather than assuming a neutral score.
+  if (!apiKey) {
+    return { score: null, sentiment: 'N/A', articles: [] };
   }
 
-  return {
-    score,
-    sentiment,
-    articles
-  };
+  const ticker = (symbol || '').toUpperCase();
+  const from = dateNDaysAgo(7);
+  const to = dateNDaysAgo(0);
+  const url = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(ticker)}&from=${from}&to=${to}&token=${apiKey}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'stock-analysis-platform/1.0' }
+    });
+
+    if (!response.ok) {
+      // Why we return null instead of a neutral default:
+      // Assigning score=0 when the API fails would silently hide the data gap and produce
+      // a misleading "neutral" signal. Returning null lets the caller omit this dimension entirely.
+      console.warn(`Finnhub company-news API error for ${ticker}: ${response.status}`);
+      return { score: null, sentiment: 'N/A', articles: [] };
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      return { score: null, sentiment: 'N/A', articles: [] };
+    }
+
+    // Use the 5 most recent articles for scoring to keep signal fresh and reduce noise.
+    const recentArticles = data.slice(0, 5);
+    const { score, sentiment } = scoreArticles(recentArticles);
+
+    return {
+      score,
+      sentiment,
+      articles: recentArticles.map(a => ({ title: a.headline, date: new Date(a.datetime * 1000).toISOString().split('T')[0], url: a.url }))
+    };
+  } catch (err) {
+    console.warn(`analyzeFinancialNews fetch failed for ${ticker}: ${err.message}`);
+    return { score: null, sentiment: 'N/A', articles: [] };
+  }
 }
 
 module.exports = { analyzeFinancialNews };

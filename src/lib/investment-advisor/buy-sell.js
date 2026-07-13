@@ -171,15 +171,24 @@ function generateBuySellAdvice(analysisResults) {
     }
   }
 
-  let newsScore = 0;
-  let socialScore = 0;
-  // We convert sentiment scores from a range of [-1.0, 1.0] to a positive score out of 10
-  // to standardize their scales and simplify consolidation with fundamental/technical ratings.
+  let newsScore = null;
+  let socialScore = null;
+  // Why we check for null explicitly (not just falsy):
+  // When Finnhub returns score=null it means data was unavailable, not that sentiment is neutral.
+  // We must exclude null dimensions from the total to avoid silently penalizing stocks whose
+  // news data couldn't be fetched, versus stocks with genuinely neutral sentiment (score=0).
   if (news) {
-    newsScore = (news.financialNews && news.financialNews.score !== undefined) ? news.financialNews.score : 0;
-    socialScore = (news.socialSentiment && news.socialSentiment.score !== undefined) ? news.socialSentiment.score : 0;
-    newsScoreNormalized = (newsScore + 1) * 5;
-    socialScoreNormalized = (socialScore + 1) * 5;
+    const rawNewsScore = news.financialNews ? news.financialNews.score : undefined;
+    const rawSocialScore = news.socialSentiment ? news.socialSentiment.score : undefined;
+
+    if (rawNewsScore !== null && rawNewsScore !== undefined) {
+      newsScore = rawNewsScore;
+      newsScoreNormalized = (newsScore + 1) * 5;
+    }
+    if (rawSocialScore !== null && rawSocialScore !== undefined) {
+      socialScore = rawSocialScore;
+      socialScoreNormalized = (socialScore + 1) * 5;
+    }
   }
 
   const techScore = rsiScore + maScore + macdScore;
