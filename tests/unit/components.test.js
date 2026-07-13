@@ -176,8 +176,14 @@ describe('React Visual Components', () => {
 
       // Find the rating trigger button using its descriptive aria-label and trigger click
       const ratingBtn = screen.getByLabelText('查看評級策略公式與說明');
-      fireEvent.click(ratingBtn);
 
+      // Why we test three separate dismissal triggers (Escape, Close Button, and Backdrop Click):
+      // - Complete user flow coverage: To ensure different user groups (keyboard-only, screen reader, mouse/pointer users) can reliably close the modal using their preferred and standard interface actions.
+      // - Prevent modal locking: To verify that scroll-locking side effects ('hidden' body overflow) are consistently cleared regardless of how the modal is closed, avoiding rendering bugs on the host page.
+      
+      // 1. Verify closure via Escape key
+      fireEvent.click(ratingBtn);
+      
       // Verify that the rating explanation modal is rendered and background body scroll lock is applied
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText('評級策略 (Rating) 指標說明')).toBeInTheDocument();
@@ -187,6 +193,28 @@ describe('React Visual Components', () => {
       fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
 
       // Verify modal is closed and body scroll is restored to original state
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('');
+
+      // 2. Verify closure via Close button click
+      fireEvent.click(ratingBtn);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      const closeBtn = screen.getByLabelText('關閉說明彈窗');
+      fireEvent.click(closeBtn);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('');
+
+      // 3. Verify closure via Backdrop click
+      fireEvent.click(ratingBtn);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      const backdrop = screen.getByTestId('modal-backdrop');
+      fireEvent.click(backdrop);
+
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(document.body.style.overflow).toBe('');
     });

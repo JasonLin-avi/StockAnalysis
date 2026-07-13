@@ -242,14 +242,19 @@ function AdvisoryModal({ type, onClose }) {
 
   return (
     <div 
-      role="dialog"
-      aria-modal="true"
+      data-testid="modal-backdrop"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/80 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col p-6 relative animate-scale-up"
-        // We stop click event propagation here so that clicking inside the modal container does not bubble up 
+        // Why role="dialog", aria-modal="true", and aria-labelledby are placed on this inner container rather than the backdrop:
+        // - semantic correctness: It ensures assistive technologies (like screen readers) correctly associate the dialog properties with the actual modal content container rather than the full-screen overlay, preventing misidentification of the dialog boundary.
+        // - accessibility: Moving these attributes here and linking them to "modal-title" helps visually impaired users accurately locate the dialog text.
+        // - stop propagation: We stop click event propagation here so that clicking inside the modal container does not bubble up 
         // to the backdrop's click-to-close handler. This prevents the modal from accidentally closing when users 
         // interact with or select text within the dialog itself.
         onClick={(e) => e.stopPropagation()}
@@ -264,7 +269,7 @@ function AdvisoryModal({ type, onClose }) {
           </svg>
         </button>
         
-        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 pr-8 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+        <h4 id="modal-title" className="text-base font-bold text-slate-800 dark:text-slate-100 pr-8 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
           {content.title}
         </h4>
 
