@@ -204,13 +204,6 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
  * - Decoupling: Separating the presentation logic of detailed explanations keeps the main panel logic clean and maintainable.
  * - Reusability: Formats rating, weight, and confidence metrics uniformly based on a shared template and structural properties.
  */
-/**
- * AdvisoryModal Sub-component
- * 
- * Why this sub-component is defined:
- * - Decoupling: Separating the presentation logic of detailed explanations keeps the main panel logic clean and maintainable.
- * - Reusability: Formats rating, weight, and confidence metrics uniformly based on a shared template and structural properties.
- */
 function AdvisoryModal({ type, advice = {}, onClose }) {
   // Mapping table for common financial indicators status text from raw english states to friendly dual-language display.
   // Why this is useful: Translating raw state metrics in-place improves terminal user understanding and complies with local preference.
@@ -229,6 +222,18 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
   };
 
   const getStatusText = (status) => statusMapping[status] || status || 'N/A';
+
+  const getBadgeColor = (score) => {
+    // Why dynamic badge colors: Matching visual color weight (emerald for strong 2pts, amber for moderate 1pt, slate for weak 0pt)
+    // prevents cognitive misleading when users look at medium-health or high-leverage indicators.
+    if (score === 2) {
+      return 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30';
+    }
+    if (score === 1) {
+      return 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30';
+    }
+    return 'bg-slate-50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 border-slate-200/50 dark:border-slate-800/40';
+  };
 
   const contentMap = {
     rating: {
@@ -472,7 +477,7 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">負債比率 (Debt Ratio)</td>
                     <td className="py-2 text-center text-[10px]">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                      <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.debtRatio.score)}`}>
                         {getStatusText(pBreakdown.debtRatio.status)}
                       </span>
                     </td>
@@ -483,7 +488,7 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">每股收益 (EPS)</td>
                     <td className="py-2 text-center text-[10px]">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                      <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.eps.score)}`}>
                         {getStatusText(pBreakdown.eps.status)}
                       </span>
                     </td>
@@ -494,7 +499,7 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">營收成長 (Revenue Growth)</td>
                     <td className="py-2 text-center text-[10px]">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                      <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.revenueGrowth.score)}`}>
                         {getStatusText(pBreakdown.revenueGrowth.status)}
                       </span>
                     </td>
@@ -505,7 +510,7 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">自由現金流 (Cash Flow)</td>
                     <td className="py-2 text-center text-[10px]">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                      <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.cashFlow.score)}`}>
                         {getStatusText(pBreakdown.cashFlow.status)}
                       </span>
                     </td>
@@ -516,7 +521,7 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">市盈率估值 (P/E)</td>
                     <td className="py-2 text-center text-[10px]">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                      <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.pe.score)}`}>
                         {getStatusText(pBreakdown.pe.status)}
                       </span>
                     </td>

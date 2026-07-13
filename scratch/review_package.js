@@ -2,48 +2,52 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-function getShortCommit(commit) {
-  return execSync(`git rev-parse --short ${commit}`, { encoding: 'utf8' }).trim();
+if (process.argv.length < 4) {
+  console.error("Usage: node review_package.js <BASE> <HEAD> [OUTFILE]");
+  process.exit(2);
 }
 
-function generateReviewPackage(base, head) {
-  const repoRoot = path.resolve(__dirname, '..');
-  const sddDir = path.join(repoRoot, '.superpowers', 'sdd');
+const base = process.argv[2];
+const head = process.argv[3];
 
-  if (!fs.existsSync(sddDir)) {
-    fs.mkdirSync(sddDir, { recursive: true });
-  }
-
-  const shortBase = getShortCommit(base);
-  const shortHead = getShortCommit(head);
-  const outFile = path.join(sddDir, `review-${shortBase}..${shortHead}.diff`);
-
-  const title = `# Review package: ${base}..${head}\n\n`;
-  
-  // Commits log
-  const commitsHeader = `## Commits\n`;
-  const commitsLog = execSync(`git log --oneline ${base}..${head}`, { encoding: 'utf8' });
-  
-  // Stat summary
-  const filesHeader = `\n## Files changed\n`;
-  const filesStat = execSync(`git diff --stat ${base}..${head}`, { encoding: 'utf8' });
-  
-  // Diff with U10 context
-  const diffHeader = `\n## Diff\n`;
-  const diffContent = execSync(`git diff -U10 ${base}..${head}`, { encoding: 'utf8' });
-
-  const finalContent = title + commitsHeader + commitsLog + filesHeader + filesStat + diffHeader + diffContent;
-  
-  fs.writeFileSync(outFile, finalContent, 'utf8');
-  
-  const commitCount = execSync(`git rev-list --count ${base}..${head}`, { encoding: 'utf8' }).trim();
-  console.log(`wrote ${outFile}: ${commitCount} commit(s), ${finalContent.length} bytes`);
+try {
+  // Verify commits
+  execSync(`git rev-parse --verify --quiet ${base}`);
+  execSync(`git rev-parse --verify --quiet ${head}`);
+} catch (e) {
+  console.error(`Invalid BASE (${base}) or HEAD (${head}) commit.`);
+  process.exit(2);
 }
 
-const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.error("usage: node review_package.js BASE HEAD");
-  process.exit(1);
+const defaultOutDir = path.resolve(__dirname, '../docs/.superpowers/sdd');
+if (!fs.existsSync(defaultOutDir)) {
+  fs.mkdirSync(defaultOutDir, { recursive: true });
 }
 
-generateReviewPackage(args[0], args[1]);
+const baseShort = execSync(`git rev-parse --short ${base}`).toString().trim();
+const headShort = execSync(`git rev-parse --short ${head}`).toString().trim();
+
+const outPath = process.argv[4]
+  ? path.resolve(process.argv[4])
+  : path.join(defaultOutDir, `review-${baseShort}..${headShort}.diff`);
+
+const commitsList = execSync(`git log --oneline ${base}..${head}`).toString();
+const statSummary = execSync(`git diff --stat ${base}..${head}`).toString();
+const fullDiff = execSync(`git diff -U10 ${base}..${head}`).toString();
+
+const content = [
+  `# Review package: ${base}..${head}`,
+  ``,
+  `## Commits`,
+  commitsList,
+  `## Files changed`,
+  statSummary,
+  `## Diff`,
+  fullDiff
+].join('\n');
+
+fs.writeFileSync(outPath, content, 'utf8');
+const commitCount = execSync(`git rev-list --count ${base}..${head}`).toString().trim();
+const bytes = fs.statSync(outPath).size;
+
+console.log(`Wrote ${outPath}: ${commitCount} commit(s), ${bytes} bytes`);
