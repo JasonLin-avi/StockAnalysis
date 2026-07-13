@@ -22,123 +22,153 @@
  */
 function generateBuySellAdvice(analysisResults) {
   if (!analysisResults) {
-    return { action: 'Hold', confidenceScore: 0.5, summary: 'No data provided. Defaulting to Hold.' };
+    // We provide a fully populated default structure even when input is null or empty
+    // to maintain schema consistency and guarantee that upstream components do not crash 
+    // when attempting to access nested properties on the advice payload.
+    return {
+      action: 'Hold',
+      confidenceScore: 0.5,
+      summary: 'No data provided. Defaulting to Hold.',
+      totalScore: 50,
+      sentimentScore: 10,
+      breakdown: {
+        technical: {
+          rsi: { value: null, score: 5 },
+          ma: { value: null, score: 5 },
+          macd: { value: null, score: 5 }
+        },
+        fundamental: {
+          pe: { status: 'N/A', score: 5 },
+          eps: { status: 'N/A', score: 5 },
+          debtRatio: { status: 'N/A', score: 5 },
+          revenueGrowth: { status: 'N/A', score: 5 },
+          cashFlow: { status: 'N/A', score: 5 }
+        },
+        sentiment: {
+          financialNews: { score: 5 },
+          socialSentiment: { score: 5 }
+        }
+      }
+    };
   }
 
   const { technical, fundamental, news } = analysisResults;
 
-  // 1. Technical Scoring (Max 30 points)
-  let techScore = 0;
+  // We manage distinct local variables for each metric's status/value and score,
+  // rather than accumulating into a single global score variable immediately.
+  // This isolated variable schema is critical to populate the detailed 'breakdown'
+  // object without losing the identity and granular score of each indicator.
+  let rsiScore = 5;
+  let rsiValue = null;
+  let maScore = 5;
+  let maValue = null;
+  let macdScore = 5;
+  let macdValue = null;
+
+  let peScore = 5;
+  let peStatus = 'N/A';
+  let epsScore = 5;
+  let epsStatus = 'N/A';
+  let debtScore = 5;
+  let debtStatus = 'N/A';
+  let revenueScore = 5;
+  let revenueStatus = 'N/A';
+  let cashScore = 5;
+  let cashStatus = 'N/A';
+
+  let newsScoreNormalized = 5;
+  let socialScoreNormalized = 5;
+
+  // We evaluate technical metrics and override their default neutral settings
+  // if relevant indicators are provided in the input payload.
   if (technical) {
-    // RSI scoring: Oversold (< 30) is a buy catalyst (+10), overbought (> 70) is a risk (+3), mid-range is neutral (+7).
     if (Array.isArray(technical.rsi) && technical.rsi.length > 0) {
-      const latestRsi = technical.rsi[technical.rsi.length - 1];
-      if (latestRsi !== null && latestRsi !== undefined) {
-        if (latestRsi < 30) techScore += 10;
-        else if (latestRsi > 70) techScore += 3;
-        else techScore += 7;
-      } else {
-        techScore += 5;
+      rsiValue = technical.rsi[technical.rsi.length - 1];
+      if (rsiValue !== null && rsiValue !== undefined) {
+        // RSI values below 30 point to oversold conditions (bullish catalyst),
+        // values above 70 indicate overbought conditions (bearish risk),
+        // and values in between indicate standard trading ranges (neutral).
+        if (rsiValue < 30) rsiScore = 10;
+        else if (rsiValue > 70) rsiScore = 3;
+        else rsiScore = 7;
       }
-    } else {
-      techScore += 5;
     }
 
-    // Moving Average scoring: Bullish price > MA (+10), Bearish price < MA (+3).
-    // If exact price isn't provided, we check trend if possible, or give a default score.
     if (Array.isArray(technical.ma) && technical.ma.length > 0) {
-      const latestMa = technical.ma[technical.ma.length - 1];
+      maValue = technical.ma[technical.ma.length - 1];
       const currentPrice = analysisResults.price;
-      if (currentPrice && latestMa) {
-        techScore += currentPrice >= latestMa ? 10 : 3;
+      if (currentPrice && maValue !== null && maValue !== undefined) {
+        // Price staying above the moving average is a standard bullish trend sign,
+        // while falling below indicates a bearish trend setup.
+        maScore = currentPrice >= maValue ? 10 : 3;
       } else {
-        techScore += 7; // Default neutral trend score
+        // In the absence of a current price reference, we fall back to a neutral score
+        // to prevent skewing the technical rating too far in either direction.
+        maScore = 7;
       }
-    } else {
-      techScore += 5;
     }
 
-    // MACD scoring: Positive histogram indicates upward momentum (+10), negative indicates downward momentum (+3).
     if (technical.macd && Array.isArray(technical.macd.histogram) && technical.macd.histogram.length > 0) {
-      const latestHist = technical.macd.histogram[technical.macd.histogram.length - 1];
-      if (latestHist !== null && latestHist !== undefined) {
-        techScore += latestHist >= 0 ? 10 : 3;
-      } else {
-        techScore += 5;
+      macdValue = technical.macd.histogram[technical.macd.histogram.length - 1];
+      if (macdValue !== null && macdValue !== undefined) {
+        // Positive MACD histogram bars represent upward momentum (bullish),
+        // while negative bars indicate deceleration or downward momentum (bearish).
+        macdScore = macdValue >= 0 ? 10 : 3;
       }
-    } else {
-      techScore += 5;
     }
-  } else {
-    techScore = 15; // default half-weight
   }
 
-  // 2. Fundamental Scoring (Max 50 points)
-  let fundScore = 0;
+  // We analyze fundamental valuation and financial health indicators.
   if (fundamental) {
-    // P/E valuation
     if (fundamental.pe) {
-      if (fundamental.pe.status === 'Undervalued') fundScore += 10;
-      else if (fundamental.pe.status === 'Fair') fundScore += 7;
-      else if (fundamental.pe.status === 'Overvalued') fundScore += 3;
-      else fundScore += 1;
-    } else {
-      fundScore += 5;
+      peStatus = fundamental.pe.status || 'N/A';
+      if (peStatus === 'Undervalued') peScore = 10;
+      else if (peStatus === 'Fair') peScore = 7;
+      else if (peStatus === 'Overvalued') peScore = 3;
+      else peScore = 1;
     }
 
-    // EPS health
     if (fundamental.eps) {
-      if (fundamental.eps.status === 'Strong') fundScore += 10;
-      else if (fundamental.eps.status === 'Moderate') fundScore += 7;
-      else fundScore += 2;
-    } else {
-      fundScore += 5;
+      epsStatus = fundamental.eps.status || 'N/A';
+      if (epsStatus === 'Strong') epsScore = 10;
+      else if (epsStatus === 'Moderate') epsScore = 7;
+      else epsScore = 2;
     }
 
-    // Debt safety
     if (fundamental.debtRatio) {
-      if (fundamental.debtRatio.status === 'Healthy') fundScore += 10;
-      else if (fundamental.debtRatio.status === 'Moderate') fundScore += 7;
-      else fundScore += 2;
-    } else {
-      fundScore += 5;
+      debtStatus = fundamental.debtRatio.status || 'N/A';
+      if (debtStatus === 'Healthy') debtScore = 10;
+      else if (debtStatus === 'Moderate') debtScore = 7;
+      else debtScore = 2;
     }
 
-    // Revenue momentum
     if (fundamental.revenueGrowth) {
-      if (fundamental.revenueGrowth.status === 'High Growth') fundScore += 10;
-      else if (fundamental.revenueGrowth.status === 'Stable Growth') fundScore += 7;
-      else fundScore += 2;
-    } else {
-      fundScore += 5;
+      revenueStatus = fundamental.revenueGrowth.status || 'N/A';
+      if (revenueStatus === 'High Growth') revenueScore = 10;
+      else if (revenueStatus === 'Stable Growth') revenueScore = 7;
+      else revenueScore = 2;
     }
 
-    // Cash sustainability
     if (fundamental.cashFlow) {
-      if (fundamental.cashFlow.status === 'Strong') fundScore += 10;
-      else if (fundamental.cashFlow.status === 'Moderate') fundScore += 7;
-      else fundScore += 2;
-    } else {
-      fundScore += 5;
+      cashStatus = fundamental.cashFlow.status || 'N/A';
+      if (cashStatus === 'Strong') cashScore = 10;
+      else if (cashStatus === 'Moderate') cashScore = 7;
+      else cashScore = 2;
     }
-  } else {
-    fundScore = 25; // default half-weight
   }
 
-  // 3. Sentiment Scoring (Max 20 points)
-  let sentScore = 0;
+  // We convert sentiment scores from a range of [-1.0, 1.0] to a positive score out of 10
+  // to standardize their scales and simplify consolidation with fundamental/technical ratings.
   if (news) {
-    const newsScore = news.financialNews ? news.financialNews.score : 0;
-    const socialScore = news.socialSentiment ? news.socialSentiment.score : 0;
-
-    // Normalizing -1.0 to 1.0 into 0 to 10 points
-    sentScore += (newsScore + 1) * 5;
-    sentScore += (socialScore + 1) * 5;
-  } else {
-    sentScore = 10; // default half-weight
+    const newsScore = (news.financialNews && news.financialNews.score !== undefined) ? news.financialNews.score : 0;
+    const socialScore = (news.socialSentiment && news.socialSentiment.score !== undefined) ? news.socialSentiment.score : 0;
+    newsScoreNormalized = (newsScore + 1) * 5;
+    socialScoreNormalized = (socialScore + 1) * 5;
   }
 
-  // 4. Combined Recommendation Evaluation
+  const techScore = rsiScore + maScore + macdScore;
+  const fundScore = peScore + epsScore + debtScore + revenueScore + cashScore;
+  const sentScore = newsScoreNormalized + socialScoreNormalized;
   const totalScore = techScore + fundScore + sentScore;
 
   let action = 'Hold';
@@ -147,22 +177,46 @@ function generateBuySellAdvice(analysisResults) {
 
   if (totalScore >= 70) {
     action = 'Buy';
-    // Confidence score scaled based on how far above 70 the score is (max confidence 0.95 at score 100)
+    // We scale the confidence score based on how far the rating exceeds the buy threshold (70)
+    // up to a ceiling of 0.95 at a maximum score of 100.
     confidenceScore = Math.round((0.70 + ((totalScore - 70) / 30) * 0.25) * 100) / 100;
     summary = `Strong fundamentals and positive market catalysts support buying. Confidence score: ${confidenceScore}.`;
   } else if (totalScore <= 40) {
     action = 'Sell';
-    // Confidence score scaled based on how far below 40 the score is (max confidence 0.95 at score 0)
+    // We scale the confidence score based on how far below the sell threshold (40) the rating drops
+    // to reflect higher certainty in risk management actions.
     confidenceScore = Math.round((0.70 + ((40 - totalScore) / 40) * 0.25) * 100) / 100;
     summary = `Weak core metrics or negative trends signal selling pressure. Risk-mitigation recommended. Confidence score: ${confidenceScore}.`;
   } else {
+    // We adjust hold confidence linearly based on the relative position of the score 
+    // within the neutral region [40, 70] to capture subtle bias towards buy/sell boundaries.
     confidenceScore = Math.round((0.50 + ((totalScore - 40) / 30) * 0.20) * 100) / 100;
   }
 
   return {
     action,
     confidenceScore,
-    summary
+    summary,
+    totalScore,
+    sentimentScore: sentScore,
+    breakdown: {
+      technical: {
+        rsi: { value: rsiValue, score: rsiScore },
+        ma: { value: maValue, score: maScore },
+        macd: { value: macdValue, score: macdScore }
+      },
+      fundamental: {
+        pe: { status: peStatus, score: peScore },
+        eps: { status: epsStatus, score: epsScore },
+        debtRatio: { status: debtStatus, score: debtScore },
+        revenueGrowth: { status: revenueStatus, score: revenueScore },
+        cashFlow: { status: cashStatus, score: cashScore }
+      },
+      sentiment: {
+        financialNews: { score: newsScoreNormalized },
+        socialSentiment: { score: socialScoreNormalized }
+      }
+    }
   };
 }
 

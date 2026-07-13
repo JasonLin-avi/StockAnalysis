@@ -104,6 +104,17 @@ describe('Investment Advisor Engine', () => {
       expect(result.targetWeight).toBe(0);
       expect(result.allocationClass).toBe('Under Review');
     });
+
+    test('returns correct health score and fundamental breakdown', () => {
+      // We check if healthScore and breakdown objects exist and verify score breakdown
+      // for the PE metric specifically, to confirm the details are correctly propagated
+      // from the grading logic.
+      const result = generatePortfolioAdvice(mockStrongStock);
+      expect(result).toHaveProperty('healthScore');
+      expect(result).toHaveProperty('breakdown');
+      expect(result.healthScore).toBe(10); // All 5 mock fundamentals are healthy
+      expect(result.breakdown.pe.score).toBe(2);
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -133,6 +144,19 @@ describe('Investment Advisor Engine', () => {
       const result = generateBuySellAdvice(null);
       expect(result.action).toBe('Hold');
       expect(result.confidenceScore).toBe(0.5);
+    });
+
+    test('returns correct breakdown details and total score', () => {
+      // Validate that the output contains the aggregated totalScore and a detailed breakdown
+      // structure, which stores individual indicator values and scores to allow upstream
+      // clients to show granular metric analysis.
+      const result = generateBuySellAdvice(mockStrongStock);
+      expect(result).toHaveProperty('totalScore');
+      expect(result).toHaveProperty('breakdown');
+      expect(result.breakdown.technical.rsi.value).toBe(25);
+      expect(result.breakdown.technical.rsi.score).toBe(10);
+      expect(result.breakdown.fundamental.pe.status).toBe('Undervalued');
+      expect(result.breakdown.fundamental.pe.score).toBe(10);
     });
   });
 

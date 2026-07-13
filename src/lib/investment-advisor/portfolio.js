@@ -22,42 +22,79 @@
  */
 function generatePortfolioAdvice(analysisResults) {
   if (!analysisResults || !analysisResults.fundamental) {
+    // We supply a robust default response layout to maintain consistent API schemas
+    // even when inputs lack required fundamental metadata, safeguarding downstream UI modules.
     return {
       targetWeight: 0,
       allocationClass: 'Under Review',
-      rationale: 'Insufficient fundamental data to provide portfolio allocation advice.'
+      rationale: 'Insufficient fundamental data to provide portfolio allocation advice.',
+      healthScore: 0,
+      sentimentScore: 0,
+      breakdown: {
+        pe: { score: 0 },
+        eps: { score: 0 },
+        debtRatio: { score: 0 },
+        revenueGrowth: { score: 0 },
+        cashFlow: { score: 0 }
+      }
     };
   }
 
   const { fundamental, news } = analysisResults;
 
-  // Grade fundamental health (out of 10 points)
-  // Strong/Healthy states yield 2 points, while Moderate/Fair states yield 1 point.
-  // This allows more granular asset allocation recommendations.
-  let healthScore = 0;
-  
+  // We assign separate tracking variables for each sub-metric score.
+  // Using explicit variables instead of mutating a single counter satisfies the breakdown schema requirement
+  // and maintains full auditability of the investment engine's decisions.
+  let debtScore = 0;
+  let epsScore = 0;
+  let revenueScore = 0;
+  let cashScore = 0;
+  let peScore = 0;
+
   if (fundamental.debtRatio) {
-    if (fundamental.debtRatio.status === 'Healthy') healthScore += 2;
-    else if (fundamental.debtRatio.status === 'Moderate') healthScore += 1;
-  }
-  if (fundamental.eps) {
-    if (fundamental.eps.status === 'Strong') healthScore += 2;
-    else if (fundamental.eps.status === 'Moderate') healthScore += 1;
-  }
-  if (fundamental.revenueGrowth) {
-    if (fundamental.revenueGrowth.status === 'High Growth') healthScore += 2;
-    else if (fundamental.revenueGrowth.status === 'Stable Growth') healthScore += 1;
-  }
-  if (fundamental.cashFlow) {
-    if (fundamental.cashFlow.status === 'Strong') healthScore += 2;
-    else if (fundamental.cashFlow.status === 'Moderate') healthScore += 1;
-  }
-  if (fundamental.pe) {
-    if (fundamental.pe.status === 'Undervalued') healthScore += 2;
-    else if (fundamental.pe.status === 'Fair') healthScore += 1;
+    if (fundamental.debtRatio.status === 'Healthy') {
+      debtScore = 2;
+    } else if (fundamental.debtRatio.status === 'Moderate') {
+      debtScore = 1;
+    }
   }
 
-  // Sentiment modifier (-1 to +1)
+  if (fundamental.eps) {
+    if (fundamental.eps.status === 'Strong') {
+      epsScore = 2;
+    } else if (fundamental.eps.status === 'Moderate') {
+      epsScore = 1;
+    }
+  }
+
+  if (fundamental.revenueGrowth) {
+    if (fundamental.revenueGrowth.status === 'High Growth') {
+      revenueScore = 2;
+    } else if (fundamental.revenueGrowth.status === 'Stable Growth') {
+      revenueScore = 1;
+    }
+  }
+
+  if (fundamental.cashFlow) {
+    if (fundamental.cashFlow.status === 'Strong') {
+      cashScore = 2;
+    } else if (fundamental.cashFlow.status === 'Moderate') {
+      cashScore = 1;
+    }
+  }
+
+  if (fundamental.pe) {
+    if (fundamental.pe.status === 'Undervalued') {
+      peScore = 2;
+    } else if (fundamental.pe.status === 'Fair') {
+      peScore = 1;
+    }
+  }
+
+  const healthScore = debtScore + epsScore + revenueScore + cashScore + peScore;
+
+  // We compute the raw sum of available sentiment scores to gauge current public and financial consensus.
+  // Normalizing or modifying the raw score here provides a scalar bias to modify target weights in allocation rules.
   let sentimentScore = 0;
   if (news && news.financialNews) {
     sentimentScore += news.financialNews.score || 0;
@@ -91,7 +128,16 @@ function generatePortfolioAdvice(analysisResults) {
   return {
     targetWeight,
     allocationClass,
-    rationale
+    rationale,
+    healthScore,
+    sentimentScore,
+    breakdown: {
+      pe: { score: peScore },
+      eps: { score: epsScore },
+      debtRatio: { score: debtScore },
+      revenueGrowth: { score: revenueScore },
+      cashFlow: { score: cashScore }
+    }
   };
 }
 
