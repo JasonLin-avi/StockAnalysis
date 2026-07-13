@@ -470,6 +470,7 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
                   <th className="py-2 font-semibold">財務健康因子 (Financial Factor)</th>
+                  <th className="py-2 font-semibold text-right">當前數值</th>
                   <th className="py-2 font-semibold text-center">狀態評級</th>
                   <th className="py-2 font-semibold text-right">得分 (0-2分)</th>
                 </tr>
@@ -478,6 +479,9 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                 {pBreakdown.debtRatio && (
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">負債比率 (Debt Ratio)</td>
+                    <td className="py-2 text-right font-mono tabular-nums">
+                      {pBreakdown.debtRatio.value != null ? `${(pBreakdown.debtRatio.value * 100).toFixed(1)}%` : 'N/A'}
+                    </td>
                     <td className="py-2 text-center text-[10px]">
                       <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.debtRatio.score)}`}>
                         {getStatusText(pBreakdown.debtRatio.status)}
@@ -489,6 +493,9 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                 {pBreakdown.eps && (
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">每股收益 (EPS)</td>
+                    <td className="py-2 text-right font-mono tabular-nums">
+                      {pBreakdown.eps.value != null ? pBreakdown.eps.value : 'N/A'}
+                    </td>
                     <td className="py-2 text-center text-[10px]">
                       <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.eps.score)}`}>
                         {getStatusText(pBreakdown.eps.status)}
@@ -500,6 +507,9 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                 {pBreakdown.revenueGrowth && (
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">營收成長 (Revenue Growth)</td>
+                    <td className="py-2 text-right font-mono tabular-nums">
+                      {pBreakdown.revenueGrowth.value != null ? `${(pBreakdown.revenueGrowth.value * 100).toFixed(1)}%` : 'N/A'}
+                    </td>
                     <td className="py-2 text-center text-[10px]">
                       <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.revenueGrowth.score)}`}>
                         {getStatusText(pBreakdown.revenueGrowth.status)}
@@ -511,6 +521,9 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                 {pBreakdown.cashFlow && (
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">自由現金流 (Cash Flow)</td>
+                    <td className="py-2 text-right font-mono tabular-nums">
+                      {pBreakdown.cashFlow.value != null ? pBreakdown.cashFlow.value.toLocaleString() : 'N/A'}
+                    </td>
                     <td className="py-2 text-center text-[10px]">
                       <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.cashFlow.score)}`}>
                         {getStatusText(pBreakdown.cashFlow.status)}
@@ -522,6 +535,9 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
                 {pBreakdown.pe && (
                   <tr className="border-b border-slate-100 dark:border-slate-800/50">
                     <td className="py-2">市盈率估值 (P/E)</td>
+                    <td className="py-2 text-right font-mono tabular-nums">
+                      {pBreakdown.pe.value != null ? `${pBreakdown.pe.value}x` : 'N/A'}
+                    </td>
                     <td className="py-2 text-center text-[10px]">
                       <span className={`px-1.5 py-0.5 rounded border ${getBadgeColor(pBreakdown.pe.score)}`}>
                         {getStatusText(pBreakdown.pe.status)}

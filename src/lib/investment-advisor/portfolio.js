@@ -138,11 +138,14 @@ function generatePortfolioAdvice(analysisResults) {
     healthScore,
     sentimentScore,
     breakdown: {
-      pe: { score: peScore, status: peStatus },
-      eps: { score: epsScore, status: epsStatus },
-      debtRatio: { score: debtScore, status: debtStatus },
-      revenueGrowth: { score: revenueScore, status: revenueStatus },
-      cashFlow: { score: cashScore, status: cashStatus }
+      // Why: Carrying the raw numeric value alongside score/status allows the UI to display
+      // the actual metric (e.g. "Debt Ratio: 45.2%") instead of just a label, making the
+      // allocation rationale fully traceable to real data points.
+      pe: { value: fundamental.pe ? fundamental.pe.value : null, score: peScore, status: peStatus },
+      eps: { value: fundamental.eps ? fundamental.eps.value : null, score: epsScore, status: epsStatus },
+      debtRatio: { value: fundamental.debtRatio ? fundamental.debtRatio.value : null, score: debtScore, status: debtStatus },
+      revenueGrowth: { value: fundamental.revenueGrowth ? fundamental.revenueGrowth.value : null, score: revenueScore, status: revenueStatus },
+      cashFlow: { value: fundamental.cashFlow ? (fundamental.cashFlow.freeCashFlow ?? fundamental.cashFlow.operatingCashFlow) : null, score: cashScore, status: cashStatus }
     }
   };
 }
