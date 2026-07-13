@@ -1,13 +1,52 @@
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
 /**
+ * Helper to fetch a URL with automatic retries and exponential backoff.
+ * @param {string} url - URL to fetch
+ * @param {Object} options - Fetch options
+ * @param {number} retries - Number of retries (default: 3)
+ * @param {number} delay - Base delay in milliseconds (default: 300)
+ * @returns {Promise<Response>} Fetch Response
+ */
+async function fetchWithRetry(url, options = {}, retries = 3, delay = 300) {
+  const actualDelay = process.env.NODE_ENV === 'test' ? 1 : delay;
+  let currentDelay = actualDelay;
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Why: Retry on temporary server errors (5xx) or rate limit hits (429).
+      if (response.status >= 500 || response.status === 429) {
+        if (i < retries - 1) {
+          console.warn(`Fetch returned status ${response.status} for URL ${url}. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, currentDelay));
+          currentDelay *= 2;
+          continue;
+        }
+      }
+      return response;
+    } catch (err) {
+      // Why: Retry on network-level failures (e.g. DNS resolve failures, connection reset, connection timed out).
+      if (i < retries - 1) {
+        console.warn(`Fetch error for URL ${url}: ${err.message}. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, currentDelay));
+        currentDelay *= 2;
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+/**
  * Fetches current stock data from Yahoo Finance.
  * @param {string} symbol - Stock symbol (e.g. 'AAPL')
  * @returns {Promise<Object>} Standardized stock data
  */
 async function fetchStockData(symbol) {
   const url = `${YAHOO_BASE}/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
@@ -70,7 +109,7 @@ async function fetchHistoricalData(symbol, period = '1mo') {
   const interval = intervalMap[period] || '1d';
   const url = `${YAHOO_BASE}/${encodeURIComponent(symbol)}?range=${period}&interval=${interval}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
@@ -123,7 +162,7 @@ async function getSession() {
   }
 
   // 1. Get cookie from fc.yahoo.com
-  const fcResponse = await fetch('https://fc.yahoo.com', {
+  const fcResponse = await fetchWithRetry('https://fc.yahoo.com', {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
@@ -135,7 +174,7 @@ async function getSession() {
   }
 
   // 2. Get crumb from getcrumb endpoint
-  const crumbResponse = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
+  const crumbResponse = await fetchWithRetry('https://query1.finance.yahoo.com/v1/test/getcrumb', {
     headers: {
       'Cookie': cookie,
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -165,7 +204,7 @@ async function fetchFundamentalData(symbol) {
   try {
     const { cookie, crumb } = await getSession();
     const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings&crumb=${crumb}`;
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'Cookie': cookie,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -179,7 +218,7 @@ async function fetchFundamentalData(symbol) {
         // Retry once after clearing cache
         const retrySession = await getSession();
         const retryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings&crumb=${retrySession.crumb}`;
-        const retryResponse = await fetch(retryUrl, {
+        const retryResponse = await fetchWithRetry(retryUrl, {
           headers: {
             'Cookie': retrySession.cookie,
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'

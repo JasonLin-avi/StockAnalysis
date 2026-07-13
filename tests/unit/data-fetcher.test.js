@@ -335,6 +335,29 @@ describe('Data Fetcher Module', () => {
         /Failed to fetch historical data/
       );
     });
+
+    test('retries on temporary Yahoo Finance network failure and succeeds', async () => {
+      let callCount = 0;
+      global.fetch = jest.fn().mockImplementation((url) => {
+        callCount++;
+        if (url.includes('query1.finance.yahoo.com') && callCount === 1) {
+          // First attempt: reject with a network error
+          return Promise.reject(new Error('TypeError: fetch failed'));
+        }
+        if (url.includes('query1.finance.yahoo.com') && callCount === 2) {
+          // Second attempt: succeed
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockYahooHistoricalResponse)
+          });
+        }
+        return Promise.reject(new Error('Unknown URL: ' + url));
+      });
+
+      const result = await fetchHistoricalData('AAPL', '1mo');
+      expect(result.symbol).toBe('AAPL');
+      expect(callCount).toBe(2); // Retried once and succeeded
+    });
   });
 });
 
