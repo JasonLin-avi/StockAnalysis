@@ -31,11 +31,11 @@ function generatePortfolioAdvice(analysisResults) {
       healthScore: 0,
       sentimentScore: 0,
       breakdown: {
-        pe: { score: 0 },
-        eps: { score: 0 },
-        debtRatio: { score: 0 },
-        revenueGrowth: { score: 0 },
-        cashFlow: { score: 0 }
+        pe: { score: 0, status: 'N/A' },
+        eps: { score: 0, status: 'N/A' },
+        debtRatio: { score: 0, status: 'N/A' },
+        revenueGrowth: { score: 0, status: 'N/A' },
+        cashFlow: { score: 0, status: 'N/A' }
       }
     };
   }

@@ -33,9 +33,9 @@ function generateBuySellAdvice(analysisResults) {
       sentimentScore: 10,
       breakdown: {
         technical: {
-          rsi: { value: null, score: 5 },
-          ma: { value: null, score: 5 },
-          macd: { value: null, score: 5 }
+          rsi: { value: null, status: 'Neutral', score: 5 },
+          ma: { value: null, ma: null, status: 'Bearish', score: 5 },
+          macd: { value: null, status: 'Bearish', score: 5 }
         },
         fundamental: {
           pe: { status: 'N/A', score: 5 },
@@ -45,8 +45,9 @@ function generateBuySellAdvice(analysisResults) {
           cashFlow: { status: 'N/A', score: 5 }
         },
         sentiment: {
-          financialNews: { score: 5 },
-          socialSentiment: { score: 5 }
+          score: 10,
+          news: { value: 0, score: 5 },
+          social: { value: 0, score: 5 }
         }
       }
     };

@@ -216,7 +216,9 @@ function AdvisoryModal({ type, advice = {}, onClose }) {
     'Strong': 'Strong (強勁)',
     'Healthy': 'Healthy (健康)',
     'High Growth': 'High Growth (高成長)',
+    'Stable Growth': 'Stable Growth (穩定成長)',
     'Weak': 'Weak (偏弱)',
+    'Moderate': 'Moderate (溫和)',
     'Undervalued': 'Undervalued (低估)',
     'Overvalued': 'Overvalued (高估)'
   };

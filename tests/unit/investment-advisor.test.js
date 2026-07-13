@@ -103,6 +103,7 @@ describe('Investment Advisor Engine', () => {
       const result = generatePortfolioAdvice({});
       expect(result.targetWeight).toBe(0);
       expect(result.allocationClass).toBe('Under Review');
+      expect(result.breakdown.pe.status).toBe('N/A');
     });
 
     test('returns correct health score and fundamental breakdown', () => {
@@ -145,6 +146,8 @@ describe('Investment Advisor Engine', () => {
       const result = generateBuySellAdvice(null);
       expect(result.action).toBe('Hold');
       expect(result.confidenceScore).toBe(0.5);
+      expect(result.breakdown.technical.rsi.status).toBe('Neutral');
+      expect(result.breakdown.sentiment.news.value).toBe(0);
     });
 
     test('returns correct breakdown details and total score', () => {
