@@ -114,6 +114,7 @@ describe('Investment Advisor Engine', () => {
       expect(result).toHaveProperty('breakdown');
       expect(result.healthScore).toBe(10); // All 5 mock fundamentals are healthy
       expect(result.breakdown.pe.score).toBe(2);
+      expect(result.breakdown.pe.status).toBe('Undervalued');
     });
   });
 
@@ -155,8 +156,13 @@ describe('Investment Advisor Engine', () => {
       expect(result).toHaveProperty('breakdown');
       expect(result.breakdown.technical.rsi.value).toBe(25);
       expect(result.breakdown.technical.rsi.score).toBe(10);
+      expect(result.breakdown.technical.rsi.status).toBe('Oversold');
       expect(result.breakdown.fundamental.pe.status).toBe('Undervalued');
       expect(result.breakdown.fundamental.pe.score).toBe(10);
+      expect(result.breakdown.sentiment.news.value).toBe(0.8);
+      expect(result.breakdown.sentiment.news.score).toBe(9);
+      expect(result.breakdown.sentiment.social.value).toBe(0.7);
+      expect(result.breakdown.sentiment.social.score).toBe(8.5);
     });
   });
 

@@ -60,10 +60,13 @@ function generateBuySellAdvice(analysisResults) {
   // object without losing the identity and granular score of each indicator.
   let rsiScore = 5;
   let rsiValue = null;
+  let rsiStatus = 'Neutral';
   let maScore = 5;
   let maValue = null;
+  let maStatus = 'Bearish';
   let macdScore = 5;
   let macdValue = null;
+  let macdStatus = 'Bearish';
 
   let peScore = 5;
   let peStatus = 'N/A';
@@ -88,9 +91,16 @@ function generateBuySellAdvice(analysisResults) {
         // RSI values below 30 point to oversold conditions (bullish catalyst),
         // values above 70 indicate overbought conditions (bearish risk),
         // and values in between indicate standard trading ranges (neutral).
-        if (rsiValue < 30) rsiScore = 10;
-        else if (rsiValue > 70) rsiScore = 3;
-        else rsiScore = 7;
+        if (rsiValue < 30) {
+          rsiScore = 10;
+          rsiStatus = 'Oversold';
+        } else if (rsiValue > 70) {
+          rsiScore = 3;
+          rsiStatus = 'Overbought';
+        } else {
+          rsiScore = 7;
+          rsiStatus = 'Neutral';
+        }
       }
     }
 
@@ -101,10 +111,12 @@ function generateBuySellAdvice(analysisResults) {
         // Price staying above the moving average is a standard bullish trend sign,
         // while falling below indicates a bearish trend setup.
         maScore = currentPrice >= maValue ? 10 : 3;
+        maStatus = currentPrice >= maValue ? 'Bullish' : 'Bearish';
       } else {
         // In the absence of a current price reference, we fall back to a neutral score
         // to prevent skewing the technical rating too far in either direction.
         maScore = 7;
+        maStatus = 'Bearish';
       }
     }
 
@@ -114,6 +126,7 @@ function generateBuySellAdvice(analysisResults) {
         // Positive MACD histogram bars represent upward momentum (bullish),
         // while negative bars indicate deceleration or downward momentum (bearish).
         macdScore = macdValue >= 0 ? 10 : 3;
+        macdStatus = macdValue >= 0 ? 'Bullish' : 'Bearish';
       }
     }
   }
@@ -157,11 +170,13 @@ function generateBuySellAdvice(analysisResults) {
     }
   }
 
+  let newsScore = 0;
+  let socialScore = 0;
   // We convert sentiment scores from a range of [-1.0, 1.0] to a positive score out of 10
   // to standardize their scales and simplify consolidation with fundamental/technical ratings.
   if (news) {
-    const newsScore = (news.financialNews && news.financialNews.score !== undefined) ? news.financialNews.score : 0;
-    const socialScore = (news.socialSentiment && news.socialSentiment.score !== undefined) ? news.socialSentiment.score : 0;
+    newsScore = (news.financialNews && news.financialNews.score !== undefined) ? news.financialNews.score : 0;
+    socialScore = (news.socialSentiment && news.socialSentiment.score !== undefined) ? news.socialSentiment.score : 0;
     newsScoreNormalized = (newsScore + 1) * 5;
     socialScoreNormalized = (socialScore + 1) * 5;
   }
@@ -201,9 +216,9 @@ function generateBuySellAdvice(analysisResults) {
     sentimentScore: sentScore,
     breakdown: {
       technical: {
-        rsi: { value: rsiValue, score: rsiScore },
-        ma: { value: maValue, score: maScore },
-        macd: { value: macdValue, score: macdScore }
+        rsi: { value: rsiValue, status: rsiStatus, score: rsiScore },
+        ma: { value: analysisResults.price, ma: maValue, status: maStatus, score: maScore },
+        macd: { value: macdValue, status: macdStatus, score: macdScore }
       },
       fundamental: {
         pe: { status: peStatus, score: peScore },
@@ -213,8 +228,9 @@ function generateBuySellAdvice(analysisResults) {
         cashFlow: { status: cashStatus, score: cashScore }
       },
       sentiment: {
-        financialNews: { score: newsScoreNormalized },
-        socialSentiment: { score: socialScoreNormalized }
+        score: sentScore,
+        news: { value: newsScore, score: newsScoreNormalized },
+        social: { value: socialScore, score: socialScoreNormalized }
       }
     }
   };

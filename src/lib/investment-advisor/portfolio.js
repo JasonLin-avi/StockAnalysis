@@ -51,6 +51,12 @@ function generatePortfolioAdvice(analysisResults) {
   let cashScore = 0;
   let peScore = 0;
 
+  const debtStatus = fundamental.debtRatio ? fundamental.debtRatio.status || 'N/A' : 'N/A';
+  const epsStatus = fundamental.eps ? fundamental.eps.status || 'N/A' : 'N/A';
+  const revenueStatus = fundamental.revenueGrowth ? fundamental.revenueGrowth.status || 'N/A' : 'N/A';
+  const cashStatus = fundamental.cashFlow ? fundamental.cashFlow.status || 'N/A' : 'N/A';
+  const peStatus = fundamental.pe ? fundamental.pe.status || 'N/A' : 'N/A';
+
   if (fundamental.debtRatio) {
     if (fundamental.debtRatio.status === 'Healthy') {
       debtScore = 2;
@@ -132,11 +138,11 @@ function generatePortfolioAdvice(analysisResults) {
     healthScore,
     sentimentScore,
     breakdown: {
-      pe: { score: peScore },
-      eps: { score: epsScore },
-      debtRatio: { score: debtScore },
-      revenueGrowth: { score: revenueScore },
-      cashFlow: { score: cashScore }
+      pe: { score: peScore, status: peStatus },
+      eps: { score: epsScore, status: epsStatus },
+      debtRatio: { score: debtScore, status: debtStatus },
+      revenueGrowth: { score: revenueScore, status: revenueStatus },
+      cashFlow: { score: cashScore, status: cashStatus }
     }
   };
 }
