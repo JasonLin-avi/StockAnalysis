@@ -64,8 +64,8 @@ function generateHTMLReport(analysisData) {
   const socSent = news.socialSentiment || { score: 0, sentiment: 'Neutral' };
   const majorEv = news.majorEvents || { hasHighImpactEvent: false, events: [] };
 
-  const newsScoreStr = finNews.score !== undefined ? finNews.score.toFixed(2) : '0.00';
-  const socialScoreStr = socSent.score !== undefined ? socSent.score.toFixed(2) : '0.00';
+  const newsScoreStr = finNews.score != null ? finNews.score.toFixed(2) : 'N/A';
+  const socialScoreStr = socSent.score != null ? socSent.score.toFixed(2) : 'N/A';
   const highImpactStr = majorEv.hasHighImpactEvent ? '⚠️ 偵測到高影響力重大事件' : '無重大異常事件';
 
   let newsClass = 'value-neutral';
