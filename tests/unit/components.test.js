@@ -168,7 +168,7 @@ describe('React Visual Components', () => {
         risk: { riskLevel: 'Low', riskFactors: ['Minor competition'], riskMitigation: 'Set 10% stop loss' }
       };
 
-      render(<InvestmentAdvicePanel advice={mockAdvice} />);
+      const { rerender } = render(<InvestmentAdvicePanel advice={mockAdvice} />);
       
       // Initially, no modal should be visible and body style overflow should be clean
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -217,6 +217,61 @@ describe('React Visual Components', () => {
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(document.body.style.overflow).toBe('');
+
+      // 模擬帶有 breakdown 數據的 advice 物件
+      const mockAdviceWithBreakdown = {
+        portfolio: { 
+          targetWeight: 0.12, 
+          allocationClass: 'Overweight', 
+          rationale: 'Excellent health',
+          healthScore: 8,
+          sentimentScore: 0.6,
+          breakdown: {
+            debtRatio: { status: 'Healthy', score: 2 },
+            eps: { status: 'Strong', score: 2 },
+            revenueGrowth: { status: 'High Growth', score: 2 },
+            cashFlow: { status: 'Strong', score: 2 },
+            pe: { status: 'Fair', score: 0 }
+          }
+        },
+        buySell: { 
+          action: 'Buy', 
+          confidenceScore: 0.81, 
+          summary: 'Highly recommended',
+          totalScore: 83,
+          breakdown: {
+            technical: {
+              score: 23,
+              rsi: { value: 28.4, status: 'Oversold', score: 10 },
+              ma: { value: 155.2, ma: 150.0, status: 'Bullish', score: 10 },
+              macd: { value: -0.05, status: 'Bearish', score: 3 }
+            },
+            fundamental: {
+              score: 47,
+              pe: { value: 18.5, status: 'Fair', score: 7 },
+              eps: { value: 4.2, status: 'Strong', score: 10 },
+              debtRatio: { value: 0.45, status: 'Healthy', score: 10 },
+              revenueGrowth: { value: 0.12, status: 'High Growth', score: 10 },
+              cashFlow: { value: 1200000000, status: 'Strong', score: 10 }
+            },
+            sentiment: {
+              score: 13,
+              news: { value: 0.4, score: 7 },
+              social: { value: 0.2, score: 6 }
+            }
+          }
+        },
+        risk: { riskLevel: 'Low', riskFactors: [], riskMitigation: '' }
+      };
+      
+      rerender(<InvestmentAdvicePanel advice={mockAdviceWithBreakdown} />);
+      // 點擊問號並斷言對話框渲染了 RSI 與 P/E 原始值表格行
+      const ratingBtnWithBreakdown = screen.getByLabelText('查看評級策略公式與說明');
+      fireEvent.click(ratingBtnWithBreakdown);
+      
+      expect(screen.getByText('28.4')).toBeInTheDocument();
+      expect(screen.getByText('Oversold (超賣)')).toBeInTheDocument();
+      expect(screen.getByText('83 / 100')).toBeInTheDocument();
     });
   });
 });

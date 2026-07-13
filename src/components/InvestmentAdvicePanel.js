@@ -192,7 +192,7 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
           </div>
         </div>
       )}
-      {activeModal && <AdvisoryModal type={activeModal} onClose={() => setActiveModal(null)} />}
+      {activeModal && <AdvisoryModal type={activeModal} advice={advice} onClose={() => setActiveModal(null)} />}
     </div>
   );
 }
@@ -204,7 +204,32 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
  * - Decoupling: Separating the presentation logic of detailed explanations keeps the main panel logic clean and maintainable.
  * - Reusability: Formats rating, weight, and confidence metrics uniformly based on a shared template and structural properties.
  */
-function AdvisoryModal({ type, onClose }) {
+/**
+ * AdvisoryModal Sub-component
+ * 
+ * Why this sub-component is defined:
+ * - Decoupling: Separating the presentation logic of detailed explanations keeps the main panel logic clean and maintainable.
+ * - Reusability: Formats rating, weight, and confidence metrics uniformly based on a shared template and structural properties.
+ */
+function AdvisoryModal({ type, advice = {}, onClose }) {
+  // Mapping table for common financial indicators status text from raw english states to friendly dual-language display.
+  // Why this is useful: Translating raw state metrics in-place improves terminal user understanding and complies with local preference.
+  const statusMapping = {
+    'Oversold': 'Oversold (超賣)',
+    'Overbought': 'Overbought (超買)',
+    'Bullish': 'Bullish (看漲)',
+    'Bearish': 'Bearish (看跌)',
+    'Fair': 'Fair (合理)',
+    'Strong': 'Strong (強勁)',
+    'Healthy': 'Healthy (健康)',
+    'High Growth': 'High Growth (高成長)',
+    'Weak': 'Weak (偏弱)',
+    'Undervalued': 'Undervalued (低估)',
+    'Overvalued': 'Overvalued (高估)'
+  };
+
+  const getStatusText = (status) => statusMapping[status] || status || 'N/A';
+
   const contentMap = {
     rating: {
       title: '評級策略 (Rating) 指標說明',
@@ -242,6 +267,386 @@ function AdvisoryModal({ type, onClose }) {
   const content = contentMap[type];
   if (!content) return null;
 
+  const { portfolio = {}, buySell = {} } = advice;
+
+  // Render specific content helper
+  // Why this function is split: Keeping modal rendering clean by isolating complex table structures from container styling.
+  const renderModalBody = () => {
+    if (type === 'rating' && buySell.breakdown) {
+      const breakdown = buySell.breakdown;
+      const totalScore = buySell.totalScore || 0;
+      
+      return (
+        <div className="space-y-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse text-slate-700 dark:text-slate-300">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
+                  <th className="py-2 font-semibold">分析維度 / 指標</th>
+                  <th className="py-2 font-semibold text-right">當前數值</th>
+                  <th className="py-2 font-semibold text-center">狀態評級</th>
+                  <th className="py-2 font-semibold text-right">得分 / 滿分</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* 技術面細項 (Technical) */}
+                {breakdown.technical && (
+                  <>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold">
+                      <td className="py-2 px-2" colSpan="3">技術面分析 (Technical)</td>
+                      <td className="py-2 px-2 text-right">{breakdown.technical.score} / 30</td>
+                    </tr>
+                    {breakdown.technical.rsi && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">RSI 強弱指標</td>
+                        {/* Why tabular-nums: Aligning numbers vertically in tables ensures financial metrics and scores remain legible and easily comparable across rows, mitigating reading alignment cognitive load. */}
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.technical.rsi.value}</td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
+                            {getStatusText(breakdown.technical.rsi.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.technical.rsi.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.technical.ma && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">移動平均線 MA</td>
+                        <td className="py-2 text-right font-mono tabular-nums">
+                          {breakdown.technical.ma.value} {breakdown.technical.ma.ma !== undefined && `(MA: ${breakdown.technical.ma.ma})`}
+                        </td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                            {getStatusText(breakdown.technical.ma.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.technical.ma.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.technical.macd && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">MACD 柱狀體</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.technical.macd.value}</td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+                            {getStatusText(breakdown.technical.macd.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.technical.macd.score} / 10</td>
+                      </tr>
+                    )}
+                  </>
+                )}
+                
+                {/* 基本面細項 (Fundamental) */}
+                {breakdown.fundamental && (
+                  <>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold">
+                      <td className="py-2 px-2" colSpan="3">基本面財務分析 (Fundamental)</td>
+                      <td className="py-2 px-2 text-right">{breakdown.fundamental.score} / 50</td>
+                    </tr>
+                    {breakdown.fundamental.pe && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">市盈率 P/E 估值</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.pe.value}x</td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+                            {getStatusText(breakdown.fundamental.pe.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.pe.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.fundamental.eps && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">每股收益 EPS</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.eps.value}</td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                            {getStatusText(breakdown.fundamental.eps.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.eps.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.fundamental.debtRatio && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">負債比率 Debt Ratio</td>
+                        <td className="py-2 text-right font-mono tabular-nums">
+                          {breakdown.fundamental.debtRatio.value !== undefined ? `${(breakdown.fundamental.debtRatio.value * 100).toFixed(1)}%` : 'N/A'}
+                        </td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                            {getStatusText(breakdown.fundamental.debtRatio.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.debtRatio.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.fundamental.revenueGrowth && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">營收年成長率 Growth</td>
+                        <td className="py-2 text-right font-mono tabular-nums">
+                          {breakdown.fundamental.revenueGrowth.value !== undefined ? `${(breakdown.fundamental.revenueGrowth.value * 100).toFixed(1)}%` : 'N/A'}
+                        </td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                            {getStatusText(breakdown.fundamental.revenueGrowth.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.revenueGrowth.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.fundamental.cashFlow && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">自由現金流 Cash Flow</td>
+                        <td className="py-2 text-right font-mono tabular-nums">
+                          {breakdown.fundamental.cashFlow.value !== undefined ? breakdown.fundamental.cashFlow.value.toLocaleString() : 'N/A'}
+                        </td>
+                        <td className="py-2 text-center text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                            {getStatusText(breakdown.fundamental.cashFlow.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.fundamental.cashFlow.score} / 10</td>
+                      </tr>
+                    )}
+                  </>
+                )}
+                
+                {/* 情緖面細項 (Sentiment) */}
+                {breakdown.sentiment && (
+                  <>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold">
+                      <td className="py-2 px-2" colSpan="3">市場情緒指標 (Sentiment)</td>
+                      <td className="py-2 px-2 text-right">{breakdown.sentiment.score} / 20</td>
+                    </tr>
+                    {breakdown.sentiment.news && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">新聞輿情評分</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.sentiment.news.value}</td>
+                        <td className="py-2 text-center text-[10px]">-</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.sentiment.news.score} / 10</td>
+                      </tr>
+                    )}
+                    {breakdown.sentiment.social && (
+                      <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                        <td className="py-2 pl-4">社群熱度評分</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.sentiment.social.value}</td>
+                        <td className="py-2 text-center text-[10px]">-</td>
+                        <td className="py-2 text-right font-mono tabular-nums">{breakdown.sentiment.social.score} / 10</td>
+                      </tr>
+                    )}
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-3 mt-3">
+            <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">當前決策總評分:</span>
+            {/* Why inline text container: Keeping the full string inside one text node ensures simple RTL (React Testing Library) text assertions can match perfectly. */}
+            <span className="font-extrabold text-sm text-sky-600 dark:text-sky-400 tabular-nums">
+              {totalScore} / 100
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'weight' && portfolio.breakdown) {
+      const pBreakdown = portfolio.breakdown;
+      return (
+        <div className="space-y-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse text-slate-700 dark:text-slate-300">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
+                  <th className="py-2 font-semibold">財務健康因子 (Financial Factor)</th>
+                  <th className="py-2 font-semibold text-center">狀態評級</th>
+                  <th className="py-2 font-semibold text-right">得分 (0-2分)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pBreakdown.debtRatio && (
+                  <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                    <td className="py-2">負債比率 (Debt Ratio)</td>
+                    <td className="py-2 text-center text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        {getStatusText(pBreakdown.debtRatio.status)}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right font-mono tabular-nums">{pBreakdown.debtRatio.score}</td>
+                  </tr>
+                )}
+                {pBreakdown.eps && (
+                  <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                    <td className="py-2">每股收益 (EPS)</td>
+                    <td className="py-2 text-center text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        {getStatusText(pBreakdown.eps.status)}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right font-mono tabular-nums">{pBreakdown.eps.score}</td>
+                  </tr>
+                )}
+                {pBreakdown.revenueGrowth && (
+                  <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                    <td className="py-2">營收成長 (Revenue Growth)</td>
+                    <td className="py-2 text-center text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        {getStatusText(pBreakdown.revenueGrowth.status)}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right font-mono tabular-nums">{pBreakdown.revenueGrowth.score}</td>
+                  </tr>
+                )}
+                {pBreakdown.cashFlow && (
+                  <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                    <td className="py-2">自由現金流 (Cash Flow)</td>
+                    <td className="py-2 text-center text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        {getStatusText(pBreakdown.cashFlow.status)}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right font-mono tabular-nums">{pBreakdown.cashFlow.score}</td>
+                  </tr>
+                )}
+                {pBreakdown.pe && (
+                  <tr className="border-b border-slate-100 dark:border-slate-800/50">
+                    <td className="py-2">市盈率估值 (P/E)</td>
+                    <td className="py-2 text-center text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        {getStatusText(pBreakdown.pe.status)}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right font-mono tabular-nums">{pBreakdown.pe.score}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3.5 space-y-2 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">財務健康總分 (Health Score):</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{portfolio.healthScore !== undefined ? `${portfolio.healthScore} / 10` : 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">情緒修飾值 (Sentiment Score):</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{portfolio.sentimentScore !== undefined ? portfolio.sentimentScore : 'N/A'}</span>
+            </div>
+            <div className="border-t border-slate-200/50 dark:border-slate-800/50 pt-2 mt-2">
+              <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">最終匹配配置原因:</span>
+              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                {portfolio.rationale || 'N/A'}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'confidence' && buySell.totalScore !== undefined) {
+      const totalScore = buySell.totalScore;
+      const action = buySell.action || 'Hold';
+      
+      let formulaText = '';
+      let steps = [];
+      let finalPercent = '';
+
+      if (action === 'Buy') {
+        formulaText = '置信度 = 70% + ((總分 - 70) / 30) * 25%';
+        const diff = totalScore - 70;
+        const multiplier = diff / 30;
+        const incremental = multiplier * 25;
+        const finalVal = 70 + incremental;
+        steps = [
+          `置信度 = 70% + ((${totalScore} - 70) / 30) * 25%`,
+          `置信度 = 70% + ((${diff}) / 30) * 25%`,
+          `置信度 = 70% + (${multiplier.toFixed(4)} * 25%)`,
+          `置信度 = 70% + ${incremental.toFixed(2)}%`,
+          `置信度 = ${finalVal.toFixed(2)}%`
+        ];
+        finalPercent = `${finalVal.toFixed(2)}%`;
+      } else if (action === 'Sell') {
+        formulaText = '置信度 = 70% + ((40 - 總分) / 40) * 25%';
+        const diff = 40 - totalScore;
+        const multiplier = diff / 40;
+        const incremental = multiplier * 25;
+        const finalVal = 70 + incremental;
+        steps = [
+          `置信度 = 70% + ((40 - ${totalScore}) / 40) * 25%`,
+          `置信度 = 70% + ((${diff}) / 40) * 25%`,
+          `置信度 = 70% + (${multiplier.toFixed(4)} * 25%)`,
+          `置信度 = 70% + ${incremental.toFixed(2)}%`,
+          `置信度 = ${finalVal.toFixed(2)}%`
+        ];
+        finalPercent = `${finalVal.toFixed(2)}%`;
+      } else {
+        formulaText = '置信度 = 50% + ((總分 - 40) / 30) * 20%';
+        const diff = totalScore - 40;
+        const multiplier = diff / 30;
+        const incremental = multiplier * 20;
+        const finalVal = 50 + incremental;
+        steps = [
+          `置信度 = 50% + ((${totalScore} - 40) / 30) * 20%`,
+          `置信度 = 50% + ((${diff}) / 30) * 20%`,
+          `置信度 = 50% + (${multiplier.toFixed(4)} * 20%)`,
+          `置信度 = 50% + ${incremental.toFixed(2)}%`,
+          `置信度 = ${finalVal.toFixed(2)}%`
+        ];
+        finalPercent = `${finalVal.toFixed(2)}%`;
+      }
+
+      return (
+        <div className="space-y-4">
+          <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3.5 font-mono text-xs text-sky-600 dark:text-sky-400 space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 border-b border-slate-200/50 dark:border-slate-800/50 pb-1.5 mb-2 flex justify-between">
+              <span>當前置信度推導過程:</span>
+              <span className="text-sky-600 dark:text-sky-400 font-bold">{action}</span>
+            </div>
+            <div>代入參數：總分 = {totalScore}</div>
+            <div>套用公式：{formulaText}</div>
+            <div className="border-t border-slate-200/20 dark:border-slate-800/20 pt-2 mt-2 space-y-1">
+              {steps.map((step, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <span className="text-slate-400">步驟 {idx + 1}:</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-medium">{step}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-200/40 dark:border-slate-800/40 pt-2 mt-2 flex justify-between font-bold text-slate-800 dark:text-slate-200">
+              <span>最終計算置信度:</span>
+              <span>{finalPercent}</span>
+            </div>
+          </div>
+          <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 list-disc pl-4 leading-relaxed overflow-y-auto">
+            {content.details.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    // Default Fallback
+    // Why standard fallback is needed: Ensures backward compatibility and handles cases where raw metrics breakdown is empty.
+    return (
+      <>
+        <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3.5 mb-4 text-xs font-mono text-sky-600 dark:text-sky-400 break-words leading-relaxed">
+          {content.formula}
+        </div>
+
+        <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 list-disc pl-4 leading-relaxed overflow-y-auto">
+          {content.details.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+      </>
+    );
+  };
+
   return (
     <div 
       data-testid="modal-backdrop"
@@ -253,12 +658,9 @@ function AdvisoryModal({ type, onClose }) {
         aria-modal="true"
         aria-labelledby="modal-title"
         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/80 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col p-6 relative animate-scale-up"
-        // Why role="dialog", aria-modal="true", and aria-labelledby are placed on this inner container rather than the backdrop:
-        // - semantic correctness: It ensures assistive technologies (like screen readers) correctly associate the dialog properties with the actual modal content container rather than the full-screen overlay, preventing misidentification of the dialog boundary.
-        // - accessibility: Moving these attributes here and linking them to "modal-title" helps visually impaired users accurately locate the dialog text.
-        // - stop propagation: We stop click event propagation here so that clicking inside the modal container does not bubble up 
-        // to the backdrop's click-to-close handler. This prevents the modal from accidentally closing when users 
-        // interact with or select text within the dialog itself.
+        // Why role="dialog", aria-modal="true", and aria-labelledby are placed on this inner container:
+        // - Semantic correctness: Screen readers associate dialog boundaries and headers properly instead of incorrectly binding to the overlay backdrop.
+        // - Stop click propagation: Prevents mouse click bubbling from closing the modal when interacting with data rows or copying text inside the container.
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -275,15 +677,7 @@ function AdvisoryModal({ type, onClose }) {
           {content.title}
         </h4>
 
-        <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3.5 mb-4 text-xs font-mono text-sky-600 dark:text-sky-400 break-words leading-relaxed">
-          {content.formula}
-        </div>
-
-        <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 list-disc pl-4 leading-relaxed overflow-y-auto">
-          {content.details.map((item, idx) => (
-            <li key={idx}>{item}</li>
-          ))}
-        </ul>
+        {renderModalBody()}
       </div>
     </div>
   );
