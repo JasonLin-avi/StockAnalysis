@@ -5,6 +5,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    # Why env_file instead of embedding vars in the image:
+    # Secrets baked into build layers are extractable via `docker history`.
+    # env_file injects variables at container start time only, keeping the key out of the image.
+    env_file:
+      - .env.local
     environment:
       - NODE_ENV=production
     volumes:
