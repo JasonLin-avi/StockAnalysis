@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
-const { getWatchlist } = require('../../lib/watchlist-store');
+import { getWatchlist } from '../../lib/watchlist-store';
 
 export default function WatchlistPage() {
   const [symbols, setSymbols] = useState([]);
@@ -21,6 +21,7 @@ export default function WatchlistPage() {
     const fetchPrices = async () => {
       try {
         const res = await fetch(`/api/prices?symbols=${list.join(',')}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setPrices(data);
       } catch (err) {
@@ -56,7 +57,7 @@ export default function WatchlistPage() {
             {symbols.map(symbol => {
               const quote = prices[symbol] || { price: '--', change: '--', color: 'text-slate-400' };
               return (
-                <Link key={symbol} href={`/stock/${symbol}`} className="block">
+                <Link key={symbol} href={`/stock/${symbol}`} className="block" aria-label={`查看 ${symbol} 股價`}>
                   <div className="bg-slate-900/80 hover:bg-slate-800 rounded-xl p-6 border border-slate-800 hover:border-slate-600 transition-all cursor-pointer">
                     <h3 className="text-xl font-bold text-white mb-2">{symbol}</h3>
                     <div className="text-2xl font-extrabold text-slate-100">{quote.price}</div>
