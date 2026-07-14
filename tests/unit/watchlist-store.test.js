@@ -18,11 +18,31 @@ describe('Watchlist Store', () => {
     expect(getWatchlist()).toEqual([]);
   });
 
-  it('adds and removes symbols', () => {
+  it('adds symbols', () => {
     addWatch('AAPL');
     expect(getWatchlist()).toEqual(['AAPL']);
+  });
+
+  it('removes symbols', () => {
+    addWatch('AAPL');
     removeWatch('AAPL');
     expect(getWatchlist()).toEqual([]);
+  });
+
+  it('does not add duplicate symbols', () => {
+    addWatch('AAPL');
+    global.window.dispatchEvent.mockClear();
+    addWatch('AAPL');
+    expect(getWatchlist()).toEqual(['AAPL']);
+    expect(global.window.dispatchEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not dispatch event when removing non-existent symbol', () => {
+    addWatch('AAPL');
+    global.window.dispatchEvent.mockClear();
+    removeWatch('TSLA');
+    expect(getWatchlist()).toEqual(['AAPL']);
+    expect(global.window.dispatchEvent).not.toHaveBeenCalled();
   });
 
   it('dispatches watchlist-updated event', () => {

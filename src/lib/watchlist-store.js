@@ -2,8 +2,9 @@
 const STORAGE_KEY = 'stock-analysis-watchlist';
 
 function getWatchlist() {
-  if (typeof window === 'undefined' || !window.localStorage) return [];
+  if (typeof window === 'undefined') return [];
   try {
+    if (!window.localStorage) return [];
     const data = window.localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
@@ -12,9 +13,14 @@ function getWatchlist() {
 }
 
 function saveWatchlist(list) {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    window.dispatchEvent(new window.CustomEvent('watchlist-updated'));
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      window.dispatchEvent(new window.CustomEvent('watchlist-updated'));
+    }
+  } catch (e) {
+    // Gracefully handle QuotaExceededError or SecurityError
   }
 }
 
