@@ -12,9 +12,13 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 300) {
   const actualDelay = process.env.NODE_ENV === 'test' ? 1 : delay;
   let currentDelay = actualDelay;
   
+  // Why: Next.js aggressively caches fetch requests by default. 
+  // We must bypass the cache to ensure we get real-time stock quotes.
+  const fetchOptions = { ...options, cache: 'no-store' };
+
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url, options);
+      const response = await fetch(url, fetchOptions);
       
       // Why: Retry on temporary server errors (5xx) or rate limit hits (429).
       if (response.status >= 500 || response.status === 429) {

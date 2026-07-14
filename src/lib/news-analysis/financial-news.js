@@ -75,7 +75,8 @@ async function analyzeFinancialNews(symbol) {
 
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'stock-analysis-platform/1.0' }
+      headers: { 'User-Agent': 'stock-analysis-platform/1.0' },
+      cache: 'no-store' // Why: Ensure news signal reflects real-time data instead of stale Next.js cache
     });
 
     if (!response.ok) {

@@ -66,7 +66,8 @@ async function analyzeSocialSentiment(symbol) {
 
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'stock-analysis-platform/1.0' }
+      headers: { 'User-Agent': 'stock-analysis-platform/1.0' },
+      cache: 'no-store' // Why: Ensure sentiment data is freshly fetched and not cached by Next.js
     });
 
     if (!response.ok) {

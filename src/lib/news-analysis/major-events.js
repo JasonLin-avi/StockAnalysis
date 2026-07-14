@@ -73,7 +73,8 @@ async function analyzeMajorEvents(symbol) {
 
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'stock-analysis-platform/1.0' }
+      headers: { 'User-Agent': 'stock-analysis-platform/1.0' },
+      cache: 'no-store' // Why: Events data must not be cached by Next.js to ensure accurate risk profiling
     });
 
     if (!response.ok) {

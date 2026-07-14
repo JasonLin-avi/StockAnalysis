@@ -9,6 +9,9 @@ import CustomizableLayout from '../../../components/CustomizableLayout';
 import HistoryTracker from '../../../components/HistoryTracker';
 const { performFullAnalysis } = require('../../../lib/integration');
 
+// Why: The stock analysis page depends on real-time financial data. Forcing dynamic rendering ensures Next.js never serves a statically cached HTML version with stale stock prices.
+export const dynamic = 'force-dynamic';
+
 export default async function StockDetail({ params }) {
   const { symbol } = params;
   let data = null;

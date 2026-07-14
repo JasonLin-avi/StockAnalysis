@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import yahooFinance from '../../../lib/data-fetcher/yahoo-finance';
 const { fetchStockData } = yahooFinance;
 
+// Why: Next.js might statically optimize API routes without dynamic functions. This ensures we always fetch fresh prices.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
