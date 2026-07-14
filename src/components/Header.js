@@ -22,6 +22,9 @@ export default function Header() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/watchlist" className="ml-6 text-sm font-semibold text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-600">
+              <span className="text-yellow-400">⭐</span> 我的關注
+            </Link>
             <div className="text-xs text-slate-500 font-mono hidden sm:block">
               v1.0.0
             </div>
