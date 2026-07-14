@@ -20,7 +20,7 @@ export default function WatchlistPage() {
 
     const fetchPrices = async () => {
       try {
-        const res = await fetch(`/api/prices?symbols=${list.join(',')}`);
+        const res = await fetch(`/api/prices?symbols=${encodeURIComponent(list.join(','))}`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setPrices(data);

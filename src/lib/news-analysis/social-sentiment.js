@@ -73,7 +73,13 @@ async function analyzeSocialSentiment(symbol) {
     if (!response.ok) {
       // Why null instead of 0: a failed request means we have no data, not that sentiment is neutral.
       // Returning null allows buy-sell.js to skip this dimension in score accumulation.
-      console.warn(`Finnhub social-sentiment API error for ${ticker}: ${response.status}`);
+      // Why we suppress 403 warnings: Finnhub social-sentiment is a premium endpoint, returning 403 on free tiers.
+      // We log it as info to avoid alarming users with expected permission errors in server logs.
+      if (response.status === 403) {
+        console.info(`[Info] Finnhub social-sentiment requires Premium for ${ticker}. Skipping gracefully.`);
+      } else {
+        console.warn(`Finnhub social-sentiment API error for ${ticker}: ${response.status}`);
+      }
       return { score: null, sentiment: 'N/A', mentionVolume: 0 };
     }
 

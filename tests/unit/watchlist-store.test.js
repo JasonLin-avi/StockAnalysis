@@ -1,4 +1,4 @@
-const { getWatchlist, addWatch, removeWatch } = require('../../src/lib/watchlist-store');
+import { getWatchlist, addWatch, removeWatch } from '../../src/lib/watchlist-store';
 
 describe('Watchlist Store', () => {
   beforeEach(() => {

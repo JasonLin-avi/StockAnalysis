@@ -167,6 +167,21 @@ describe('Investment Advisor Engine', () => {
       expect(result.breakdown.sentiment.social.value).toBe(0.7);
       expect(result.breakdown.sentiment.social.score).toBe(8.5);
     });
+
+    test('dynamically adjusts max score when api data is missing (Option C)', () => {
+      // If socialSentiment is null (e.g. 403 error), it should not penalize the score.
+      // A stock with perfect scores elsewhere (90/90) should scale to 100/100, not 90/100.
+      const missingDataStock = JSON.parse(JSON.stringify(mockStrongStock));
+      missingDataStock.news.socialSentiment = { score: null };
+      
+      const result = generateBuySellAdvice(missingDataStock);
+      // Perfect score across all other dimensions
+      // Tech: 30, Fund: 50, News: 9 (score 0.8 -> 9). Total actual = 89.
+      // Max possible = 90.
+      // Scaled = (89 / 90) * 100 = 98.88 => 99.
+      expect(result.totalScore).toBe(99); 
+      expect(result.action).toBe('Buy');
+    });
   });
 
   // ---------------------------------------------------------------------------

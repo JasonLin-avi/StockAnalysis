@@ -83,15 +83,17 @@ function generateBuySellAdvice(analysisResults) {
   let newsScoreNormalized = 0;
   let socialScoreNormalized = 0;
 
+  // We track the maximum possible score dynamically. If an indicator's value is null 
+  // (e.g. data couldn't be fetched), we exclude it from this total so it doesn't penalize the final rating.
+  let currentMaxScore = 0;
+
   // We evaluate technical metrics and override their default neutral settings
   // if relevant indicators are provided in the input payload.
   if (technical) {
     if (Array.isArray(technical.rsi) && technical.rsi.length > 0) {
       rsiValue = technical.rsi[technical.rsi.length - 1];
       if (rsiValue !== null && rsiValue !== undefined) {
-        // RSI values below 30 point to oversold conditions (bullish catalyst),
-        // values above 70 indicate overbought conditions (bearish risk),
-        // and values in between indicate standard trading ranges (neutral).
+        currentMaxScore += 10;
         if (rsiValue < 30) {
           rsiScore = 10;
           rsiStatus = 'Oversold';
@@ -108,14 +110,12 @@ function generateBuySellAdvice(analysisResults) {
     if (Array.isArray(technical.ma) && technical.ma.length > 0) {
       maValue = technical.ma[technical.ma.length - 1];
       const currentPrice = analysisResults.price;
-      if (currentPrice && maValue !== null && maValue !== undefined) {
-        // Price staying above the moving average is a standard bullish trend sign,
-        // while falling below indicates a bearish trend setup.
+      if (currentPrice !== undefined && currentPrice !== null && maValue !== null && maValue !== undefined) {
+        currentMaxScore += 10;
         maScore = currentPrice >= maValue ? 10 : 3;
         maStatus = currentPrice >= maValue ? 'Bullish' : 'Bearish';
-      } else {
-        // In the absence of a current price reference, we fall back to a neutral score
-        // to prevent skewing the technical rating too far in either direction.
+      } else if (maValue !== null && maValue !== undefined) {
+        currentMaxScore += 10;
         maScore = 7;
         maStatus = 'Bearish';
       }
@@ -124,8 +124,7 @@ function generateBuySellAdvice(analysisResults) {
     if (technical.macd && Array.isArray(technical.macd.histogram) && technical.macd.histogram.length > 0) {
       macdValue = technical.macd.histogram[technical.macd.histogram.length - 1];
       if (macdValue !== null && macdValue !== undefined) {
-        // Positive MACD histogram bars represent upward momentum (bullish),
-        // while negative bars indicate deceleration or downward momentum (bearish).
+        currentMaxScore += 10;
         macdScore = macdValue >= 0 ? 10 : 3;
         macdStatus = macdValue >= 0 ? 'Bullish' : 'Bearish';
       }
@@ -134,40 +133,46 @@ function generateBuySellAdvice(analysisResults) {
 
   // We analyze fundamental valuation and financial health indicators.
   if (fundamental) {
-    if (fundamental.pe) {
+    if (fundamental.pe && fundamental.pe.value !== null) {
       peStatus = fundamental.pe.status || 'N/A';
+      currentMaxScore += 10;
       if (peStatus === 'Undervalued') peScore = 10;
       else if (peStatus === 'Fair') peScore = 7;
       else if (peStatus === 'Overvalued') peScore = 3;
-      else peScore = 1;
+      else peScore = 1; // N/A (Loss)
     }
 
-    if (fundamental.eps) {
+    if (fundamental.eps && fundamental.eps.value !== null) {
       epsStatus = fundamental.eps.status || 'N/A';
+      currentMaxScore += 10;
       if (epsStatus === 'Strong') epsScore = 10;
       else if (epsStatus === 'Moderate') epsScore = 7;
-      else epsScore = 2;
+      else epsScore = 2; // Weak
     }
 
-    if (fundamental.debtRatio) {
+    if (fundamental.debtRatio && fundamental.debtRatio.value !== null) {
       debtStatus = fundamental.debtRatio.status || 'N/A';
+      currentMaxScore += 10;
       if (debtStatus === 'Healthy') debtScore = 10;
       else if (debtStatus === 'Moderate') debtScore = 7;
-      else debtScore = 2;
+      else debtScore = 2; // High Risk
     }
 
-    if (fundamental.revenueGrowth) {
+    if (fundamental.revenueGrowth && fundamental.revenueGrowth.value !== null) {
       revenueStatus = fundamental.revenueGrowth.status || 'N/A';
+      currentMaxScore += 10;
       if (revenueStatus === 'High Growth') revenueScore = 10;
       else if (revenueStatus === 'Stable Growth') revenueScore = 7;
-      else revenueScore = 2;
+      else revenueScore = 2; // Declining
     }
 
-    if (fundamental.cashFlow) {
+    // CashFlow can be freeCashFlow or operatingCashFlow; checking status ensures it was processed
+    if (fundamental.cashFlow && fundamental.cashFlow.status !== 'N/A') {
       cashStatus = fundamental.cashFlow.status || 'N/A';
+      currentMaxScore += 10;
       if (cashStatus === 'Strong') cashScore = 10;
       else if (cashStatus === 'Moderate') cashScore = 7;
-      else cashScore = 2;
+      else cashScore = 2; // Weak
     }
   }
 
@@ -184,17 +189,25 @@ function generateBuySellAdvice(analysisResults) {
     if (rawNewsScore !== null && rawNewsScore !== undefined) {
       newsScore = rawNewsScore;
       newsScoreNormalized = (newsScore + 1) * 5;
+      currentMaxScore += 10;
     }
     if (rawSocialScore !== null && rawSocialScore !== undefined) {
       socialScore = rawSocialScore;
       socialScoreNormalized = (socialScore + 1) * 5;
+      currentMaxScore += 10;
     }
   }
 
   const techScore = rsiScore + maScore + macdScore;
   const fundScore = peScore + epsScore + debtScore + revenueScore + cashScore;
   const sentScore = newsScoreNormalized + socialScoreNormalized;
-  const totalScore = techScore + fundScore + sentScore;
+  const rawTotalScore = techScore + fundScore + sentScore;
+
+  // Scale raw score proportionately to 100 based on currentMaxScore
+  let totalScore = 50; // Default neutral
+  if (currentMaxScore > 0) {
+    totalScore = Math.round((rawTotalScore / currentMaxScore) * 100);
+  }
 
   let action = 'Hold';
   let confidenceScore = 0.5;

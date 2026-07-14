@@ -1,7 +1,7 @@
 // src/lib/watchlist-store.js
 const STORAGE_KEY = 'stock-analysis-watchlist';
 
-function getWatchlist() {
+export function getWatchlist() {
   if (typeof window === 'undefined') return [];
   try {
     if (!window.localStorage) return [];
@@ -26,7 +26,7 @@ function saveWatchlist(list) {
   }
 }
 
-function addWatch(symbol) {
+export function addWatch(symbol) {
   const list = getWatchlist();
   if (!list.includes(symbol)) {
     list.push(symbol);
@@ -34,7 +34,7 @@ function addWatch(symbol) {
   }
 }
 
-function removeWatch(symbol) {
+export function removeWatch(symbol) {
   const list = getWatchlist();
   const newList = list.filter(s => s !== symbol);
   if (newList.length !== list.length) {
@@ -42,4 +42,3 @@ function removeWatch(symbol) {
   }
 }
 
-module.exports = { getWatchlist, addWatch, removeWatch };
