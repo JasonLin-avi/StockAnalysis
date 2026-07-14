@@ -8,6 +8,7 @@ import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
 import HistoryTracker from '../../../components/HistoryTracker';
 const { performFullAnalysis } = require('../../../lib/integration');
+import WatchButton from '../../../components/WatchButton';
 
 // Why: The stock analysis page depends on real-time financial data. Forcing dynamic rendering ensures Next.js never serves a statically cached HTML version with stale stock prices.
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,7 @@ export default async function StockDetail({ params }) {
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">個股智能分析看板</div>
             <div className="flex items-baseline gap-3 mt-1.5">
               <h1 className="text-3xl font-extrabold tracking-tight text-white">{symbol}</h1>
+              <WatchButton symbol={symbol} />
               <span className="text-sm text-slate-400">系統分析時間: {data.date}</span>
             </div>
           </div>
