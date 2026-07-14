@@ -8,6 +8,7 @@ function getWatchlist() {
     const data = window.localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
+    console.error('Failed to get watchlist:', e);
     return [];
   }
 }
@@ -20,6 +21,7 @@ function saveWatchlist(list) {
       window.dispatchEvent(new window.CustomEvent('watchlist-updated'));
     }
   } catch (e) {
+    console.error('Failed to save watchlist:', e);
     // Gracefully handle QuotaExceededError or SecurityError
   }
 }
