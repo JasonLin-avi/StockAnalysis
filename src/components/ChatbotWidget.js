@@ -11,6 +11,8 @@ export default function ChatbotWidget() {
   const [ticker, setTicker] = useState('Stock');
   const pathname = usePathname();
   const messageEndRef = useRef(null);
+  const buttonRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Why: Extract stock ticker automatically from routing pathname, fallback to 'Stock' if not on a stock page.
   useEffect(() => {
@@ -40,9 +42,21 @@ export default function ChatbotWidget() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  // Why: Manage keyboard focus transitions between the toggle button and input field to ensure full accessibility (a11y).
+  useEffect(() => {
+    if (isOpen) {
+      // Why: Focus the input field immediately when the chatbot opens so screen reader and keyboard users can type right away.
+      inputRef.current?.focus();
+    } else {
+      // Why: Return focus to the trigger button when the chatbot is closed to maintain logical tab sequence.
+      buttonRef.current?.focus();
+    }
+  }, [isOpen]);
+
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    // Why: Prevent form submission if input is empty, loading is in progress, or we are not on a stock page (ticker is 'Stock').
+    if (!input.trim() || isLoading || ticker === 'Stock') return;
 
     const userMsg = { role: 'user', content: input };
     const newMessages = [...messages, userMsg];
@@ -84,6 +98,7 @@ export default function ChatbotWidget() {
     <div className="fixed bottom-6 right-6 z-50 font-sans">
       {!isOpen ? (
         <button
+          ref={buttonRef}
           onClick={() => setIsOpen(true)}
           className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform duration-200 text-white text-2xl relative"
           aria-label="開啟 AI 投資助理對話框"
@@ -150,7 +165,7 @@ export default function ChatbotWidget() {
               </div>
             ))}
             {isLoading && (
-              <div className="flex justify-start">
+              <div className="flex justify-start" role="status" aria-live="polite">
                 <div className="bg-slate-800 border border-slate-700 text-slate-400 rounded-lg rounded-bl-none px-3 py-2 flex items-center gap-2">
                   <span className="animate-spin" aria-hidden="true">🔄</span>
                   <span>AI 正在呼叫工具 analysis 中...</span>
@@ -163,17 +178,18 @@ export default function ChatbotWidget() {
           {/* Input Footer */}
           <form onSubmit={handleSend} className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2">
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={ticker !== 'Stock' ? `問問關於 ${ticker} 的指標...` : "請選擇個股以開始對話"}
-              disabled={isLoading}
+              disabled={isLoading || ticker === 'Stock'}
               className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50 text-slate-100 placeholder-slate-500"
               aria-label="訊息輸入欄位"
             />
             <button
               type="submit"
-              disabled={isLoading || !input.trim()}
+              disabled={isLoading || !input.trim() || ticker === 'Stock'}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white rounded px-4 py-1.5 text-sm font-semibold transition-colors disabled:text-slate-400"
               aria-label="送出訊息"
             >

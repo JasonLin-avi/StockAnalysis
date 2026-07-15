@@ -49,4 +49,21 @@ describe('Chatbot API Route', () => {
     expect(data.messages).toHaveLength(2);
     expect(data.messages[1].content).toBe('hello user');
   });
+
+  test('POST returns 500 and user-friendly error message on agent failure', async () => {
+    // Why: Mock agent invocation throwing an error to test the API fallback response.
+    financialAdvisorAgent.invoke.mockRejectedValue(new Error('Internal agent failure'));
+
+    const mockReq = {
+      json: async () => ({
+        messages: [{ role: 'user', content: 'hello' }],
+        ticker: 'AAPL'
+      })
+    };
+
+    const res = await POST(mockReq);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.error).toBe('抱歉，我目前無法連線到 AI 服務。請稍後再試。');
+  });
 });

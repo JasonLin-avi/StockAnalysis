@@ -14,7 +14,12 @@ function getCachedAnalysis(symbol) {
     return analysisCache[ticker];
   }
   cacheTimestamp[ticker] = now;
-  analysisCache[ticker] = performFullAnalysis(ticker);
+  analysisCache[ticker] = performFullAnalysis(ticker).catch(err => {
+    // Why: If the analysis fails, clear the cache entry immediately so subsequent requests can try again.
+    delete analysisCache[ticker];
+    delete cacheTimestamp[ticker];
+    throw err;
+  });
   return analysisCache[ticker];
 }
 

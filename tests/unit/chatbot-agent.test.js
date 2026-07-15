@@ -140,5 +140,20 @@ describe('Chatbot Agent & Tools', () => {
 
     expect(result.error).toBe('API analysis failed');
   });
+
+  test('cache clearing on rejection: when performFullAnalysis fails, the cache entry is immediately cleared', async () => {
+    integration.performFullAnalysis
+      .mockRejectedValueOnce(new Error('First failure'))
+      .mockResolvedValueOnce({ symbol: 'AAPL', price: 150 });
+
+    // Why: First call should fail, throwing an error.
+    await expect(getCachedAnalysis('AAPL')).rejects.toThrow('First failure');
+
+    // Why: Second call should try again and succeed, demonstrating the failed promise was not cached.
+    const res = await getCachedAnalysis('AAPL');
+    expect(res.symbol).toBe('AAPL');
+    expect(res.price).toBe(150);
+    expect(integration.performFullAnalysis).toHaveBeenCalledTimes(2);
+  });
 });
 

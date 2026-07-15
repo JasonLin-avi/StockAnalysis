@@ -5,11 +5,16 @@ import '@testing-library/jest-dom';
 import ChatbotWidget from '../../src/components/ChatbotWidget';
 
 // Mock next/navigation params
+let mockPathname = '/stock/AAPL';
 jest.mock('next/navigation', () => ({
-  usePathname: () => '/stock/AAPL'
+  usePathname: () => mockPathname
 }));
 
 describe('ChatbotWidget Component', () => {
+  beforeEach(() => {
+    mockPathname = '/stock/AAPL';
+  });
+
   test('renders floating bubble icon initially with stock badge', () => {
     render(<ChatbotWidget />);
     const bubble = screen.getByRole('button', { name: /開啟 AI 投資助理對話框/i });
@@ -63,5 +68,40 @@ describe('ChatbotWidget Component', () => {
     expect(clearBtn).toBeInTheDocument();
     expect(inputField).toBeInTheDocument();
     expect(submitBtn).toBeInTheDocument();
+  });
+
+  test('disables input and send button, and displays specific placeholder when not on a stock page', () => {
+    mockPathname = '/'; // Why: Simulate home page where ticker will fall back to 'Stock'
+    render(<ChatbotWidget />);
+    const bubble = screen.getByRole('button', { name: /開啟 AI 投資助理對話框/i });
+    fireEvent.click(bubble);
+
+    const inputField = screen.getByRole('textbox', { name: '訊息輸入欄位' });
+    const submitBtn = screen.getByRole('button', { name: '送出訊息' });
+
+    expect(inputField).toBeDisabled();
+    expect(submitBtn).toBeDisabled();
+    expect(inputField.placeholder).toBe('請選擇個股以開始對話');
+  });
+
+  test('manages focus correctly when opening and closing the widget', () => {
+    render(<ChatbotWidget />);
+    const bubble = screen.getByRole('button', { name: /開啟 AI 投資助理對話框/i });
+    
+    // Why: Ensure the bubble has focus before click so we can return it later.
+    bubble.focus();
+    expect(document.activeElement).toBe(bubble);
+
+    // Why: Open the widget and expect focus to jump to the input text box.
+    fireEvent.click(bubble);
+    const inputField = screen.getByRole('textbox', { name: '訊息輸入欄位' });
+    expect(document.activeElement).toBe(inputField);
+
+    // Why: Minimize the widget and expect focus to return to the newly mounted bubble trigger button.
+    const minimizeBtn = screen.getByRole('button', { name: /最小化對話框/i });
+    fireEvent.click(minimizeBtn);
+    
+    const closedBubble = screen.getByRole('button', { name: /開啟 AI 投資助理對話框/i });
+    expect(document.activeElement).toBe(closedBubble);
   });
 });

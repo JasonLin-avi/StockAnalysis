@@ -48,8 +48,8 @@ export async function POST(request) {
 
     return NextResponse.json({ messages: serializableMessages });
   } catch (err) {
-    // Why: Provide graceful error fallback and logs for unexpected agent or network failures.
+    // Why: Log the raw error on the server side for troubleshooting, but return a localized user-friendly message to prevent exposing internal stack traces or details to the end-user.
     console.error('Chatbot API Route Error:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: '抱歉，我目前無法連線到 AI 服務。請稍後再試。' }, { status: 500 });
   }
 }
