@@ -6,16 +6,22 @@ let analysisCache = {};
 let cacheTimestamp = {};
 
 // Why: Cache analysis results for 10 seconds to avoid redundant API fetches when the agent calls multiple tools in a single turn.
-async function getCachedAnalysis(symbol) {
+// Cache the Promise itself to prevent concurrent duplicate calls.
+function getCachedAnalysis(symbol) {
   const ticker = symbol.toUpperCase();
   const now = Date.now();
   if (analysisCache[ticker] && (now - cacheTimestamp[ticker] < 10000)) {
     return analysisCache[ticker];
   }
-  const result = await performFullAnalysis(ticker);
-  analysisCache[ticker] = result;
   cacheTimestamp[ticker] = now;
-  return result;
+  analysisCache[ticker] = performFullAnalysis(ticker);
+  return analysisCache[ticker];
+}
+
+// Why: Clear cache helper function to reset cache state between tests to prevent test contamination.
+function clearCache() {
+  analysisCache = {};
+  cacheTimestamp = {};
 }
 
 const getTechnicalIndicatorsTool = new DynamicStructuredTool({
@@ -101,4 +107,6 @@ module.exports = {
   getFundamentalMetricsTool,
   getNewsSentimentTool,
   getInvestmentAdviceTool,
+  clearCache,
+  getCachedAnalysis,
 };

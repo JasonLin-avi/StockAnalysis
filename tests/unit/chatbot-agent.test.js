@@ -2,7 +2,9 @@ const {
   getTechnicalIndicatorsTool,
   getFundamentalMetricsTool,
   getNewsSentimentTool,
-  getInvestmentAdviceTool
+  getInvestmentAdviceTool,
+  clearCache,
+  getCachedAnalysis
 } = require('../../src/lib/chatbot/tools');
 const { financialAdvisorAgent } = require('../../src/lib/chatbot/deep-agent');
 const integration = require('../../src/lib/integration');
@@ -14,6 +16,8 @@ jest.mock('../../src/lib/integration', () => ({
 describe('Chatbot Agent & Tools', () => {
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
+    clearCache();
   });
 
   test('get_technical_indicators tool calls performFullAnalysis and returns JSON data', async () => {
@@ -85,6 +89,56 @@ describe('Chatbot Agent & Tools', () => {
   test('financialAdvisorAgent compiles successfully and has invoke method', () => {
     expect(financialAdvisorAgent).toBeDefined();
     expect(typeof financialAdvisorAgent.invoke).toBe('function');
+  });
+
+  test('concurrency: two simultaneous calls to getCachedAnalysis only call performFullAnalysis once', async () => {
+    integration.performFullAnalysis.mockImplementation(async () => {
+      // Why: Introduce a slight delay to simulate an asynchronous network request.
+      await new Promise(resolve => setTimeout(resolve, 50));
+      return { symbol: 'AAPL', price: 150 };
+    });
+
+    const promise1 = getCachedAnalysis('AAPL');
+    const promise2 = getCachedAnalysis('AAPL');
+
+    const [res1, res2] = await Promise.all([promise1, promise2]);
+
+    expect(integration.performFullAnalysis).toHaveBeenCalledTimes(1);
+    expect(res1).toEqual(res2);
+    expect(res1.symbol).toBe('AAPL');
+  });
+
+  test('cache expiration: calls after 10 seconds re-trigger performFullAnalysis', async () => {
+    integration.performFullAnalysis.mockResolvedValue({ symbol: 'AAPL', price: 150 });
+
+    // Call once
+    await getCachedAnalysis('AAPL');
+    expect(integration.performFullAnalysis).toHaveBeenCalledTimes(1);
+
+    // Call immediately (cached)
+    await getCachedAnalysis('AAPL');
+    expect(integration.performFullAnalysis).toHaveBeenCalledTimes(1);
+
+    // Why: Mock the system time to simulate advancing 11 seconds.
+    const now = Date.now();
+    jest.spyOn(Date, 'now').mockReturnValue(now + 11000);
+
+    // Call again after 11 seconds (should trigger performFullAnalysis again)
+    await getCachedAnalysis('AAPL');
+    expect(integration.performFullAnalysis).toHaveBeenCalledTimes(2);
+
+    // Why: Restore original Date.now.
+    Date.now.mockRestore();
+  });
+
+  test('error handling: tool execution handles performFullAnalysis throwing errors gracefully', async () => {
+    integration.performFullAnalysis.mockRejectedValue(new Error('API analysis failed'));
+
+    const toolInput = { symbol: 'AAPL' };
+    const resultStr = await getTechnicalIndicatorsTool.invoke(toolInput);
+    const result = JSON.parse(resultStr);
+
+    expect(result.error).toBe('API analysis failed');
   });
 });
 
