@@ -56,21 +56,21 @@ export default function HistoricalBacktestPanel({ backtest }) {
         </div>
       </div>
 
-      {/* Why: Grouping win rates in a grid provides a scannable snapshot of multi-horizon probability distributions. */}
+      {/* Why: Grouping win rates in a grid provides a scannable snapshot of multi-horizon probability distributions. We enforce whitespace-nowrap and items-end to guarantee perfectly aligned block layouts and heights across all viewport sizes. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: '5 天持有期', rate: winRate5d, ret: avgReturn5d },
-          { label: '10 天持有期', rate: winRate10d, ret: avgReturn10d },
-          { label: '20 天持有期', rate: winRate20d, ret: avgReturn20d }
+          { label: '5天持有期', rate: winRate5d, ret: avgReturn5d },
+          { label: '10天持有期', rate: winRate10d, ret: avgReturn10d },
+          { label: '20天持有期', rate: winRate20d, ret: avgReturn20d }
         ].map((item, idx) => (
-          <div key={idx} className="bg-slate-900/30 border border-slate-900/50 rounded-2xl p-5 flex flex-col justify-between">
-            <span className="text-xs text-slate-500 font-semibold">{item.label}</span>
-            <div className="flex items-baseline justify-between mt-3">
-              <span className={`text-3xl font-extrabold tracking-tight ${getRateColor(item.rate)}`}>
+          <div key={idx} className="bg-slate-900/30 border border-slate-900/50 rounded-2xl p-5 flex flex-col justify-between min-h-[110px]">
+            <span className="text-xs text-slate-500 font-semibold whitespace-nowrap">{item.label}</span>
+            <div className="flex items-end justify-between mt-3">
+              <span className={`text-3xl font-extrabold tracking-tight ${getRateColor(item.rate)} leading-none`}>
                 {Math.round(item.rate * 100)}%
-                <span className="text-xs text-slate-500 font-normal ml-1">勝率</span>
+                <span className="text-xs text-slate-500 font-normal ml-1 font-sans">勝率</span>
               </span>
-              <span className={`text-sm font-mono font-semibold ${getReturnColor(item.ret)}`}>
+              <span className={`text-sm font-mono font-semibold ${getReturnColor(item.ret)} leading-none`}>
                 {item.ret > 0 ? '+' : ''}{item.ret}%
               </span>
             </div>
