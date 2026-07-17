@@ -51,7 +51,24 @@ function connectToDatabase(dbPath = 'data/stock.db') {
             if (execErr) {
               return reject(new Error(`Failed to apply schema DDL: ${execErr.message}`));
             }
-            resolve(db);
+            
+            // Why: Run dynamic schema check to add 'backtest' column if it does not exist in an already created physical database file.
+            db.all("PRAGMA table_info(analysis_results);", (infoErr, columns) => {
+              if (infoErr) {
+                return reject(new Error(`Failed to read table info: ${infoErr.message}`));
+              }
+              const hasBacktest = columns.some(col => col.name === 'backtest');
+              if (!hasBacktest) {
+                db.run("ALTER TABLE analysis_results ADD COLUMN backtest TEXT;", (alterErr) => {
+                  if (alterErr) {
+                    return reject(new Error(`Failed to alter table: ${alterErr.message}`));
+                  }
+                  resolve(db);
+                });
+              } else {
+                resolve(db);
+              }
+            });
           });
         });
       });

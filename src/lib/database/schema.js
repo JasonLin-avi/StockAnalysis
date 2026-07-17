@@ -42,6 +42,7 @@ const schema = `
     fundamental TEXT, -- Serialized JSON containing fundamental ratios
     news TEXT,        -- Serialized JSON containing media sentiment
     advice TEXT,      -- Serialized JSON containing portfolio & action advice
+    backtest TEXT,    -- Serialized JSON containing pattern matching backtest results
     UNIQUE(stock_id, date),
     FOREIGN KEY (stock_id) REFERENCES stocks (id) ON DELETE CASCADE
   );
