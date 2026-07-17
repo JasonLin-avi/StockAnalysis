@@ -12,6 +12,8 @@
  * @module news-analysis/major-events
  */
 
+const logger = require('../logger');
+
 /**
  * Returns ISO date string for N days from today.
  * @param {number} daysFromNow - Positive = future, 0 = today
@@ -62,6 +64,7 @@ function classifyEarningsImpact(entry) {
 async function analyzeMajorEvents(symbol) {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
+    logger.info('FETCH_FINNHUB_EVENTS', `Finnhub API key not found. Skipping earnings calendar analysis for ${symbol}.`);
     return { events: [], hasHighImpactEvent: false };
   }
 
@@ -70,6 +73,9 @@ async function analyzeMajorEvents(symbol) {
   const from = dateFromNow(-30);
   const to = dateFromNow(90);
   const url = `https://finnhub.io/api/v1/calendar/earnings?symbol=${encodeURIComponent(ticker)}&from=${from}&to=${to}&token=${apiKey}`;
+  const safeUrl = url.replace(/token=[^&]+/, 'token=***');
+
+  logger.info('FETCH_FINNHUB_EVENTS', `Fetching earnings calendar for ${ticker} from: ${safeUrl}`);
 
   try {
     const response = await fetch(url, {
@@ -78,14 +84,17 @@ async function analyzeMajorEvents(symbol) {
     });
 
     if (!response.ok) {
-      console.warn(`Finnhub earnings calendar API error for ${ticker}: ${response.status}`);
+      logger.warn('FETCH_FINNHUB_EVENTS', `Finnhub earnings calendar API error for ${ticker}: ${response.status}`);
       return { events: [], hasHighImpactEvent: false };
     }
 
     const data = await response.json();
     const earningsArray = data.earningsCalendar || [];
 
+    logger.info('FETCH_FINNHUB_EVENTS', `Received earnings events response for ${ticker}`, { rawEventsCount: earningsArray.length });
+
     if (earningsArray.length === 0) {
+      logger.info('FETCH_FINNHUB_EVENTS', `No earnings events found for ${ticker}`);
       return { events: [], hasHighImpactEvent: false };
     }
 
@@ -110,9 +119,11 @@ async function analyzeMajorEvents(symbol) {
       e => e.impact === 'High Positive' || e.impact === 'High Negative'
     );
 
-    return { events, hasHighImpactEvent };
+    const parsedResult = { events, hasHighImpactEvent };
+    logger.info('FETCH_FINNHUB_EVENTS', `Successfully parsed earnings events for ${ticker}`, { eventsCount: events.length, hasHighImpactEvent });
+    return parsedResult;
   } catch (err) {
-    console.warn(`analyzeMajorEvents fetch failed for ${ticker}: ${err.message}`);
+    logger.error('FETCH_FINNHUB_EVENTS', `analyzeMajorEvents fetch failed for ${ticker}`, err);
     return { events: [], hasHighImpactEvent: false };
   }
 }

@@ -11,6 +11,8 @@
  * @module news-analysis/social-sentiment
  */
 
+const logger = require('../logger');
+
 /**
  * Returns ISO date string for N days ago.
  * @param {number} daysAgo
@@ -57,12 +59,16 @@ function computeWeightedScore(data) {
 async function analyzeSocialSentiment(symbol) {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
+    logger.info('FETCH_FINNHUB_SOCIAL', `Finnhub API key not found. Skipping social sentiment analysis for ${symbol}.`);
     return { score: null, sentiment: 'N/A', mentionVolume: 0 };
   }
 
   const ticker = (symbol || '').toUpperCase();
   const from = dateNDaysAgo(7);
   const url = `https://finnhub.io/api/v1/stock/social-sentiment?symbol=${encodeURIComponent(ticker)}&from=${from}&token=${apiKey}`;
+  const safeUrl = url.replace(/token=[^&]+/, 'token=***');
+
+  logger.info('FETCH_FINNHUB_SOCIAL', `Fetching social sentiment data for ${ticker} from: ${safeUrl}`);
 
   try {
     const response = await fetch(url, {
@@ -76,9 +82,9 @@ async function analyzeSocialSentiment(symbol) {
       // Why we suppress 403 warnings: Finnhub social-sentiment is a premium endpoint, returning 403 on free tiers.
       // We log it as info to avoid alarming users with expected permission errors in server logs.
       if (response.status === 403) {
-        console.info(`[Info] Finnhub social-sentiment requires Premium for ${ticker}. Skipping gracefully.`);
+        logger.info('FETCH_FINNHUB_SOCIAL', `Finnhub social-sentiment requires Premium for ${ticker}. Skipping gracefully.`);
       } else {
-        console.warn(`Finnhub social-sentiment API error for ${ticker}: ${response.status}`);
+        logger.warn('FETCH_FINNHUB_SOCIAL', `Finnhub social-sentiment API error for ${ticker}: ${response.status}`);
       }
       return { score: null, sentiment: 'N/A', mentionVolume: 0 };
     }
@@ -89,7 +95,10 @@ async function analyzeSocialSentiment(symbol) {
     const twitterData = Array.isArray(data.twitter) ? data.twitter : [];
     const allData = [...redditData, ...twitterData];
 
+    logger.info('FETCH_FINNHUB_SOCIAL', `Received social sentiment response for ${ticker}`, { redditEntries: redditData.length, twitterEntries: twitterData.length });
+
     if (allData.length === 0) {
+      logger.warn('FETCH_FINNHUB_SOCIAL', `No social sentiment data entries found for ${ticker}`);
       return { score: null, sentiment: 'N/A', mentionVolume: 0 };
     }
 
@@ -100,9 +109,11 @@ async function analyzeSocialSentiment(symbol) {
     if (score > 0.15) sentiment = 'Positive';
     else if (score < -0.15) sentiment = 'Negative';
 
-    return { score, sentiment, mentionVolume };
+    const parsedResult = { score, sentiment, mentionVolume };
+    logger.info('FETCH_FINNHUB_SOCIAL', `Successfully parsed social sentiment for ${ticker}`, parsedResult);
+    return parsedResult;
   } catch (err) {
-    console.warn(`analyzeSocialSentiment fetch failed for ${ticker}: ${err.message}`);
+    logger.error('FETCH_FINNHUB_SOCIAL', `analyzeSocialSentiment fetch failed for ${ticker}`, err);
     return { score: null, sentiment: 'N/A', mentionVolume: 0 };
   }
 }

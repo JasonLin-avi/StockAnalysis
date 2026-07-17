@@ -10,6 +10,8 @@
  * @module news-analysis/financial-news
  */
 
+const logger = require('../logger');
+
 const POSITIVE_WORDS = ['record', 'beat', 'upgrade', 'breakthrough', 'increase', 'profit', 'growth', 'success', 'buy', 'win', 'surge', 'rally', 'strong'];
 const NEGATIVE_WORDS = ['scrutiny', 'investigation', 'cut', 'shortage', 'loss', 'decline', 'drop', 'risk', 'warning', 'sell', 'fall', 'crash', 'weak', 'miss'];
 
@@ -65,6 +67,7 @@ async function analyzeFinancialNews(symbol) {
   // return a 401 and provide no value; returning null signals to the scoring engine to ignore
   // this dimension rather than assuming a neutral score.
   if (!apiKey) {
+    logger.info('FETCH_FINNHUB_NEWS', `Finnhub API key not found. Skipping news analysis for ${symbol}.`);
     return { score: null, sentiment: 'N/A', articles: [] };
   }
 
@@ -72,6 +75,9 @@ async function analyzeFinancialNews(symbol) {
   const from = dateNDaysAgo(7);
   const to = dateNDaysAgo(0);
   const url = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(ticker)}&from=${from}&to=${to}&token=${apiKey}`;
+  const safeUrl = url.replace(/token=[^&]+/, 'token=***');
+
+  logger.info('FETCH_FINNHUB_NEWS', `Fetching company news for ${ticker} from: ${safeUrl}`);
 
   try {
     const response = await fetch(url, {
@@ -83,12 +89,15 @@ async function analyzeFinancialNews(symbol) {
       // Why we return null instead of a neutral default:
       // Assigning score=0 when the API fails would silently hide the data gap and produce
       // a misleading "neutral" signal. Returning null lets the caller omit this dimension entirely.
-      console.warn(`Finnhub company-news API error for ${ticker}: ${response.status}`);
+      logger.warn('FETCH_FINNHUB_NEWS', `Finnhub company-news API error for ${ticker}: ${response.status}`);
       return { score: null, sentiment: 'N/A', articles: [] };
     }
 
     const data = await response.json();
+    logger.info('FETCH_FINNHUB_NEWS', `Received response from Finnhub for ${ticker}`, { articlesFetched: data ? data.length : 0 });
+
     if (!Array.isArray(data) || data.length === 0) {
+      logger.warn('FETCH_FINNHUB_NEWS', `No articles found in Finnhub response for ${ticker}`);
       return { score: null, sentiment: 'N/A', articles: [] };
     }
 
@@ -96,13 +105,16 @@ async function analyzeFinancialNews(symbol) {
     const recentArticles = data.slice(0, 5);
     const { score, sentiment } = scoreArticles(recentArticles);
 
-    return {
+    const parsedResult = {
       score,
       sentiment,
       articles: recentArticles.map(a => ({ title: a.headline, date: new Date(a.datetime * 1000).toISOString().split('T')[0], url: a.url }))
     };
+
+    logger.info('FETCH_FINNHUB_NEWS', `Successfully parsed news sentiment for ${ticker}`, parsedResult);
+    return parsedResult;
   } catch (err) {
-    console.warn(`analyzeFinancialNews fetch failed for ${ticker}: ${err.message}`);
+    logger.error('FETCH_FINNHUB_NEWS', `analyzeFinancialNews fetch failed for ${ticker}`, err);
     return { score: null, sentiment: 'N/A', articles: [] };
   }
 }

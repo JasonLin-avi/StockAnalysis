@@ -54,14 +54,42 @@ describe('Recent Searches End-to-End Flow', () => {
     window.localStorage.clear();
 
     // Mock fetch globally for all requests in this suite.
-    global.fetch = jest.fn().mockImplementation(() =>
-      Promise.resolve({
+    // Supports both internal /api/prices endpoint and external Yahoo/Google queries used on Home page.
+    global.fetch = jest.fn().mockImplementation((url) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/prices')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            AAPL: { price: '$315.32', change: '-0.28%', color: 'text-rose-400' }
+          })
+        });
+      }
+      if (urlStr.includes('query1.finance.yahoo.com') || urlStr.includes('query2.finance.yahoo.com')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            chart: {
+              result: [{
+                meta: { regularMarketPrice: 315.32, previousClose: 316.20, regularMarketVolume: 1000000 },
+                indicators: { quote: [{ open: [315], high: [316], low: [314], close: [315.32], volume: [1000000] }] },
+                timestamp: [Date.now()]
+              }]
+            }
+          })
+        });
+      }
+      if (urlStr.includes('finance.google.com')) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve('// [{"l": "315.32", "c": "-0.88", "cp": "-0.28", "pcls_fix": "316.20"}]')
+        });
+      }
+      return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({
-          AAPL: { price: '$315.32', change: '-0.28%', color: 'text-rose-400' }
-        })
-      })
-    );
+        json: () => Promise.resolve({})
+      });
+    });
   });
 
   afterEach(() => {
@@ -80,7 +108,9 @@ describe('Recent Searches End-to-End Flow', () => {
     });
 
     // 2. Render Homepage — RecentSearches reads from localStorage that HistoryTracker wrote above.
-    render(<Home />);
+    // Resolve the async Server Component Home before rendering.
+    const homeElement = await Home();
+    render(homeElement);
 
     // 3. Assert the recent searches section heading and AAPL card are visible.
     //    We use getAllByText because 'AAPL' appears in multiple places:

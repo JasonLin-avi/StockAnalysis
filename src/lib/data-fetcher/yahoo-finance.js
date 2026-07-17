@@ -1,4 +1,5 @@
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
+const logger = require('../logger');
 
 /**
  * Helper to fetch a URL with automatic retries and exponential backoff.
@@ -18,26 +19,29 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 300) {
 
   for (let i = 0; i < retries; i++) {
     try {
+      logger.info('FETCH_YAHOO_RAW', `Sending request to: ${url} (Attempt ${i + 1}/${retries})`);
       const response = await fetch(url, fetchOptions);
       
       // Why: Retry on temporary server errors (5xx) or rate limit hits (429).
       if (response.status >= 500 || response.status === 429) {
         if (i < retries - 1) {
-          console.warn(`Fetch returned status ${response.status} for URL ${url}. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
+          logger.warn('FETCH_YAHOO_RAW', `Fetch returned status ${response.status} for URL ${url}. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
           await new Promise(resolve => setTimeout(resolve, currentDelay));
           currentDelay *= 2;
           continue;
         }
       }
+      logger.info('FETCH_YAHOO_RAW', `Received response status ${response.status} from URL: ${url}`);
       return response;
     } catch (err) {
       // Why: Retry on network-level failures (e.g. DNS resolve failures, connection reset, connection timed out).
       if (i < retries - 1) {
-        console.warn(`Fetch error for URL ${url}: ${err.message}. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
+        logger.warn('FETCH_YAHOO_RAW', `Fetch error for URL ${url}: ${err.message}. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, currentDelay));
         currentDelay *= 2;
         continue;
       }
+      logger.error('FETCH_YAHOO_RAW', `Fetch failed after ${retries} attempts for URL ${url}`, err);
       throw err;
     }
   }
@@ -50,6 +54,7 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 300) {
  */
 async function fetchStockData(symbol) {
   const url = `${YAHOO_BASE}/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
+  logger.info('FETCH_YAHOO', `Fetching current stock data for: ${symbol}`);
   const response = await fetchWithRetry(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -57,12 +62,14 @@ async function fetchStockData(symbol) {
   });
 
   if (!response.ok) {
+    logger.error('FETCH_YAHOO', `Yahoo Finance stock data API error for ${symbol}: ${response.status} ${response.statusText}`);
     throw new Error(`Yahoo Finance API error: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
 
   if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+    logger.warn('FETCH_YAHOO', `No stock data found in Yahoo response for symbol: ${symbol}`);
     throw new Error(`No data found for symbol: ${symbol}`);
   }
 
@@ -75,7 +82,7 @@ async function fetchStockData(symbol) {
   const change = price - previousClose;
   const changePercent = (change / previousClose) * 100;
 
-  return {
+  const parsedData = {
     symbol,
     name: meta.longName ?? meta.shortName ?? symbol,
     price,
@@ -88,6 +95,9 @@ async function fetchStockData(symbol) {
     previousClose,
     timestamp: result.timestamp ? result.timestamp[result.timestamp.length - 1] * 1000 : Date.now()
   };
+
+  logger.info('FETCH_YAHOO', `Successfully parsed stock data for ${symbol}`, parsedData);
+  return parsedData;
 }
 
 /**
@@ -113,6 +123,7 @@ async function fetchHistoricalData(symbol, period = '1mo') {
   const interval = intervalMap[period] || '1d';
   const url = `${YAHOO_BASE}/${encodeURIComponent(symbol)}?range=${period}&interval=${interval}`;
 
+  logger.info('FETCH_YAHOO', `Fetching historical data for: ${symbol} (period: ${period})`);
   const response = await fetchWithRetry(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -120,12 +131,14 @@ async function fetchHistoricalData(symbol, period = '1mo') {
   });
 
   if (!response.ok) {
+    logger.error('FETCH_YAHOO', `Yahoo Finance historical API error for ${symbol}: ${response.status} ${response.statusText}`);
     throw new Error(`Yahoo Finance API error: ${response.status} ${response.statusText}`);
   }
 
   const raw = await response.json();
 
   if (!raw.chart || !raw.chart.result || raw.chart.result.length === 0) {
+    logger.warn('FETCH_YAHOO', `No historical data found in Yahoo response for symbol: ${symbol}`);
     throw new Error(`No historical data found for symbol: ${symbol}`);
   }
 
@@ -147,8 +160,16 @@ async function fetchHistoricalData(symbol, period = '1mo') {
     .filter(item => item.open !== null && item.close !== null);
 
   if (data.length === 0) {
+    logger.warn('FETCH_YAHOO', `No valid historical data points found for symbol: ${symbol}`);
     throw new Error(`No valid historical data points for symbol: ${symbol}`);
   }
+
+  logger.info('FETCH_YAHOO', `Successfully parsed historical data for ${symbol}`, {
+    period,
+    dataPointsCount: data.length,
+    firstPoint: data[0],
+    lastPoint: data[data.length - 1]
+  });
 
   return {
     symbol,
@@ -162,8 +183,11 @@ let cachedCrumb = null;
 
 async function getSession() {
   if (cachedCookie && cachedCrumb) {
+    logger.info('FETCH_YAHOO_SESSION', 'Using cached Yahoo cookie and crumb');
     return { cookie: cachedCookie, crumb: cachedCrumb };
   }
+
+  logger.info('FETCH_YAHOO_SESSION', 'Establishing new session with fc.yahoo.com');
 
   // 1. Get cookie from fc.yahoo.com
   const fcResponse = await fetchWithRetry('https://fc.yahoo.com', {
@@ -174,10 +198,12 @@ async function getSession() {
   
   const cookie = fcResponse.headers.get('set-cookie');
   if (!cookie) {
+    logger.error('FETCH_YAHOO_SESSION', 'No set-cookie header received from fc.yahoo.com');
     throw new Error('No set-cookie header received from fc.yahoo.com');
   }
 
   // 2. Get crumb from getcrumb endpoint
+  logger.info('FETCH_YAHOO_SESSION', 'Fetching crumb from getcrumb endpoint');
   const crumbResponse = await fetchWithRetry('https://query1.finance.yahoo.com/v1/test/getcrumb', {
     headers: {
       'Cookie': cookie,
@@ -186,16 +212,19 @@ async function getSession() {
   });
 
   if (!crumbResponse.ok) {
+    logger.error('FETCH_YAHOO_SESSION', `Failed to fetch crumb from Yahoo. Status: ${crumbResponse.status}`);
     throw new Error(`Failed to fetch crumb from Yahoo: ${crumbResponse.status}`);
   }
 
   const crumb = await crumbResponse.text();
   if (!crumb) {
+    logger.error('FETCH_YAHOO_SESSION', 'No crumb content received from Yahoo');
     throw new Error('No crumb received from Yahoo');
   }
 
   cachedCookie = cookie;
   cachedCrumb = crumb;
+  logger.info('FETCH_YAHOO_SESSION', `Successfully obtained new Yahoo session crumb: "${crumb}"`);
   return { cookie, crumb };
 }
 
@@ -205,9 +234,12 @@ async function getSession() {
  * @returns {Promise<Object>} Fundamental metrics object
  */
 async function fetchFundamentalData(symbol) {
+  logger.info('FETCH_YAHOO', `Fetching fundamental data for: ${symbol}`);
   try {
     const { cookie, crumb } = await getSession();
     const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings&crumb=${crumb}`;
+    
+    logger.info('FETCH_YAHOO', `Sending fundamental request to: ${url}`);
     const response = await fetchWithRetry(url, {
       headers: {
         'Cookie': cookie,
@@ -217,11 +249,14 @@ async function fetchFundamentalData(symbol) {
 
     if (!response.ok) {
       if (response.status === 401) {
+        logger.warn('FETCH_YAHOO', `quoteSummary API returned 401 for ${symbol}. Retrying with fresh session...`);
         cachedCookie = null;
         cachedCrumb = null;
         // Retry once after clearing cache
         const retrySession = await getSession();
         const retryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData,defaultKeyStatistics,earnings&crumb=${retrySession.crumb}`;
+        
+        logger.info('FETCH_YAHOO', `Retrying fundamental request at: ${retryUrl}`);
         const retryResponse = await fetchWithRetry(retryUrl, {
           headers: {
             'Cookie': retrySession.cookie,
@@ -229,15 +264,22 @@ async function fetchFundamentalData(symbol) {
           }
         });
         if (!retryResponse.ok) {
+          logger.error('FETCH_YAHOO', `Yahoo Finance quoteSummary API retry failed for ${symbol} with status ${retryResponse.status}`);
           throw new Error(`Yahoo Finance quoteSummary API retry error: ${retryResponse.status}`);
         }
-        return processSummaryResponse(await retryResponse.json(), symbol);
+        const parsed = processSummaryResponse(await retryResponse.json(), symbol);
+        logger.info('FETCH_YAHOO', `Successfully fetched and parsed fundamental data for ${symbol} (after 401 retry)`, parsed);
+        return parsed;
       }
+      logger.error('FETCH_YAHOO', `Yahoo Finance quoteSummary API error for ${symbol}: ${response.status}`);
       throw new Error(`Yahoo Finance quoteSummary API error: ${response.status}`);
     }
 
-    return processSummaryResponse(await response.json(), symbol);
+    const parsed = processSummaryResponse(await response.json(), symbol);
+    logger.info('FETCH_YAHOO', `Successfully fetched and parsed fundamental data for ${symbol}`, parsed);
+    return parsed;
   } catch (err) {
+    logger.error('FETCH_YAHOO', `Failed to fetch fundamental data for ${symbol}`, err);
     throw new Error(`Failed to fetch fundamental data for ${symbol}: ${err.message}`);
   }
 }

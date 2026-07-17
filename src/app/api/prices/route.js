@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server';
 import yahooFinance from '../../../lib/data-fetcher/yahoo-finance';
 const { fetchStockData } = yahooFinance;
+const logger = require('../../../lib/logger');
 
 // Why: Next.js might statically optimize API routes without dynamic functions. This ensures we always fetch fresh prices.
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const symbolsStr = searchParams.get('symbols') || '';
+  
+  logger.info('API_PRICES', `Received GET request for symbols: "${symbolsStr}"`);
+
   try {
-    const { searchParams } = new URL(request.url);
-    const symbolsStr = searchParams.get('symbols') || '';
     if (!symbolsStr) {
-      // Why: Return an empty object if no symbols are provided, representing no data fetched.
+      logger.info('API_PRICES', 'Request completed: no symbols provided');
       return NextResponse.json({});
     }
 
@@ -18,11 +22,16 @@ export async function GET(request) {
     const symbols = symbolsStr.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     const results = {};
 
+    logger.info('API_PRICES', `Fetching stock prices for symbols: ${JSON.stringify(symbols)}`);
+
     // Why: Parallelize requests to optimize API performance and reduce latency since symbols are fetched independently.
     await Promise.all(symbols.map(async (symbol) => {
       try {
         const data = await fetchStockData(symbol);
-        if (!data) return;
+        if (!data) {
+          logger.warn('API_PRICES', `No data returned for symbol: ${symbol}`);
+          return;
+        }
 
         // Why: Verify the values are valid numbers before formatting with toFixed(2) to prevent potential TypeErrors.
         const isPriceValid = typeof data.price === 'number' && !isNaN(data.price);
@@ -39,15 +48,19 @@ export async function GET(request) {
           change: `${sign}${changePercentVal.toFixed(2)}%`,
           color
         };
+        logger.info('API_PRICES', `Successfully fetched price for ${symbol}: ${results[symbol].price} (${results[symbol].change})`);
       } catch (err) {
         // Why: Catch errors for individual symbol fetching so one failed symbol doesn't fail the entire batch request.
-        console.error(`Failed to fetch API price for ${symbol}:`, err);
+        logger.error('API_PRICES', `Failed to fetch API price for ${symbol}`, err);
       }
     }));
 
+    logger.info('API_PRICES', `Request completed for "${symbolsStr}"`, results);
     return NextResponse.json(results);
   } catch (err) {
     // Why: Provide a generic 500 error handler to capture unhandled errors gracefully.
+    logger.error('API_PRICES', `Unhandled exception in GET route for "${symbolsStr}"`, err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

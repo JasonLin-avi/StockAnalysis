@@ -4,6 +4,16 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ChatbotWidget from '../../src/components/ChatbotWidget';
 
+// Mock react-markdown because it uses ESM format which breaks in Jest
+jest.mock('react-markdown', () => {
+  const MockMarkdown = ({ children }) => <span>{children}</span>;
+  MockMarkdown.displayName = 'MockMarkdown';
+  return MockMarkdown;
+});
+
+// Mock remark-gfm because it uses ESM format which breaks in Jest
+jest.mock('remark-gfm', () => ({}));
+
 // Mock next/navigation params
 let mockPathname = '/stock/AAPL';
 jest.mock('next/navigation', () => ({
