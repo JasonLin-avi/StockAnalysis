@@ -1,9 +1,13 @@
 import React from 'react';
 
 export default function HistoricalBacktestPanel({ backtest }) {
-  if (!backtest || !backtest.similarDays) return null;
+  if (!backtest) return null;
 
-  const { winRate5d, winRate10d, winRate20d, avgReturn5d, avgReturn10d, avgReturn20d, currentPattern, similarDays } = backtest;
+  const similarDays = backtest.similarDays || [];
+  
+  // Why: Provide fallback values for currentPattern to prevent UI crashes if backtest runs on stock with insufficient history (< 50 days).
+  const currentPattern = backtest.currentPattern || { rsi: 0, ma20Bias: 0, macdRatio: 0 };
+  const { winRate5d = 0, winRate10d = 0, winRate20d = 0, avgReturn5d = 0, avgReturn10d = 0, avgReturn20d = 0 } = backtest;
 
   const getRateColor = (rate) => {
     if (rate >= 0.6) return 'text-emerald-400';
@@ -16,6 +20,20 @@ export default function HistoricalBacktestPanel({ backtest }) {
     if (ret < 0) return 'text-rose-400';
     return 'text-slate-400';
   };
+
+  // Why: When there are no similar historical days due to insufficient data, we show a clean placeholder message rather than rendering empty charts or hiding the section entirely.
+  if (similarDays.length === 0) {
+    return (
+      <div className="border border-slate-900 bg-slate-950/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 space-y-4">
+        <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
+          <span>📊</span> 歷史相似環境回測
+        </h2>
+        <div className="text-slate-500 py-6 text-center text-sm font-semibold">
+          歷史數據不足，無法進行相似度回測
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-slate-900 bg-slate-950/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 space-y-6">
@@ -38,7 +56,7 @@ export default function HistoricalBacktestPanel({ backtest }) {
         </div>
       </div>
 
-      {/* Grid of Win Rates */}
+      {/* Why: Grouping win rates in a grid provides a scannable snapshot of multi-horizon probability distributions. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           { label: '5 天持有期', rate: winRate5d, ret: avgReturn5d },
@@ -60,7 +78,7 @@ export default function HistoricalBacktestPanel({ backtest }) {
         ))}
       </div>
 
-      {/* Similar Dates Table */}
+      {/* Why: Listing the top 5 similar dates allows users to verify individual historical outcomes and cross-reference with market news on those dates. */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-slate-400">Top 5 相似歷史日期表現</h3>
         <div className="overflow-x-auto">

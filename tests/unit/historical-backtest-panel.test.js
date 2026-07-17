@@ -24,4 +24,20 @@ describe('HistoricalBacktestPanel Component', () => {
     expect(screen.getByText('65%')).toBeInTheDocument();
     expect(screen.getByText('2024-05-12')).toBeInTheDocument();
   });
+
+  test('renders friendly message and does not crash when given fallback backtest data', () => {
+    // Why: Insufficient historical data will result in missing currentPattern and empty similarDays.
+    const fallbackData = {
+      winRate5d: 0,
+      winRate10d: 0,
+      winRate20d: 0,
+      avgReturn5d: 0,
+      avgReturn10d: 0,
+      avgReturn20d: 0,
+      similarDays: []
+    };
+    render(<HistoricalBacktestPanel backtest={fallbackData} />);
+    expect(screen.getByText('歷史相似環境回測')).toBeInTheDocument();
+    expect(screen.getByText('歷史數據不足，無法進行相似度回測')).toBeInTheDocument();
+  });
 });
