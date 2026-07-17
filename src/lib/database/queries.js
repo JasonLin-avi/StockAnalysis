@@ -276,6 +276,95 @@ function getAllAnalyzedStocks(db) {
   });
 }
 
+/**
+ * Retrieves the maximum date of price data stored in database.
+ * 
+ * Why:
+ * We need to find the latest synced date to perform incremental sync and avoid fetching 
+ * or saving duplicate historical data from external APIs.
+ * 
+ * @param {sqlite3.Database} db 
+ * @param {number} stockId 
+ * @returns {Promise<string|null>} YYYY-MM-DD date string or null
+ */
+function getMaxPriceDate(db, stockId) {
+  return new Promise((resolve, reject) => {
+    db.get("SELECT max(date) as maxDate FROM stock_data WHERE stock_id = ?;", [stockId], (err, row) => {
+      if (err) return reject(err);
+      resolve(row ? row.maxDate : null);
+    });
+  });
+}
+
+/**
+ * Batch inserts stock data entries.
+ * 
+ * Why:
+ * Wrapping individual inserts in a transaction (BEGIN/COMMIT) improves SQLite write performance
+ * dramatically for batch inserts. Using INSERT OR IGNORE ensures we don't crash on existing records.
+ * 
+ * @param {sqlite3.Database} db 
+ * @param {number} stockId 
+ * @param {Array} prices 
+ * @returns {Promise<void>}
+ */
+function insertStockDataBatch(db, stockId, prices) {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run("BEGIN TRANSACTION;");
+      const stmt = db.prepare(`
+        INSERT OR IGNORE INTO stock_data (stock_id, date, open, high, low, close, volume)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+      `);
+      
+      let errorOccurred = null;
+      for (const p of prices) {
+        stmt.run([stockId, p.date, p.open, p.high, p.low, p.close, p.volume], (err) => {
+          if (err) {
+            errorOccurred = err;
+          }
+        });
+      }
+      
+      stmt.finalize((err) => {
+        if (err || errorOccurred) {
+          db.run("ROLLBACK;");
+          return reject(err || errorOccurred);
+        }
+        db.run("COMMIT;", (commitErr) => {
+          if (commitErr) return reject(commitErr);
+          resolve();
+        });
+      });
+    });
+  });
+}
+
+/**
+ * Retrieves 3 years of local historical prices.
+ * 
+ * Why:
+ * Fetching prices sorted by date in ascending order is critical for subsequent technical 
+ * analysis indicators (e.g. SMA, MACD) which rely on historical sequence.
+ * 
+ * @param {sqlite3.Database} db 
+ * @param {number} stockId 
+ * @returns {Promise<Array>}
+ */
+function getHistoricalPricesFromDB(db, stockId) {
+  return new Promise((resolve, reject) => {
+    db.all(`
+      SELECT date, open, high, low, close, volume 
+      FROM stock_data 
+      WHERE stock_id = ? 
+      ORDER BY date ASC;
+    `, [stockId], (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows);
+    });
+  });
+}
+
 module.exports = {
   saveStock,
   saveStockData,
@@ -283,6 +372,9 @@ module.exports = {
   getStock,
   getStockData,
   getLatestAnalysisResults,
-  getAllAnalyzedStocks
+  getAllAnalyzedStocks,
+  getMaxPriceDate,
+  insertStockDataBatch,
+  getHistoricalPricesFromDB
 };
 
