@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 const { saveUserPreferences, getUserPreferences } = require('../lib/user-preferences');
 
-export default function CustomizableLayout({ children, defaultWidgets = ['technical', 'fundamental', 'news'] }) {
+export default function CustomizableLayout({ children, defaultWidgets = ['technical', 'fundamental', 'news', 'backtest'] }) {
   const [visibleWidgets, setVisibleWidgets] = useState(defaultWidgets);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -29,7 +29,8 @@ export default function CustomizableLayout({ children, defaultWidgets = ['techni
   const widgetsDef = [
     { id: 'technical', label: '📈 技術趨勢分析' },
     { id: 'fundamental', label: '🕸️ 基本面雷達圖' },
-    { id: 'news', label: '💬 輿情情緒指標' }
+    { id: 'news', label: '💬 輿情情緒指標' },
+    { id: 'backtest', label: '📊 歷史相似環境回測' }
   ];
 
   return (
@@ -69,9 +70,9 @@ export default function CustomizableLayout({ children, defaultWidgets = ['techni
             if (widgetId && !visibleWidgets.includes(widgetId)) {
               return null;
             }
-            const isNews = widgetId === 'news';
+            const isWide = widgetId === 'news' || widgetId === 'backtest';
             return (
-              <div className={isNews ? 'lg:col-span-2' : ''}>
+              <div className={isWide ? 'lg:col-span-2' : ''}>
                 {child}
               </div>
             );

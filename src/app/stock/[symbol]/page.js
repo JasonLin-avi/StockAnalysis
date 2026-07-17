@@ -6,6 +6,7 @@ import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisCha
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
+import HistoricalBacktestPanel from '../../../components/HistoricalBacktestPanel';
 import HistoryTracker from '../../../components/HistoryTracker';
 const { performFullAnalysis } = require('../../../lib/integration');
 import WatchButton from '../../../components/WatchButton';
@@ -108,6 +109,11 @@ export default async function StockDetail({ params }) {
             widgetId="news"
             newsData={data.news} 
             symbol={data.symbol} 
+          />
+
+          <HistoricalBacktestPanel 
+            widgetId="backtest"
+            backtest={data.backtest}
           />
         </CustomizableLayout>
       </main>
