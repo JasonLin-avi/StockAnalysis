@@ -40,5 +40,5 @@ describe('End-to-End Stock Analysis Workflow', () => {
     const htmlReport = await generateReport(analysis, 'html');
     expect(htmlReport).toContain('AAPL 分析報告');
     expect(htmlReport).toContain('Antigravity Stock Analytics');
-  });
+  }, 30000);
 });

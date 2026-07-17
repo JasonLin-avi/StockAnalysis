@@ -23,6 +23,14 @@ const { schema } = require('./schema');
  * @param {string} [dbPath] - Absolute/relative path to database file, or ':memory:' for tests
  * @returns {Promise<sqlite3.Database>} Initialized SQLite database instance
  */
+let activeDbInstance = null;
+
+/**
+ * Establishes a connection to the SQLite database and runs initial DDL schema scripts.
+ * 
+ * @param {string} [dbPath] - Absolute/relative path to database file, or ':memory:' for tests
+ * @returns {Promise<sqlite3.Database>} Initialized SQLite database instance
+ */
 function connectToDatabase(dbPath = 'data/stock.db') {
   return new Promise((resolve, reject) => {
     // Ensure the parent directory exists if initializing a physical database file on disk.
@@ -58,15 +66,19 @@ function connectToDatabase(dbPath = 'data/stock.db') {
                 return reject(new Error(`Failed to read table info: ${infoErr.message}`));
               }
               const hasBacktest = columns.some(col => col.name === 'backtest');
+              const onDone = () => {
+                activeDbInstance = db;
+                resolve(db);
+              };
               if (!hasBacktest) {
                 db.run("ALTER TABLE analysis_results ADD COLUMN backtest TEXT;", (alterErr) => {
                   if (alterErr) {
                     return reject(new Error(`Failed to alter table: ${alterErr.message}`));
                   }
-                  resolve(db);
+                  onDone();
                 });
               } else {
-                resolve(db);
+                onDone();
               }
             });
           });
@@ -76,4 +88,13 @@ function connectToDatabase(dbPath = 'data/stock.db') {
   });
 }
 
-module.exports = { connectToDatabase };
+/**
+ * Returns the currently active database instance.
+ * @returns {sqlite3.Database|null}
+ */
+function getActiveDatabase() {
+  return activeDbInstance;
+}
+
+module.exports = { connectToDatabase, getActiveDatabase };
+

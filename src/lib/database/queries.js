@@ -123,8 +123,8 @@ async function saveAnalysisResults(db, symbol, date, analysis) {
 
   return new Promise((resolve, reject) => {
     const query = `
-      INSERT OR REPLACE INTO analysis_results (stock_id, date, technical, fundamental, news, advice)
-      VALUES (?, ?, ?, ?, ?, ?);
+      INSERT OR REPLACE INTO analysis_results (stock_id, date, technical, fundamental, news, advice, backtest)
+      VALUES (?, ?, ?, ?, ?, ?, ?);
     `;
 
     db.run(
@@ -135,7 +135,8 @@ async function saveAnalysisResults(db, symbol, date, analysis) {
         analysis.technical ? JSON.stringify(analysis.technical) : null,
         analysis.fundamental ? JSON.stringify(analysis.fundamental) : null,
         analysis.news ? JSON.stringify(analysis.news) : null,
-        analysis.advice ? JSON.stringify(analysis.advice) : null
+        analysis.advice ? JSON.stringify(analysis.advice) : null,
+        analysis.backtest ? JSON.stringify(analysis.backtest) : null
       ],
       (err) => {
         if (err) {
@@ -223,7 +224,8 @@ function getLatestAnalysisResults(db, symbol) {
           technical: row.technical ? JSON.parse(row.technical) : null,
           fundamental: row.fundamental ? JSON.parse(row.fundamental) : null,
           news: row.news ? JSON.parse(row.news) : null,
-          advice: row.advice ? JSON.parse(row.advice) : null
+          advice: row.advice ? JSON.parse(row.advice) : null,
+          backtest: row.backtest ? JSON.parse(row.backtest) : null
         });
       } catch (parseErr) {
         reject(new Error(`Failed to parse cached analysis JSON data: ${parseErr.message}`));
