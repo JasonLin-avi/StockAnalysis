@@ -1,3 +1,15 @@
+jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => ({
+  fetchHistoricalData: jest.fn().mockImplementation((symbol, period) => {
+    return Promise.resolve({
+      symbol,
+      period,
+      data: [
+        { date: '2026-07-16', open: 150, high: 155, low: 148, close: 152, volume: 1000000 }
+      ]
+    });
+  })
+}));
+
 const { syncStockPricesIncremental, getLocal3YearPrices } = require('../../src/lib/data-fetcher');
 const { connectToDatabase } = require('../../src/lib/database/connection');
 

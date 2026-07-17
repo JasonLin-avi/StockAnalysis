@@ -332,7 +332,10 @@ function insertStockDataBatch(db, stockId, prices) {
           return reject(err || errorOccurred);
         }
         db.run("COMMIT;", (commitErr) => {
-          if (commitErr) return reject(commitErr);
+          if (commitErr) {
+            db.run("ROLLBACK;");
+            return reject(commitErr);
+          }
           resolve();
         });
       });
