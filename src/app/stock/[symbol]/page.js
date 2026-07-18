@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Header from '../../../components/Header';
 import TechnicalIndicatorsChart from '../../../components/TechnicalIndicatorsChart';
@@ -8,26 +10,38 @@ import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
 import HistoricalBacktestPanel from '../../../components/HistoricalBacktestPanel';
 import HistoryTracker from '../../../components/HistoryTracker';
-const { performFullAnalysis } = require('../../../lib/integration');
 import WatchButton from '../../../components/WatchButton';
 
-// Why: The stock analysis page depends on real-time financial data. Forcing dynamic rendering ensures Next.js never serves a statically cached HTML version with stale stock prices.
-export const dynamic = 'force-dynamic';
-
-export default async function StockDetail({ params }) {
+// Why: We need client-side interactivity for the manual generation button and fetching the report.
+export default function StockDetail({ params }) {
   const { symbol } = params;
-  let data = null;
-  let errorMsg = null;
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  try {
-    data = await performFullAnalysis(symbol);
-  } catch (err) {
-    console.error(`Error loading analysis for ${symbol}:`, err);
-    errorMsg = err.message;
-  }
+  // Why: By making generation an explicit user action, we prevent expensive back-end processing from running unconditionally on every page load.
+  const handleAnalyze = async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/analyze?symbol=${symbol}`);
+      const json = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to fetch analysis');
+      }
+      
+      setData(json);
+    } catch (err) {
+      console.error(`Error loading analysis for ${symbol}:`, err);
+      setErrorMsg(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (errorMsg) {
-    // Intentionally no HistoryTracker here — failed analysis page loads should not pollute the user's search history.
+    // Why: Do not render HistoryTracker here, because failed analysis should not pollute the user's search history.
     return (
       <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
         <Header />
@@ -44,8 +58,8 @@ export default async function StockDetail({ params }) {
     );
   }
 
-  const changeColor = data.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400';
-  const changeSign = data.changePercent >= 0 ? '+' : '';
+  const changeColor = data && data.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400';
+  const changeSign = data && data.changePercent >= 0 ? '+' : '';
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
@@ -75,53 +89,83 @@ export default async function StockDetail({ params }) {
             <div className="flex items-baseline gap-3 mt-1.5">
               <h1 className="text-3xl font-extrabold tracking-tight text-white">{symbol}</h1>
               <WatchButton symbol={symbol} />
-              <span className="text-sm text-slate-400">系統分析時間: {data.date}</span>
+              {data && <span className="text-sm text-slate-400">系統分析時間: {data.date}</span>}
             </div>
           </div>
           
-          <div className="text-right sm:text-left">
-            <div className="text-3xl font-extrabold text-slate-100">${data.price.toFixed(2)}</div>
-            <div className={`text-sm font-bold ${changeColor} mt-1`}>
-              {changeSign}{data.changePercent.toFixed(2)}% (本日)
+          {data && (
+            <div className="text-right sm:text-left">
+              <div className="text-3xl font-extrabold text-slate-100">${data.price.toFixed(2)}</div>
+              <div className={`text-sm font-bold ${changeColor} mt-1`}>
+                {changeSign}{data.changePercent.toFixed(2)}% (本日)
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Advisory Decision Panel */}
-        <InvestmentAdvicePanel advice={data.advice} />
+        {/* Action Button Section (Visible before analysis is generated) */}
+        {!data && (
+          <div className="flex justify-center items-center py-12">
+            <button
+              onClick={handleAnalyze}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold py-3 px-8 rounded-full transition-colors text-lg flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  分析中...
+                </>
+              ) : (
+                '開始產生分析報告'
+              )}
+            </button>
+          </div>
+        )}
 
-        {/* Analytical Charts Section */}
-        <CustomizableLayout>
-          <TechnicalIndicatorsChart 
-            widgetId="technical"
-            historicalData={data.historicalData} 
-            maData={data.technical.ma} 
-            symbol={data.symbol} 
-          />
-          
-          <FundamentalAnalysisChart 
-            widgetId="fundamental"
-            fundamentalData={data.fundamental} 
-            symbol={data.symbol} 
-          />
-          
-          <NewsSentimentChart 
-            widgetId="news"
-            newsData={data.news} 
-            symbol={data.symbol} 
-          />
+        {/* Generated Report Content */}
+        {data && (
+          <>
+            {/* Advisory Decision Panel */}
+            <InvestmentAdvicePanel advice={data.advice} />
 
-          <HistoricalBacktestPanel 
-            widgetId="backtest"
-            backtest={data.backtest}
-          />
-        </CustomizableLayout>
+            {/* Analytical Charts Section */}
+            <CustomizableLayout>
+              <TechnicalIndicatorsChart 
+                widgetId="technical"
+                historicalData={data.historicalData} 
+                maData={data.technical.ma} 
+                symbol={data.symbol} 
+              />
+              
+              <FundamentalAnalysisChart 
+                widgetId="fundamental"
+                fundamentalData={data.fundamental} 
+                symbol={data.symbol} 
+              />
+              
+              <NewsSentimentChart 
+                widgetId="news"
+                newsData={data.news} 
+                symbol={data.symbol} 
+              />
+
+              <HistoricalBacktestPanel 
+                widgetId="backtest"
+                backtest={data.backtest}
+              />
+            </CustomizableLayout>
+          </>
+        )}
       </main>
 
       {/* Invisible History Tracker — writes this visit to localStorage so the homepage
-          Recent Searches section can surface it on the next homepage load. */}
-      <HistoryTracker symbol={symbol} name={data.name} />
+          Recent Searches section can surface it on the next homepage load.
+          Why: Only record history after a successful analysis to ensure valid data. */}
+      {data && <HistoryTracker symbol={symbol} name={data.name} />}
     </div>
   );
 }
-
