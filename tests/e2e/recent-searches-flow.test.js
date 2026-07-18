@@ -97,14 +97,11 @@ describe('Recent Searches End-to-End Flow', () => {
   });
 
   test('renders stock detail and then shows it on homepage recent searches list', async () => {
-    // 1. Visit Stock Detail Page — calling the async Server Component directly.
-    //    This also causes HistoryTracker (a 'use client' component) to be rendered,
+    // 1. Visit Stock Detail Page — rendering the client component.
+    //    This causes HistoryTracker (a 'use client' component) to be rendered,
     //    which in jsdom will fire its useEffect and write 'AAPL' to localStorage.
-    const detailElement = await StockDetail({ params: { symbol: 'AAPL' } });
-    // Wrap in act() so the useEffect inside HistoryTracker flushes synchronously to
-    // localStorage before we render Home — otherwise the write races the next render.
     await act(async () => {
-      render(detailElement);
+      render(<StockDetail params={{ symbol: 'AAPL' }} />);
     });
 
     // 2. Render Homepage — RecentSearches reads from localStorage that HistoryTracker wrote above.

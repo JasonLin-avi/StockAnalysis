@@ -16,8 +16,11 @@ export default function Header() {
               <Link href="/" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
                 市場看板
               </Link>
+              <Link href="/hub" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+                量化戰情室
+              </Link>
               <Link href="/reports" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
-                分析報告
+                歷史報告
               </Link>
             </nav>
           </div>
