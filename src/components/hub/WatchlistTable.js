@@ -1,0 +1,51 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import SkeletonLoader from './SkeletonLoader';
+import Link from 'next/link';
+
+export default function WatchlistTable() {
+  const [watchlist, setWatchlist] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Why: Fetch data client-side to keep the initial page load instantly interactive and visually responsive.
+  useEffect(() => {
+    fetch('/api/watchlist')
+      .then(res => res.json())
+      .then(data => {
+        setWatchlist(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <SkeletonLoader height="h-64" />;
+  if (watchlist.length === 0) return <div className="text-slate-400 p-8 border border-slate-800 rounded-2xl bg-slate-900/30">尚無追蹤標的。請在搜尋股票後點擊關注。</div>;
+
+  return (
+    <div className="border border-slate-800 bg-slate-900/30 rounded-2xl overflow-hidden backdrop-blur">
+      <table className="w-full text-left text-sm text-slate-300">
+        <thead className="bg-slate-900/80 text-slate-400 uppercase font-semibold text-xs border-b border-slate-800">
+          <tr>
+            <th className="px-6 py-4">Symbol</th>
+            <th className="px-6 py-4">Action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/50">
+          {watchlist.map(symbol => (
+            <tr key={symbol} className="hover:bg-slate-800/30 transition-colors">
+              <td className="px-6 py-4 font-bold text-slate-200">{symbol}</td>
+              <td className="px-6 py-4">
+                <Link href={`/stock/${symbol}`} className="text-indigo-400 hover:text-indigo-300 transition-colors">
+                  View Report &rarr;
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

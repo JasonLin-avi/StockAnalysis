@@ -1,5 +1,6 @@
 import React from 'react';
-import SkeletonLoader from '../../components/hub/SkeletonLoader';
+import WatchlistTable from '../../components/hub/WatchlistTable';
+import LeaderboardPanel from '../../components/hub/LeaderboardPanel';
 
 export default function HubPage() {
   // Why: 60/40 split on large screens provides optimal reading width for tables vs cards.
@@ -11,12 +12,12 @@ export default function HubPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-3 space-y-4">
             <h2 className="text-xl font-bold text-slate-300">Watchlist Analytics</h2>
-            <SkeletonLoader height="h-64" />
+            <WatchlistTable />
           </div>
           
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-xl font-bold text-slate-300">Backtest Leaderboard</h2>
-            <SkeletonLoader height="h-64" />
+            <LeaderboardPanel />
           </div>
         </div>
       </div>
