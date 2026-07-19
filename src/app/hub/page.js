@@ -1,30 +1,25 @@
 import React from 'react';
 import Header from '../../components/Header';
 import WatchlistTable from '../../components/hub/WatchlistTable';
-import LeaderboardPanel from '../../components/hub/LeaderboardPanel';
 
 export default function HubPage() {
-  // Why: 60/40 split on large screens provides optimal reading width for tables vs cards.
+  // Why: Full-width container layout maximizes space for quantitative analytics and backtest win-rate metrics in a single unified table.
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
       <Header />
       <main className="flex-1 w-full text-slate-200 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-8">Analytics Hub</h1>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            <div className="lg:col-span-3 space-y-4">
-              <h2 className="text-xl font-bold text-slate-300">Watchlist Analytics</h2>
-              <WatchlistTable />
-            </div>
-            
-            <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-xl font-bold text-slate-300">Backtest Leaderboard</h2>
-              <LeaderboardPanel />
-            </div>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white">量化戰情室 (Analytics Hub)</h1>
+            <p className="mt-2 text-sm text-slate-400">關注標的即時數據與 5 日勝率排行榜</p>
+          </div>
+
+          <div className="mt-6">
+            <WatchlistTable />
           </div>
         </div>
       </main>
     </div>
   );
 }
+
