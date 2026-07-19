@@ -10,7 +10,8 @@ const {
   saveAnalysisResults,
   getStock,
   getStockData,
-  getLatestAnalysisResults
+  getLatestAnalysisResults,
+  getLatestBacktestResults
 } = require('../../src/lib/database/queries');
 
 describe('Database Module', () => {
@@ -177,6 +178,46 @@ describe('Database Module', () => {
     test('returns null if no analysis exists', async () => {
       const latest = await getLatestAnalysisResults(db, 'UNKNOWN');
       expect(latest).toBeNull();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Leaderboard / Backtest Queries
+  // ---------------------------------------------------------------------------
+  describe('getLatestBacktestResults', () => {
+    test('retrieves the latest backtest results and maps fields correctly', async () => {
+      const olderAnalysis = { backtest: { winRate5d: 0.6, avgReturn5d: 2.5 } };
+      const newerAnalysis = { backtest: { winRate5d: 0.8, avgReturn5d: 12.0 } };
+      const otherStockAnalysis = { backtest: { winRate5d: 0.7, avgReturn5d: 5.5 } };
+
+      await saveAnalysisResults(db, 'AAPL', '2026-07-10', olderAnalysis);
+      await saveAnalysisResults(db, 'AAPL', '2026-07-11', newerAnalysis);
+      await saveAnalysisResults(db, 'TSLA', '2026-07-11', otherStockAnalysis);
+
+      const results = await getLatestBacktestResults(db);
+      expect(results.length).toBe(2);
+
+      const aapl = results.find(r => r.symbol === 'AAPL');
+      const tsla = results.find(r => r.symbol === 'TSLA');
+
+      expect(aapl).toBeDefined();
+      expect(aapl.rate).toBe(0.8);
+      expect(aapl.ret).toBe(12.0);
+      expect(aapl.date).toBe('2026-07-11');
+
+      expect(tsla).toBeDefined();
+      expect(tsla.rate).toBe(0.7);
+      expect(tsla.ret).toBe(5.5);
+      expect(tsla.date).toBe('2026-07-11');
+    });
+
+    test('ignores records without backtest field', async () => {
+      const noBacktestAnalysis = { technical: { rsi: [50] } };
+      await saveAnalysisResults(db, 'MSFT', '2026-07-11', noBacktestAnalysis);
+
+      const results = await getLatestBacktestResults(db);
+      const msft = results.find(r => r.symbol === 'MSFT');
+      expect(msft).toBeUndefined();
     });
   });
 });

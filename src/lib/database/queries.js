@@ -370,6 +370,59 @@ function getHistoricalPricesFromDB(db, stockId) {
   });
 }
 
+/**
+ * Retrieves the latest backtest results for all stocks in the database.
+ * 
+ * Why:
+ * Uses SQLite window function (ROW_NUMBER() OVER PARTITION BY stock_id ORDER BY date DESC)
+ * to group analysis results per stock and extract only the latest date record (rank = 1),
+ * avoiding slow subqueries or returning redundant older historical backtest runs.
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @returns {Promise<Object[]>} Array of objects with symbol and backtest data
+ */
+function getLatestBacktestResults(db) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT symbol, backtest, date
+      FROM (
+        SELECT 
+          s.symbol, 
+          ar.backtest, 
+          ar.date,
+          ROW_NUMBER() OVER (PARTITION BY ar.stock_id ORDER BY ar.date DESC) as rank
+        FROM analysis_results ar
+        JOIN stocks s ON ar.stock_id = s.id
+      )
+      WHERE rank = 1;
+    `;
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        return reject(new Error(`Failed to fetch latest backtest results: ${err.message}`));
+      }
+      const results = [];
+      for (const row of rows || []) {
+        if (!row.backtest) continue;
+        try {
+          const backtestData = JSON.parse(row.backtest);
+          // Only include if it has backtest metrics
+          if (backtestData && typeof backtestData.winRate5d === 'number') {
+            results.push({
+              symbol: row.symbol,
+              rate: backtestData.winRate5d,
+              ret: backtestData.avgReturn5d || 0,
+              date: row.date
+            });
+          }
+        } catch (e) {
+          // Ignore parse errors for individual rows to be resilient
+        }
+      }
+      resolve(results);
+    });
+  });
+}
+
 module.exports = {
   saveStock,
   saveStockData,
@@ -380,6 +433,8 @@ module.exports = {
   getAllAnalyzedStocks,
   getMaxPriceDate,
   insertStockDataBatch,
-  getHistoricalPricesFromDB
+  getHistoricalPricesFromDB,
+  getLatestBacktestResults
 };
+
 
