@@ -8,9 +8,10 @@ import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisCha
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
-import HistoricalBacktestPanel from '../../../components/HistoricalBacktestPanel';
 import HistoryTracker from '../../../components/HistoryTracker';
+
 import WatchButton from '../../../components/WatchButton';
+
 
 // Why: We use client-side fetching to show a loading state while the heavy analysis API runs,
 // preventing the page navigation from blocking for several seconds.
@@ -149,14 +150,9 @@ export default function StockDetail({ params }) {
                 symbol={data.symbol} 
               />
             </CustomizableLayout>
-
-            <div className="mt-8">
-              <HistoricalBacktestPanel 
-                backtest={data.backtest}
-              />
-            </div>
           </>
         )}
+
       </main>
 
       {/* Invisible History Tracker — writes this visit to localStorage so the homepage

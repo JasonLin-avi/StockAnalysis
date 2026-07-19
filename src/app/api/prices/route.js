@@ -38,14 +38,22 @@ export async function GET(request) {
       try {
         const data = await fetchStockData(symbol);
         let winRate5d = 0;
+        let winRate10d = 0;
+        let winRate20d = 0;
         let avgReturn5d = 0;
+        let avgReturn10d = 0;
+        let avgReturn20d = 0;
 
         if (db) {
           try {
             const analysis = await getLatestAnalysisResults(db, symbol);
             if (analysis && analysis.backtest) {
               winRate5d = analysis.backtest.winRate5d || 0;
+              winRate10d = analysis.backtest.winRate10d || 0;
+              winRate20d = analysis.backtest.winRate20d || 0;
               avgReturn5d = analysis.backtest.avgReturn5d || 0;
+              avgReturn10d = analysis.backtest.avgReturn10d || 0;
+              avgReturn20d = analysis.backtest.avgReturn20d || 0;
             }
           } catch (dbErr) {
             logger.warn('API_PRICES', `Could not fetch backtest for ${symbol}`, dbErr);
@@ -59,7 +67,11 @@ export async function GET(request) {
             change: '+0.00%',
             color: 'text-emerald-400',
             winRate5d,
-            avgReturn5d
+            winRate10d,
+            winRate20d,
+            avgReturn5d,
+            avgReturn10d,
+            avgReturn20d
           };
           return;
         }
@@ -79,8 +91,13 @@ export async function GET(request) {
           change: `${sign}${changePercentVal.toFixed(2)}%`,
           color,
           winRate5d,
-          avgReturn5d
+          winRate10d,
+          winRate20d,
+          avgReturn5d,
+          avgReturn10d,
+          avgReturn20d
         };
+
         logger.info('API_PRICES', `Successfully fetched price for ${symbol}: ${results[symbol].price} (${results[symbol].change})`);
       } catch (err) {
         // Why: Catch errors for individual symbol fetching so one failed symbol doesn't fail the entire batch request.
