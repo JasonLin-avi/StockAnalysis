@@ -37,23 +37,22 @@ export async function GET(request) {
     await Promise.all(symbols.map(async (symbol) => {
       try {
         const data = await fetchStockData(symbol);
-        let winRate5d = 0;
-        let winRate10d = 0;
-        let winRate20d = 0;
-        let avgReturn5d = 0;
-        let avgReturn10d = 0;
-        let avgReturn20d = 0;
+        const horizons = [5, 10, 20, 40, 60, 120, 240];
+        const backtestMetrics = {};
+
+        horizons.forEach(h => {
+          backtestMetrics[`winRate${h}d`] = 0;
+          backtestMetrics[`avgReturn${h}d`] = 0;
+        });
 
         if (db) {
           try {
             const analysis = await getLatestAnalysisResults(db, symbol);
             if (analysis && analysis.backtest) {
-              winRate5d = analysis.backtest.winRate5d || 0;
-              winRate10d = analysis.backtest.winRate10d || 0;
-              winRate20d = analysis.backtest.winRate20d || 0;
-              avgReturn5d = analysis.backtest.avgReturn5d || 0;
-              avgReturn10d = analysis.backtest.avgReturn10d || 0;
-              avgReturn20d = analysis.backtest.avgReturn20d || 0;
+              horizons.forEach(h => {
+                backtestMetrics[`winRate${h}d`] = analysis.backtest[`winRate${h}d`] || 0;
+                backtestMetrics[`avgReturn${h}d`] = analysis.backtest[`avgReturn${h}d`] || 0;
+              });
             }
           } catch (dbErr) {
             logger.warn('API_PRICES', `Could not fetch backtest for ${symbol}`, dbErr);
@@ -66,12 +65,7 @@ export async function GET(request) {
             price: '$0.00',
             change: '+0.00%',
             color: 'text-emerald-400',
-            winRate5d,
-            winRate10d,
-            winRate20d,
-            avgReturn5d,
-            avgReturn10d,
-            avgReturn20d
+            ...backtestMetrics
           };
           return;
         }
@@ -90,13 +84,9 @@ export async function GET(request) {
           price: `$${priceVal.toFixed(2)}`,
           change: `${sign}${changePercentVal.toFixed(2)}%`,
           color,
-          winRate5d,
-          winRate10d,
-          winRate20d,
-          avgReturn5d,
-          avgReturn10d,
-          avgReturn20d
+          ...backtestMetrics
         };
+
 
         logger.info('API_PRICES', `Successfully fetched price for ${symbol}: ${results[symbol].price} (${results[symbol].change})`);
       } catch (err) {

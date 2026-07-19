@@ -128,41 +128,39 @@ function computeMACD(prices) {
  * @returns {Object} Backtest metrics and Top similar dates
  */
 function calculateBacktest(prices) {
-  // We need at least 50 periods to ensure indicator stability (MACD signals start around index 33, 
-  // and we want at least some lookback historical points).
-  if (prices.length < 50) {
-    return { winRate5d: 0.5, winRate10d: 0.5, winRate20d: 0.5, avgReturn5d: 0, avgReturn10d: 0, avgReturn20d: 0, similarDays: [] };
-  }
+  // We need at least 50 periods to ensure indicator stability (MACD signals start around index 33).
+  const emptyFallback = { 
+    winRate5d: 0.5, winRate10d: 0.5, winRate20d: 0.5, winRate40d: 0.5, winRate60d: 0.5, winRate120d: 0.5, winRate240d: 0.5,
+    avgReturn5d: 0, avgReturn10d: 0, avgReturn20d: 0, avgReturn40d: 0, avgReturn60d: 0, avgReturn120d: 0, avgReturn240d: 0,
+    similarDays: [] 
+  };
+
+  if (prices.length < 50) return emptyFallback;
 
   const rsi = computeRSI(prices, 14);
   const ma20 = computeSMA(prices, 20);
   const macdHist = computeMACD(prices);
 
-  // Normalize features to align variables of different units into a unified metric space
-  // for unbiased distance calculation.
   const features = prices.map((p, idx) => {
     if (rsi[idx] === null || ma20[idx] === null || macdHist[idx] === null) return null;
     return {
       date: p.date,
       close: p.close,
-      rsi: rsi[idx] / 100, // Normalized to [0, 1]
-      maBias: (p.close / ma20[idx]) - 1, // Percentage deviation from moving average
-      macdRatio: macdHist[idx] / p.close // Scale-independent momentum metric
+      rsi: rsi[idx] / 100,
+      maBias: (p.close / ma20[idx]) - 1,
+      macdRatio: macdHist[idx] / p.close
     };
   });
 
   const nowIdx = features.length - 1;
   const vNow = features[nowIdx];
 
-  if (!vNow) {
-    return { winRate5d: 0.5, winRate10d: 0.5, winRate20d: 0.5, avgReturn5d: 0, avgReturn10d: 0, avgReturn20d: 0, similarDays: [] };
-  }
+  if (!vNow) return emptyFallback;
 
-  // Calculate distances for historical days.
-  // We exclude the last 20 days to prevent lookahead overlap (as we compute 20d future returns 
-  // for the similar days to form win-rate stats).
   const distances = [];
-  for (let i = 33; i < nowIdx - 20; i++) {
+  // Exclude last 20 days to ensure at least 5d/10d/20d returns can be computed without lookahead overlap
+  const minLookahead = Math.min(20, Math.max(1, nowIdx - 34));
+  for (let i = 33; i < nowIdx - minLookahead; i++) {
     const vHist = features[i];
     if (!vHist) continue;
 
@@ -180,49 +178,41 @@ function calculateBacktest(prices) {
     });
   }
 
-  // Sort by Euclidean distance (ascending) to identify the closest matches first
   distances.sort((a, b) => a.distance - b.distance);
   const top20 = distances.slice(0, 20);
 
-  if (top20.length === 0) {
-    return { winRate5d: 0.5, winRate10d: 0.5, winRate20d: 0.5, avgReturn5d: 0, avgReturn10d: 0, avgReturn20d: 0, similarDays: [] };
-  }
+  if (top20.length === 0) return emptyFallback;
 
-  // Calculate forward returns and win rates across the top matching historical days
-  let up5d = 0, up10d = 0, up20d = 0;
-  let sumRet5d = 0, sumRet10d = 0, sumRet20d = 0;
+  const horizons = [5, 10, 20, 40, 60, 120, 240];
+  const horizonStats = {};
+  horizons.forEach(h => {
+    horizonStats[h] = { upCount: 0, sumRet: 0, validCount: 0 };
+  });
 
   const similarDays = top20.map(item => {
     const baseClose = prices[item.idx].close;
-    
-    const ret5d = ((prices[item.idx + 5].close - baseClose) / baseClose) * 100;
-    const ret10d = ((prices[item.idx + 10].close - baseClose) / baseClose) * 100;
-    const ret20d = ((prices[item.idx + 20].close - baseClose) / baseClose) * 100;
-
-    if (ret5d > 0) up5d++;
-    if (ret10d > 0) up10d++;
-    if (ret20d > 0) up20d++;
-
-    sumRet5d += ret5d;
-    sumRet10d += ret10d;
-    sumRet20d += ret20d;
-
-    return {
+    const dayResult = {
       date: item.date,
-      similarity: item.similarity,
-      return5d: parseFloat(ret5d.toFixed(2)),
-      return10d: parseFloat(ret10d.toFixed(2)),
-      return20d: parseFloat(ret20d.toFixed(2))
+      similarity: item.similarity
     };
+
+    horizons.forEach(h => {
+      const targetIdx = item.idx + h;
+      if (targetIdx < prices.length) {
+        const ret = ((prices[targetIdx].close - baseClose) / baseClose) * 100;
+        dayResult[`return${h}d`] = parseFloat(ret.toFixed(2));
+        horizonStats[h].validCount++;
+        horizonStats[h].sumRet += ret;
+        if (ret > 0) horizonStats[h].upCount++;
+      } else {
+        dayResult[`return${h}d`] = null;
+      }
+    });
+
+    return dayResult;
   });
 
-  return {
-    winRate5d: parseFloat((up5d / top20.length).toFixed(2)),
-    winRate10d: parseFloat((up10d / top20.length).toFixed(2)),
-    winRate20d: parseFloat((up20d / top20.length).toFixed(2)),
-    avgReturn5d: parseFloat((sumRet5d / top20.length).toFixed(2)),
-    avgReturn10d: parseFloat((sumRet10d / top20.length).toFixed(2)),
-    avgReturn20d: parseFloat((sumRet20d / top20.length).toFixed(2)),
+  const result = {
     currentPattern: {
       rsi: parseFloat((vNow.rsi * 100).toFixed(1)),
       ma20Bias: parseFloat((vNow.maBias * 100).toFixed(2)),
@@ -230,6 +220,22 @@ function calculateBacktest(prices) {
     },
     similarDays
   };
+
+  horizons.forEach(h => {
+    const stats = horizonStats[h];
+    const winRateKey = `winRate${h}d`;
+    const avgReturnKey = `avgReturn${h}d`;
+    if (stats.validCount > 0) {
+      result[winRateKey] = parseFloat((stats.upCount / stats.validCount).toFixed(2));
+      result[avgReturnKey] = parseFloat((stats.sumRet / stats.validCount).toFixed(2));
+    } else {
+      result[winRateKey] = 0.5;
+      result[avgReturnKey] = 0;
+    }
+  });
+
+  return result;
 }
 
 module.exports = { calculateBacktest };
+

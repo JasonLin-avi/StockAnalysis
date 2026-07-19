@@ -4,11 +4,22 @@ import SkeletonLoader from './SkeletonLoader';
 import Link from 'next/link';
 import { getWatchlist } from '../../lib/watchlist-store';
 
+const TIMEFRAME_OPTIONS = [
+  { key: '5d', label: '5 天 (極短線)' },
+  { key: '10d', label: '10 天 (短線)' },
+  { key: '20d', label: '1 個月 (20D)' },
+  { key: '40d', label: '2 個月 (40D)' },
+  { key: '60d', label: '3 個月 (60D)' },
+  { key: '120d', label: '6 個月 (120D)' },
+  { key: '240d', label: '1 年 (240D)' }
+];
+
 export default function WatchlistTable() {
   const [watchlist, setWatchlist] = useState([]);
   const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState('winRate5d');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('20d'); // Default 1 Month
+  const [sortField, setSortField] = useState('winRate');
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Why: Fetch saved watchlist symbols from local storage to populate table with initial stock prices and backtest metrics.
@@ -57,13 +68,16 @@ export default function WatchlistTable() {
     return 0;
   };
 
-  // Why: Dynamic multi-column sorting over the watchlist array using price data and 5D/10D/20D backtest metrics.
+  // Why: Dynamic multi-column sorting over the watchlist array using price data and selected timeframe backtest metrics.
   const sortedWatchlist = [...watchlist].sort((a, b) => {
     const itemA = prices[a] || {};
     const itemB = prices[b] || {};
 
     let valA = 0;
     let valB = 0;
+
+    const winKey = `winRate${selectedTimeframe}`;
+    const retKey = `avgReturn${selectedTimeframe}`;
 
     if (sortField === 'symbol') {
       return sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a);
@@ -73,15 +87,15 @@ export default function WatchlistTable() {
     } else if (sortField === 'change') {
       valA = parseNumber(itemA.change);
       valB = parseNumber(itemB.change);
+    } else if (sortField === 'winRate') {
+      valA = itemA[winKey] || 0;
+      valB = itemB[winKey] || 0;
+    } else if (sortField === 'avgReturn') {
+      valA = itemA[retKey] || 0;
+      valB = itemB[retKey] || 0;
     } else if (sortField === 'winRate5d') {
       valA = itemA.winRate5d || 0;
       valB = itemB.winRate5d || 0;
-    } else if (sortField === 'winRate10d') {
-      valA = itemA.winRate10d || 0;
-      valB = itemB.winRate10d || 0;
-    } else if (sortField === 'winRate20d') {
-      valA = itemA.winRate20d || 0;
-      valB = itemB.winRate20d || 0;
     }
 
     return sortOrder === 'asc' ? valA - valB : valB - valA;
@@ -96,89 +110,112 @@ export default function WatchlistTable() {
   if (loading) return <SkeletonLoader height="h-64" />;
   if (watchlist.length === 0) return <div className="text-slate-400 p-8 border border-slate-800 rounded-2xl bg-slate-900/30">尚無追蹤標的。請在搜尋股票後點擊關注。</div>;
 
+  const activeOption = TIMEFRAME_OPTIONS.find(opt => opt.key === selectedTimeframe) || TIMEFRAME_OPTIONS[2];
+
   return (
-    <div className="border border-slate-800 bg-[#0B0F19]/80 rounded-2xl overflow-hidden backdrop-blur shadow-xl">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="bg-[#0E1424] text-slate-400 font-mono uppercase font-semibold text-xs border-b border-slate-800">
-            <tr>
-              <th onClick={() => handleSort('symbol')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
-                標的 (Symbol) {getSortIcon('symbol')}
-              </th>
-              <th onClick={() => handleSort('price')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
-                最新價格 {getSortIcon('price')}
-              </th>
-              <th onClick={() => handleSort('change')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
-                漲跌幅 {getSortIcon('change')}
-              </th>
-              <th onClick={() => handleSort('winRate5d')} className="px-5 py-4 cursor-pointer hover:text-cyan-300 transition-colors select-none">
-                5D 回測勝率/報酬 {getSortIcon('winRate5d')}
-              </th>
-              <th onClick={() => handleSort('winRate10d')} className="px-5 py-4 cursor-pointer hover:text-cyan-300 transition-colors select-none">
-                10D 回測勝率/報酬 {getSortIcon('winRate10d')}
-              </th>
-              <th onClick={() => handleSort('winRate20d')} className="px-5 py-4 cursor-pointer hover:text-cyan-300 transition-colors select-none">
-                20D 回測勝率/報酬 {getSortIcon('winRate20d')}
-              </th>
-              <th className="px-5 py-4">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60 font-mono">
-            {sortedWatchlist.map(symbol => {
-              const quote = prices[symbol] || {};
+    <div className="space-y-4">
+      {/* Timeframe Dropdown Control Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0B0F19]/80 border border-slate-800/80 p-4 rounded-2xl backdrop-blur shadow-lg">
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-mono font-semibold text-slate-400 flex items-center gap-1.5">
+            <span>🎯</span> 回測持有期 (Holding Period):
+          </label>
+          <select
+            value={selectedTimeframe}
+            onChange={(e) => setSelectedTimeframe(e.target.value)}
+            className="bg-[#0E1424] border border-cyan-800/50 text-cyan-400 text-xs font-mono font-bold rounded-xl px-3 py-2 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500/50 transition-all cursor-pointer"
+          >
+            {TIMEFRAME_OPTIONS.map(opt => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-              const wr5 = quote.winRate5d !== undefined ? (quote.winRate5d * 100).toFixed(0) + '%' : '--';
-              const ret5Val = quote.avgReturn5d || 0;
-              const ret5Sign = ret5Val >= 0 ? '+' : '';
-              const ret5Color = ret5Val >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        <div className="text-xs font-mono text-slate-500">
+          歐氏距離特徵矩陣・1月 ~ 1年跨週期動態勝率比對
+        </div>
+      </div>
 
-              const wr10 = quote.winRate10d !== undefined ? (quote.winRate10d * 100).toFixed(0) + '%' : '--';
-              const ret10Val = quote.avgReturn10d || 0;
-              const ret10Sign = ret10Val >= 0 ? '+' : '';
-              const ret10Color = ret10Val >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      {/* Main Table */}
+      <div className="border border-slate-800 bg-[#0B0F19]/80 rounded-2xl overflow-hidden backdrop-blur shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-300">
+            <thead className="bg-[#0E1424] text-slate-400 font-mono uppercase font-semibold text-xs border-b border-slate-800">
+              <tr>
+                <th onClick={() => handleSort('symbol')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
+                  標的 (Symbol) {getSortIcon('symbol')}
+                </th>
+                <th onClick={() => handleSort('price')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
+                  最新價格 {getSortIcon('price')}
+                </th>
+                <th onClick={() => handleSort('change')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
+                  漲跌幅 {getSortIcon('change')}
+                </th>
+                <th onClick={() => handleSort('winRate5d')} className="px-5 py-4 cursor-pointer hover:text-cyan-300 transition-colors select-none">
+                  5D 回測勝率 {getSortIcon('winRate5d')}
+                </th>
+                <th onClick={() => handleSort('winRate')} className="px-5 py-4 cursor-pointer hover:text-cyan-300 text-cyan-400 transition-colors select-none">
+                  {activeOption.label} 勝率 {getSortIcon('winRate')}
+                </th>
+                <th onClick={() => handleSort('avgReturn')} className="px-5 py-4 cursor-pointer hover:text-slate-200 transition-colors select-none">
+                  {activeOption.label} 平均報酬 {getSortIcon('avgReturn')}
+                </th>
+                <th className="px-5 py-4">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono">
+              {sortedWatchlist.map(symbol => {
+                const quote = prices[symbol] || {};
 
-              const wr20 = quote.winRate20d !== undefined ? (quote.winRate20d * 100).toFixed(0) + '%' : '--';
-              const ret20Val = quote.avgReturn20d || 0;
-              const ret20Sign = ret20Val >= 0 ? '+' : '';
-              const ret20Color = ret20Val >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                const wr5Val = quote.winRate5d !== undefined ? (quote.winRate5d * 100).toFixed(0) + '%' : '--';
+                
+                const winKey = `winRate${selectedTimeframe}`;
+                const retKey = `avgReturn${selectedTimeframe}`;
 
-              return (
-                <tr key={symbol} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-4 font-bold text-slate-100 font-display">{symbol}</td>
-                  <td className="px-5 py-4 font-bold text-slate-200">{quote.price || '--'}</td>
-                  <td className={`px-5 py-4 font-bold ${quote.color || 'text-slate-400'}`}>{quote.change || '--'}</td>
-                  
-                  {/* 5D Backtest Cell */}
-                  <td className="px-5 py-4 font-bold bg-cyan-950/10">
-                    <span className="text-cyan-400">{wr5}</span>
-                    <span className={`text-xs ml-2 font-normal ${ret5Color}`}>({ret5Sign}{ret5Val.toFixed(2)}%)</span>
-                  </td>
+                const winRateVal = quote[winKey] !== undefined ? (quote[winKey] * 100).toFixed(0) + '%' : '--';
+                const avgReturnVal = quote[retKey] || 0;
+                
+                const retSign = avgReturnVal >= 0 ? '+' : '';
+                const retColor = avgReturnVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
 
-                  {/* 10D Backtest Cell */}
-                  <td className="px-5 py-4 font-bold bg-slate-900/20">
-                    <span className="text-cyan-300">{wr10}</span>
-                    <span className={`text-xs ml-2 font-normal ${ret10Color}`}>({ret10Sign}{ret10Val.toFixed(2)}%)</span>
-                  </td>
+                return (
+                  <tr key={symbol} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="px-5 py-4 font-bold text-slate-100 font-display">{symbol}</td>
+                    <td className="px-5 py-4 font-bold text-slate-200">{quote.price || '--'}</td>
+                    <td className={`px-5 py-4 font-bold ${quote.color || 'text-slate-400'}`}>{quote.change || '--'}</td>
+                    
+                    {/* 5D Baseline Win Rate */}
+                    <td className="px-5 py-4 font-bold text-slate-300">
+                      {wr5Val}
+                    </td>
 
-                  {/* 20D Backtest Cell */}
-                  <td className="px-5 py-4 font-bold bg-slate-900/20">
-                    <span className="text-cyan-200">{wr20}</span>
-                    <span className={`text-xs ml-2 font-normal ${ret20Color}`}>({ret20Sign}{ret20Val.toFixed(2)}%)</span>
-                  </td>
+                    {/* Selected Timeframe Win Rate */}
+                    <td className="px-5 py-4 font-bold text-cyan-400 bg-cyan-950/20">
+                      {winRateVal}
+                    </td>
 
-                  <td className="px-5 py-4 font-sans text-xs">
-                    <Link href={`/stock/${symbol}`} className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
-                      個股報告 &rarr;
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    {/* Selected Timeframe Avg Return */}
+                    <td className={`px-5 py-4 font-bold ${retColor}`}>
+                      {retSign}{avgReturnVal.toFixed(2)}%
+                    </td>
+
+                    <td className="px-5 py-4 font-sans text-xs">
+                      <Link href={`/stock/${symbol}`} className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
+                        個股報告 &rarr;
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
+
 
 
