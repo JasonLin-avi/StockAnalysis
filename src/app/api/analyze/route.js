@@ -5,6 +5,9 @@ const { saveStockData, saveAnalysisResults } = require('../../../lib/database/qu
 const { fetchHistoricalData } = require('../../../lib/data-fetcher');
 const logger = require('../../../lib/logger');
 
+export const dynamic = 'force-dynamic';
+
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get('symbol');

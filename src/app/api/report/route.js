@@ -3,6 +3,9 @@ const { performFullAnalysis } = require('../../../lib/integration');
 const { generateReport } = require('../../../lib/report-generator');
 const logger = require('../../../lib/logger');
 
+export const dynamic = 'force-dynamic';
+
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get('symbol');

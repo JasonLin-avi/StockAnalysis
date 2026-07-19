@@ -2,6 +2,9 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
+
 const getDb = () => {
   // Why: Using an absolute path ensures the connection resolves correctly from any working directory in Next.js.
   const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'database.sqlite');

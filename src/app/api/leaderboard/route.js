@@ -4,6 +4,10 @@ const { connectToDatabase } = require('../../../lib/database/connection');
 const { getLatestBacktestResults, getAllAnalyzedStocks } = require('../../../lib/database/queries');
 const { performFullAnalysis } = require('../../../lib/integration');
 
+// Why: Next.js statically optimizes GET routes without dynamic functions. Force dynamic prevents static evaluation at build time.
+export const dynamic = 'force-dynamic';
+
+
 /**
  * Background worker to sequentially update stale stocks without blocking HTTP responses.
  *

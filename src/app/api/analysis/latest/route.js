@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 const { connectToDatabase } = require('../../../../lib/database/connection');
 const { getLatestAnalysisResults, getStockData } = require('../../../../lib/database/queries');
 
+export const dynamic = 'force-dynamic';
+
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get('symbol');
