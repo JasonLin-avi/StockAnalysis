@@ -12,6 +12,13 @@ node_modules/
 
 # data
 data/
+*.sqlite
+database.sqlite
+
+# temporary scratch & superpowers files
+scratch/
+.superpowers_base_commit.txt
 
 # superpowers SDD workspace (task briefs/reports during execution)
 .superpowers/
+

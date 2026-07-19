@@ -1,0 +1,76 @@
+commit b01f70876a6c8e5ae41a104f1e05bd67199fa399
+Author: JasonLin-avi <58023122+JasonLin-avi@users.noreply.github.com>
+Date:   Sat Jul 18 02:10:02 2026 +0800
+
+    feat: add watchlist database migration
+
+diff --git a/scripts/migrations/02_create_watchlist_table.js b/scripts/migrations/02_create_watchlist_table.js
+new file mode 100644
+index 0000000..8b06789
+--- /dev/null
++++ b/scripts/migrations/02_create_watchlist_table.js
+@@ -0,0 +1,22 @@
++const sqlite3 = require('sqlite3').verbose();
++const path = require('path');
++
++const dbPath = process.env.DB_PATH || path.join(__dirname, '../../database.sqlite');
++const db = new sqlite3.Database(dbPath);
++
++db.serialize(() => {
++  db.run(`
++    CREATE TABLE IF NOT EXISTS watchlist (
++      id INTEGER PRIMARY KEY AUTOINCREMENT,
++      symbol TEXT UNIQUE NOT NULL,
++      added_at DATETIME DEFAULT CURRENT_TIMESTAMP
++    )
++  `, (err) => {
++    if (err) {
++      console.error('Error creating watchlist table:', err);
++      process.exit(1);
++    }
++    console.log('Watchlist table created successfully.');
++    db.close();
++  });
++});
+diff --git a/tests/unit/watchlist-migration.test.js b/tests/unit/watchlist-migration.test.js
+new file mode 100644
+index 0000000..c42892d
+--- /dev/null
++++ b/tests/unit/watchlist-migration.test.js
+@@ -0,0 +1,36 @@
++const sqlite3 = require('sqlite3').verbose();
++const path = require('path');
++const fs = require('fs');
++const { execSync } = require('child_process');
++
++const dbPath = path.join(__dirname, '../../test-watchlist.db');
++
++describe('Watchlist Migration', () => {
++  let db;
++
++  beforeAll(() => {
++    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
++    // Run migration script directly on test db
++    process.env.DB_PATH = dbPath;
++    try {
++      execSync('node scripts/migrations/02_create_watchlist_table.js', { env: process.env });
++    } catch (e) {} // Will fail initially
++    db = new sqlite3.Database(dbPath);
++  });
++
++  afterAll((done) => {
++    db.close(() => {
++      if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
++      done();
++    });
++  });
++
++  it('creates the watchlist table', (done) => {
++    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='watchlist'", (err, row) => {
++      expect(err).toBeNull();
++      expect(row).toBeDefined();
++      expect(row.name).toBe('watchlist');
++      done();
++    });
++  });
++});

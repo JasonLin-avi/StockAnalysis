@@ -1,0 +1,74 @@
+commit 580ecbef0ca689df4e9c6fe66caee437df60826c
+Author: JasonLin-avi <58023122+JasonLin-avi@users.noreply.github.com>
+Date:   Sat Jul 18 02:13:06 2026 +0800
+
+    feat: implement watchlist API endpoint
+
+diff --git a/src/app/api/watchlist/route.js b/src/app/api/watchlist/route.js
+new file mode 100644
+index 0000000..6586319
+--- /dev/null
++++ b/src/app/api/watchlist/route.js
+@@ -0,0 +1,45 @@
++import sqlite3 from 'sqlite3';
++import path from 'path';
++import { NextResponse } from 'next/server';
++
++const getDb = () => {
++  // Why: Using an absolute path ensures the connection resolves correctly from any working directory in Next.js.
++  const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'database.sqlite');
++  return new sqlite3.Database(dbPath);
++};
++
++export async function GET() {
++  return new Promise((resolve) => {
++    const db = getDb();
++    db.all("SELECT symbol FROM watchlist ORDER BY added_at DESC", [], (err, rows) => {
++      db.close();
++      if (err) {
++        resolve(NextResponse.json({ error: err.message }, { status: 500 }));
++        return;
++      }
++      resolve(NextResponse.json(rows.map(row => row.symbol)));
++    });
++  });
++}
++
++export async function POST(req) {
++  try {
++    const body = await req.json();
++    const symbol = body.symbol;
++    if (!symbol) return NextResponse.json({ error: 'Missing symbol' }, { status: 400 });
++    
++    return new Promise((resolve) => {
++      const db = getDb();
++      db.run("INSERT OR IGNORE INTO watchlist (symbol) VALUES (?)", [symbol], function(err) {
++        db.close();
++        if (err) {
++          resolve(NextResponse.json({ error: err.message }, { status: 500 }));
++          return;
++        }
++        resolve(NextResponse.json({ success: true }));
++      });
++    });
++  } catch (e) {
++    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
++  }
++}
+diff --git a/tests/api/watchlist-api.test.js b/tests/api/watchlist-api.test.js
+new file mode 100644
+index 0000000..0de0870
+--- /dev/null
++++ b/tests/api/watchlist-api.test.js
+@@ -0,0 +1,11 @@
++import { GET, POST } from '../../src/app/api/watchlist/route';
++
++describe('Watchlist API', () => {
++  it('returns empty array initially', async () => {
++    const req = new Request('http://localhost/api/watchlist');
++    const res = await GET(req);
++    const data = await res.json();
++    expect(res.status).toBe(200);
++    expect(Array.isArray(data)).toBe(true);
++  });
++});
