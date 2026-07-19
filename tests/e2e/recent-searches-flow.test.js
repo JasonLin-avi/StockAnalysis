@@ -119,17 +119,10 @@ describe('Recent Searches End-to-End Flow', () => {
       render(<StockDetail params={{ symbol: 'AAPL' }} />);
     });
     
-    // In the new user-driven analysis flow, HistoryTracker is only mounted AFTER
-    // the user clicks the analyze button and data is fetched.
-    const analyzeButton = screen.getByRole('button', { name: /開始產生分析報告/i });
-    await act(async () => {
-      analyzeButton.click();
-    });
-    
-    // Wait for the data to load and HistoryTracker to write to localStorage.
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /開始產生分析報告/i })).not.toBeInTheDocument();
-    });
+    // Data is fetched automatically via useEffect upon mounting StockDetail.
+    expect(await screen.findByText('個股智能分析看板')).toBeInTheDocument();
+
+
 
     // 2. Render Homepage — RecentSearches reads from localStorage that HistoryTracker wrote above.
     // Resolve the async Server Component Home before rendering.

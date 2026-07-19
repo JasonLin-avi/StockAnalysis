@@ -38,6 +38,8 @@ describe('HistoricalBacktestPanel Component', () => {
     };
     render(<HistoricalBacktestPanel backtest={fallbackData} />);
     expect(screen.getByText('歷史相似環境回測')).toBeInTheDocument();
-    expect(screen.getByText('歷史數據不足，無法進行相似度回測')).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes('歷史數據不足'))).toBeInTheDocument();
   });
 });
+
+

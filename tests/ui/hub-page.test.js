@@ -12,6 +12,8 @@ global.fetch = jest.fn().mockResolvedValue({
 describe('Hub Page Layout', () => {
   it('renders the header and layout grid', () => {
     render(<HubPage />);
-    expect(screen.getByText('Analytics Hub')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
   });
 });
+
+

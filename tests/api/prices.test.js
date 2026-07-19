@@ -1,6 +1,3 @@
-const { describe, it } = require('node:test');
-const assert = require('assert');
-
 describe('API Prices Route Payload', () => {
   it('should include winRate5d and avgReturn5d fields in output object', () => {
     const mockOutput = {
@@ -10,7 +7,8 @@ describe('API Prices Route Payload', () => {
       winRate5d: 0.82,
       avgReturn5d: 4.15
     };
-    assert.strictEqual(typeof mockOutput.winRate5d, 'number');
-    assert.strictEqual(typeof mockOutput.avgReturn5d, 'number');
+    expect(typeof mockOutput.winRate5d).toBe('number');
+    expect(typeof mockOutput.avgReturn5d).toBe('number');
   });
 });
+
