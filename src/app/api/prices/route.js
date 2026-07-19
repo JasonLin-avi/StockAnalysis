@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import yahooFinance from '../../../lib/data-fetcher/yahoo-finance';
 const { fetchStockData } = yahooFinance;
+const { connectToDatabase } = require('../../../lib/database/connection');
+const { getLatestAnalysisResults } = require('../../../lib/database/queries');
 const logger = require('../../../lib/logger');
 
 // Why: Next.js might statically optimize API routes without dynamic functions. This ensures we always fetch fresh prices.
@@ -22,14 +24,43 @@ export async function GET(request) {
     const symbols = symbolsStr.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     const results = {};
 
+    let db = null;
+    try {
+      db = await connectToDatabase();
+    } catch (e) {
+      logger.warn('API_PRICES', 'Database connection unavailable for backtest metrics');
+    }
+
     logger.info('API_PRICES', `Fetching stock prices for symbols: ${JSON.stringify(symbols)}`);
 
     // Why: Parallelize requests to optimize API performance and reduce latency since symbols are fetched independently.
     await Promise.all(symbols.map(async (symbol) => {
       try {
         const data = await fetchStockData(symbol);
+        let winRate5d = 0;
+        let avgReturn5d = 0;
+
+        if (db) {
+          try {
+            const analysis = await getLatestAnalysisResults(db, symbol);
+            if (analysis && analysis.backtest) {
+              winRate5d = analysis.backtest.winRate5d || 0;
+              avgReturn5d = analysis.backtest.avgReturn5d || 0;
+            }
+          } catch (dbErr) {
+            logger.warn('API_PRICES', `Could not fetch backtest for ${symbol}`, dbErr);
+          }
+        }
+
         if (!data) {
           logger.warn('API_PRICES', `No data returned for symbol: ${symbol}`);
+          results[symbol] = {
+            price: '$0.00',
+            change: '+0.00%',
+            color: 'text-emerald-400',
+            winRate5d,
+            avgReturn5d
+          };
           return;
         }
 
@@ -46,7 +77,9 @@ export async function GET(request) {
         results[symbol] = {
           price: `$${priceVal.toFixed(2)}`,
           change: `${sign}${changePercentVal.toFixed(2)}%`,
-          color
+          color,
+          winRate5d,
+          avgReturn5d
         };
         logger.info('API_PRICES', `Successfully fetched price for ${symbol}: ${results[symbol].price} (${results[symbol].change})`);
       } catch (err) {
@@ -63,4 +96,5 @@ export async function GET(request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
 
