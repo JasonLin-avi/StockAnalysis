@@ -85,6 +85,23 @@ describe('Recent Searches End-to-End Flow', () => {
           text: () => Promise.resolve('// [{"l": "315.32", "c": "-0.88", "cp": "-0.28", "pcls_fix": "316.20"}]')
         });
       }
+      if (urlStr.includes('/api/analyze')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            symbol: 'AAPL',
+            name: 'Apple Inc.',
+            price: 315.32,
+            changePercent: -0.28,
+            date: '2026-07-12',
+            historicalData: [],
+            technical: { ma: [], rsi: null, macd: null },
+            fundamental: {},
+            news: {},
+            advice: {}
+          })
+        });
+      }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({})
@@ -98,10 +115,20 @@ describe('Recent Searches End-to-End Flow', () => {
 
   test('renders stock detail and then shows it on homepage recent searches list', async () => {
     // 1. Visit Stock Detail Page — rendering the client component.
-    //    This causes HistoryTracker (a 'use client' component) to be rendered,
-    //    which in jsdom will fire its useEffect and write 'AAPL' to localStorage.
     await act(async () => {
       render(<StockDetail params={{ symbol: 'AAPL' }} />);
+    });
+    
+    // In the new user-driven analysis flow, HistoryTracker is only mounted AFTER
+    // the user clicks the analyze button and data is fetched.
+    const analyzeButton = screen.getByRole('button', { name: /開始產生分析報告/i });
+    await act(async () => {
+      analyzeButton.click();
+    });
+    
+    // Wait for the data to load and HistoryTracker to write to localStorage.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /開始產生分析報告/i })).not.toBeInTheDocument();
     });
 
     // 2. Render Homepage — RecentSearches reads from localStorage that HistoryTracker wrote above.
