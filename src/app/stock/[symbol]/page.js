@@ -6,12 +6,12 @@ import Header from '../../../components/Header';
 import TechnicalIndicatorsChart from '../../../components/TechnicalIndicatorsChart';
 import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisChart';
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
+import FundamentalTab from './FundamentalTab';
+import FinancialTrendTab from './FinancialTrendTab';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
 import HistoryTracker from '../../../components/HistoryTracker';
-
 import WatchButton from '../../../components/WatchButton';
-
 
 // Why: We use client-side fetching to show a loading state while the heavy analysis API runs,
 // preventing the page navigation from blocking for several seconds.
@@ -19,9 +19,9 @@ export default function StockDetail({ params }) {
   const { symbol } = params;
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('technical'); // 'technical' | 'fundamental'
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Why: The user expects the analysis to execute automatically upon entering the dashboard.
   useEffect(() => {
     const fetchAnalysis = async () => {
       setIsLoading(true);
@@ -126,38 +126,92 @@ export default function StockDetail({ params }) {
         {/* Generated Report Content */}
         {data && (
           <>
-            {/* Advisory Decision Panel */}
-            <InvestmentAdvicePanel advice={data.advice} />
+            {/* Tab Navigation (2 Tabs) */}
+            <div className="flex items-center justify-center sm:justify-start gap-2 mb-8 p-1.5 border border-slate-800/80 bg-slate-900/60 rounded-2xl backdrop-blur-md w-fit">
+              <button
+                type="button"
+                onClick={() => setActiveTab('technical')}
+                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === 'technical'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/50'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <span>📊</span> 綜合技術指標
+              </button>
 
-            {/* Analytical Charts Section */}
-            <CustomizableLayout>
-              <TechnicalIndicatorsChart 
-                widgetId="technical"
-                historicalData={data.historicalData} 
-                maData={data.technical.ma} 
-                symbol={data.symbol} 
-              />
-              
-              <FundamentalAnalysisChart 
-                widgetId="fundamental"
-                fundamentalData={data.fundamental} 
-                symbol={data.symbol} 
-              />
-              
-              <NewsSentimentChart 
-                widgetId="news"
-                newsData={data.news} 
-                symbol={data.symbol} 
-              />
-            </CustomizableLayout>
+              <button
+                type="button"
+                onClick={() => setActiveTab('fundamental')}
+                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === 'fundamental'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/50'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <span>🏛️</span> 基本面分析 (Gemini AI)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('financial_trend')}
+                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === 'financial_trend'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/50'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <span>📈</span> 5年財務趨勢 (Gemini AI)
+              </button>
+            </div>
+
+            {/* Tab 1: 綜合技術指標 */}
+            {activeTab === 'technical' && (
+              <div className="space-y-8 animate-fadeIn">
+                {/* Advisory Decision Panel */}
+                <InvestmentAdvicePanel advice={data.advice} />
+
+                {/* Technical Charts & News Layout */}
+                <CustomizableLayout defaultWidgets={['technical', 'fundamental', 'news']}>
+                  <TechnicalIndicatorsChart 
+                    widgetId="technical"
+                    historicalData={data.historicalData} 
+                    maData={data.technical.ma} 
+                    symbol={data.symbol} 
+                  />
+                  <FundamentalAnalysisChart 
+                    widgetId="fundamental"
+                    fundamentalData={data.fundamental} 
+                    symbol={data.symbol} 
+                  />
+                  <NewsSentimentChart 
+                    widgetId="news"
+                    newsData={data.news} 
+                    symbol={data.symbol} 
+                  />
+                </CustomizableLayout>
+              </div>
+            )}
+
+            {/* Tab 2: 基本面分析 (Gemini AI) */}
+            {activeTab === 'fundamental' && (
+              <div className="animate-fadeIn">
+                <FundamentalTab symbol={symbol} />
+              </div>
+            )}
+
+            {/* Tab 3: 5年財務趨勢 (Gemini AI) */}
+            {activeTab === 'financial_trend' && (
+              <div className="animate-fadeIn">
+                <FinancialTrendTab symbol={symbol} />
+              </div>
+            )}
           </>
         )}
 
       </main>
 
-      {/* Invisible History Tracker — writes this visit to localStorage so the homepage
-          Recent Searches section can surface it on the next homepage load.
-          Why: Only record history after a successful analysis to ensure valid data. */}
+      {/* History Tracker */}
       {data && <HistoryTracker symbol={symbol} name={data.name} />}
     </div>
   );

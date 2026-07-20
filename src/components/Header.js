@@ -9,7 +9,21 @@ export default function Header() {
     gspc: { displayPrice: '5,632.10', displayChange: '▼ -0.21%', color: 'text-rose-400' }
   });
 
+  const [sentiment, setSentiment] = useState({
+    score: 74,
+    text: '極度貪婪'
+  });
+
+  const [lastUpdated, setLastUpdated] = useState('');
+
   useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      setLastUpdated(`${hours}:${minutes}`);
+    };
+
     async function fetchMarket() {
       try {
         const res = await fetch('/api/market');
@@ -23,9 +37,35 @@ export default function Header() {
         console.error('Failed to fetch dynamic market data:', err);
       }
     }
+
+    async function fetchSentiment() {
+      try {
+        const res = await fetch('/api/market/overview-metrics');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.fearGreed) {
+            setSentiment({
+              score: data.fearGreed.score,
+              text: data.fearGreed.text
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch dynamic sentiment data:', err);
+      }
+    }
+
+    updateTime();
     fetchMarket();
+    fetchSentiment();
+
     // Poll every 60 seconds
-    const interval = setInterval(fetchMarket, 60000);
+    const interval = setInterval(() => {
+      updateTime();
+      fetchMarket();
+      fetchSentiment();
+    }, 60000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -57,12 +97,14 @@ export default function Header() {
             <span className="text-slate-700">|</span>
             <span className="flex items-center gap-1.5">
               <span className="text-slate-400">市場情緒:</span>
-              <span className="text-cyan-400 font-semibold">極度貪婪 (74)</span>
+              <span className="text-cyan-400 font-semibold">{sentiment.text} ({sentiment.score})</span>
             </span>
           </div>
 
-          <div className="text-slate-500 text-[10px]">
-            即時更新・UTC+8
+          {/* Dynamic last updated timestamp */}
+          <div className="flex items-center gap-1.5 text-slate-400 text-xs font-mono">
+            <span className="text-slate-500">最後更新:</span>
+            <span className="text-emerald-400 font-semibold">{lastUpdated || '--:--'}</span>
           </div>
         </div>
       </div>
@@ -88,23 +130,31 @@ export default function Header() {
                 </div>
               </Link>
 
+              {/* Restored Main Navigation Items according to Spec */}
               <nav className="hidden md:flex items-center gap-1">
-                <Link href="/" className="text-xs font-semibold px-3 py-2 rounded-md text-cyan-400 bg-cyan-950/40 border border-cyan-800/40 transition-all">
+                <Link 
+                  href="/" 
+                  className="px-3 py-2 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all"
+                >
                   市場看板
                 </Link>
-                <Link href="/hub" className="text-xs font-semibold px-3 py-2 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-all">
+                <Link 
+                  href="/hub" 
+                  className="px-3 py-2 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 transition-all"
+                >
                   量化戰情室
                 </Link>
-                <Link href="/reports" className="text-xs font-semibold px-3 py-2 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-all">
+                <Link 
+                  href="/reports" 
+                  className="px-3 py-2 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 transition-all"
+                >
                   歷史報告
-                </Link>
-                <Link href="/funds-flow" className="text-xs font-semibold px-3 py-2 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-all">
-                  市場資金流
                 </Link>
               </nav>
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Restored Watchlist Link */}
               <Link
                 href="/watchlist"
                 aria-label="我的關注"
@@ -113,6 +163,7 @@ export default function Header() {
                 <span className="text-amber-400 text-sm">★</span>
                 <span>關注清單</span>
               </Link>
+              
               <div className="text-[11px] font-mono text-slate-500 px-2 py-1 rounded bg-slate-900/60 border border-slate-800/60 hidden sm:block">
                 v1.2.0-quant
               </div>
@@ -123,4 +174,3 @@ export default function Header() {
     </div>
   );
 }
-

@@ -468,6 +468,90 @@ function saveMarketFundsFlow(db, data) {
   });
 }
 
+
+/**
+ * Retrieves a cached prompt analysis result.
+ *
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string} symbol - Stock ticker
+ * @param {string} analysis_type - Type of analysis, e.g., 'fundamental'
+ * @param {string} date - ISO date string (YYYY-MM-DD)
+ * @returns {Promise<string|null>} Markdown content or null if not found
+ */
+function getPromptAnalysis(db, symbol, analysis_type, date) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT content FROM stock_prompt_analysis WHERE symbol = ? AND analysis_type = ? AND date = ?;`,
+      [symbol.toUpperCase(), analysis_type, date],
+      (err, row) => {
+        if (err) return reject(new Error(`Failed to fetch prompt analysis: ${err.message}`));
+        resolve(row ? row.content : null);
+      }
+    );
+  });
+}
+
+/**
+ * Saves a prompt analysis result.
+ *
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string} symbol - Stock ticker
+ * @param {string} analysis_type - Type of analysis
+ * @param {string} date - ISO date
+ * @param {string} content - Generated Markdown
+ * @returns {Promise<void>}
+ */
+function savePromptAnalysis(db, symbol, analysis_type, date, content) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT OR REPLACE INTO stock_prompt_analysis (symbol, analysis_type, date, content) VALUES (?, ?, ?, ?);`,
+      [symbol.toUpperCase(), analysis_type, date, content],
+      (err) => {
+        if (err) return reject(new Error(`Failed to save prompt analysis: ${err.message}`));
+        resolve();
+      }
+    );
+  });
+}
+
+/**
+ * Retrieves the latest cached market overview metrics (within 24 hours).
+ */
+function getMarketOverviewMetrics(db) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT * FROM market_overview_metrics WHERE updated_at >= datetime('now', '-24 hours') ORDER BY id DESC LIMIT 1;`,
+      [],
+      (err, row) => {
+        if (err) return reject(new Error(`Failed to fetch market metrics: ${err.message}`));
+        resolve(row || null);
+      }
+    );
+  });
+}
+
+/**
+ * Saves market overview metrics into the database.
+ */
+function saveMarketOverviewMetrics(db, metrics) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO market_overview_metrics (fear_greed_score, fear_greed_text, vix_value, vix_text, win_rate) VALUES (?, ?, ?, ?, ?);`,
+      [
+        metrics.fear_greed_score,
+        metrics.fear_greed_text,
+        metrics.vix_value,
+        metrics.vix_text,
+        metrics.win_rate
+      ],
+      (err) => {
+        if (err) return reject(new Error(`Failed to save market metrics: ${err.message}`));
+        resolve();
+      }
+    );
+  });
+}
+
 module.exports = {
   saveStock,
   saveStockData,
@@ -481,7 +565,11 @@ module.exports = {
   getHistoricalPricesFromDB,
   getLatestBacktestResults,
   getMarketFundsFlow,
-  saveMarketFundsFlow
+  saveMarketFundsFlow,
+  getPromptAnalysis,
+  savePromptAnalysis,
+  getMarketOverviewMetrics,
+  saveMarketOverviewMetrics
 };
 
 

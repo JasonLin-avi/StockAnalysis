@@ -1,10 +1,37 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import PopularStocks from '../components/PopularStocks';
 import RecentSearches from '../components/RecentSearches';
 
 export default function Home() {
+  const [metrics, setMetrics] = useState({
+    fearGreed: { score: 74, text: '極度貪婪' },
+    vix: { value: 15.42, text: '低風險區' },
+    winRate: 68.4
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const res = await fetch('/api/market/overview-metrics');
+        if (res.ok) {
+          const data = await res.json();
+          setMetrics(data);
+        }
+      } catch (err) {
+        console.error('Error loading market metrics:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#070A10] text-slate-100 bg-grid-pattern bg-radial-glow selection:bg-cyan-500/30 selection:text-cyan-200">
       <Header />
@@ -35,32 +62,41 @@ export default function Home() {
           <SearchBar />
         </div>
 
-        {/* Market Sentiment Metric Cards Bar */}
+        {/* Dynamic Market Sentiment Metric Cards Bar */}
         <div className="w-full max-w-4xl grid grid-cols-2 sm:grid-cols-3 gap-3 mb-12 relative z-10 text-xs font-mono">
-          <div className="border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between">
+          <div className="border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between transition-all hover:border-slate-700">
             <div>
               <div className="text-slate-500 text-[10px] uppercase">市場情緒 (Fear & Greed)</div>
-              <div className="text-slate-200 font-bold text-sm mt-0.5">74 / 100 <span className="text-emerald-400 font-normal text-xs">(極度貪婪)</span></div>
+              <div className="text-slate-200 font-bold text-sm mt-0.5">
+                {loading ? '---' : `${metrics.fearGreed.score} / 100`}{' '}
+                <span className="text-emerald-400 font-normal text-xs">({metrics.fearGreed.text})</span>
+              </div>
             </div>
             <div className="h-8 w-8 rounded-lg bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 text-sm">
               📈
             </div>
           </div>
 
-          <div className="border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between">
+          <div className="border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between transition-all hover:border-slate-700">
             <div>
               <div className="text-slate-500 text-[10px] uppercase">恐慌指數 (VIX Volatility)</div>
-              <div className="text-slate-200 font-bold text-sm mt-0.5">15.42 <span className="text-emerald-400 font-normal text-xs">(低風險區)</span></div>
+              <div className="text-slate-200 font-bold text-sm mt-0.5">
+                {loading ? '---' : metrics.vix.value}{' '}
+                <span className="text-cyan-400 font-normal text-xs">({metrics.vix.text})</span>
+              </div>
             </div>
             <div className="h-8 w-8 rounded-lg bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400 text-sm">
               🛡️
             </div>
           </div>
 
-          <div className="col-span-2 sm:col-span-1 border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between">
+          <div className="col-span-2 sm:col-span-1 border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between transition-all hover:border-slate-700">
             <div>
               <div className="text-slate-500 text-[10px] uppercase">量化策略回測勝率</div>
-              <div className="text-slate-200 font-bold text-sm mt-0.5">68.4% <span className="text-slate-400 font-normal text-xs">(近30日評估)</span></div>
+              <div className="text-slate-200 font-bold text-sm mt-0.5">
+                {loading ? '---' : `${metrics.winRate}%`}{' '}
+                <span className="text-slate-400 font-normal text-xs">(近30日評估)</span>
+              </div>
             </div>
             <div className="h-8 w-8 rounded-lg bg-blue-950/60 border border-blue-800/40 flex items-center justify-center text-blue-400 text-sm">
               ⚡
@@ -81,4 +117,3 @@ export default function Home() {
     </div>
   );
 }
-

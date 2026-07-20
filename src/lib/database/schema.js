@@ -56,6 +56,27 @@ const schema = `
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(market, date)
   );
+  CREATE TABLE IF NOT EXISTS stock_prompt_analysis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    analysis_type TEXT NOT NULL,
+    date TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(symbol, analysis_type, date)
+  );
+
+  CREATE TABLE IF NOT EXISTS market_overview_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fear_greed_score REAL,
+    fear_greed_text TEXT,
+    vix_value REAL,
+    vix_text TEXT,
+    win_rate REAL,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+
 `;
 
 module.exports = { schema };

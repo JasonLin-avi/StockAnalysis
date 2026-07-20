@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../lib/database/connection';
 import { getMarketFundsFlow, saveMarketFundsFlow } from '../../../../lib/database/queries';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callGemini } from '../../../../lib/gemini/client';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
+// Business logic: Prompt definition resides in the business API domain
 function getPrompt(market, date) {
   const marketName = market === 'US' ? '美股' : '台股';
   return `你是一個專業的量化金融分析師。請利用 Google Search 網路搜尋功能，檢索並分析在 ${date} 之前一個月內，${marketName} 市場的資金流動狀況。
@@ -25,6 +24,7 @@ async function handleRequest(market, date) {
     const db = await connectToDatabase();
     const prompt = getPrompt(market, date);
 
+    // 1. Check cache
     const cached = await getMarketFundsFlow(db, market, date);
     if (cached && cached.prompt === prompt) {
       return NextResponse.json({
@@ -34,14 +34,12 @@ async function handleRequest(market, date) {
       });
     }
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+    // 2. Call generic Gemini client from lib with business prompt & options
+    const content = await callGemini(prompt, {
       tools: [{ googleSearch: {} }]
     });
 
-    const result = await model.generateContent(prompt);
-    const content = result.response.text();
-
+    // 3. Save to DB
     await saveMarketFundsFlow(db, {
       market,
       date,

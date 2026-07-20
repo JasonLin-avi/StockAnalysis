@@ -67,23 +67,41 @@ function connectToDatabase(dbPath = 'data/stock.db') {
               }
               const hasBacktest = columns.some(col => col.name === 'backtest');
               const onDone = () => {
-                db.exec(`
-                  CREATE TABLE IF NOT EXISTS market_funds_flow (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    market TEXT NOT NULL,
-                    date DATE NOT NULL,
-                    prompt TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(market, date)
-                  );
-                `, (execErr) => {
-                  if (execErr) {
-                    return reject(new Error(`Failed to apply market_funds_flow DDL: ${execErr.message}`));
-                  }
-                  activeDbInstance = db;
-                  resolve(db);
-                });
+                  db.exec(`
+                    CREATE TABLE IF NOT EXISTS market_funds_flow (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      market TEXT NOT NULL,
+                      date DATE NOT NULL,
+                      prompt TEXT NOT NULL,
+                      content TEXT NOT NULL,
+                      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                      UNIQUE(market, date)
+                    );
+                    CREATE TABLE IF NOT EXISTS stock_prompt_analysis (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol TEXT NOT NULL,
+                      analysis_type TEXT NOT NULL,
+                      date TEXT NOT NULL,
+                      content TEXT NOT NULL,
+                      created_at TEXT DEFAULT (datetime('now')),
+                      UNIQUE(symbol, analysis_type, date)
+                    );
+                    CREATE TABLE IF NOT EXISTS market_overview_metrics (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      fear_greed_score REAL,
+                      fear_greed_text TEXT,
+                      vix_value REAL,
+                      vix_text TEXT,
+                      win_rate REAL,
+                      updated_at TEXT DEFAULT (datetime('now'))
+                    );
+                  `, (execErr) => {
+                    if (execErr) {
+                      return reject(new Error(`Failed to apply dynamic tables DDL: ${execErr.message}`));
+                    }
+                    activeDbInstance = db;
+                    resolve(db);
+                  });
               };
               if (!hasBacktest) {
                 db.run("ALTER TABLE analysis_results ADD COLUMN backtest TEXT;", (alterErr) => {
