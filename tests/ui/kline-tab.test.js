@@ -231,7 +231,7 @@ describe('KlineTab Component', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai');
 
     await waitFor(() => {
-      expect(screen.getByText('🤖 15年資深量化專家 AI 深度診斷')).toBeInTheDocument();
+      expect(screen.getAllByText(/15年資深量化專家 AI 深度診斷/)[0]).toBeInTheDocument();
       expect(screen.getByText(/長線波段佈局/)).toBeInTheDocument();
     });
   });

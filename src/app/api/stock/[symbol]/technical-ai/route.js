@@ -47,7 +47,11 @@ ${symbol}
 ${JSON.stringify(summaryJson, null, 2)}
 \`\`\`
 
-請以專業、清晰且結構化的 Markdown 格式輸出分析報告。`;
+請以精簡、專業且排版美觀的 繁體中文 Markdown 格式輸出分析報告。
+要求包含：
+• 清晰的小標題 (###)
+• 重點列表項目（Bullet Points 與層級縮排）
+• 關鍵字強調與總結建議（粗體字）`;
 }
 
 export async function GET(request, context) {
