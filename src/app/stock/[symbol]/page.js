@@ -8,6 +8,8 @@ import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisCha
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
 import FundamentalTab from './FundamentalTab';
 import FinancialTrendTab from './FinancialTrendTab';
+// Why: KlineTab provides interactive technical candlestick charts and indicator overlays.
+import KlineTab from './KlineTab';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import CustomizableLayout from '../../../components/CustomizableLayout';
 import HistoryTracker from '../../../components/HistoryTracker';
@@ -126,7 +128,7 @@ export default function StockDetail({ params }) {
         {/* Generated Report Content */}
         {data && (
           <>
-            {/* Tab Navigation (2 Tabs) */}
+            {/* Tab Navigation (4 Tabs) */}
             <div className="flex items-center justify-center sm:justify-start gap-2 mb-8 p-1.5 border border-slate-800/80 bg-slate-900/60 rounded-2xl backdrop-blur-md w-fit">
               <button
                 type="button"
@@ -162,6 +164,18 @@ export default function StockDetail({ params }) {
                 }`}
               >
                 <span>📈</span> 5年財務趨勢 (Gemini AI)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('kline')}
+                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === 'kline'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/50'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <span>📉</span> K線技術分析
               </button>
             </div>
 
@@ -204,6 +218,13 @@ export default function StockDetail({ params }) {
             {activeTab === 'financial_trend' && (
               <div className="animate-fadeIn">
                 <FinancialTrendTab symbol={symbol} />
+              </div>
+            )}
+
+            {/* Tab 4: K線技術分析 */}
+            {activeTab === 'kline' && (
+              <div className="animate-fadeIn">
+                <KlineTab symbol={symbol} />
               </div>
             )}
           </>
