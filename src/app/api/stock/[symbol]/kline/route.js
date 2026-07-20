@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../../lib/database/connection';
 import { saveStock, getHistoricalPricesFromDB } from '../../../../../lib/database/queries';
 import { syncStockPricesIncremental } from '../../../../../lib/data-fetcher';
+const { generateLLMTechnicalSummary } = require('@/lib/technical-analysis/klineanalysis');
 
 export const dynamic = 'force-dynamic';
 
@@ -120,7 +121,8 @@ export async function GET(request, context) {
         volume: [],
         ma5: [],
         ma20: [],
-        ma60: []
+        ma60: [],
+        summary: null
       });
     }
 
@@ -129,6 +131,23 @@ export async function GET(request, context) {
     const fullMa5 = calculateMA(prices, 5);
     const fullMa20 = calculateMA(prices, 20);
     const fullMa60 = calculateMA(prices, 60);
+
+    let summary = null;
+    if (prices.length >= 60) {
+      const rawData = {
+        dates: prices.map(p => p.date),
+        opens: prices.map(p => p.open),
+        highs: prices.map(p => p.high),
+        lows: prices.map(p => p.low),
+        closes: prices.map(p => p.close),
+        volumes: prices.map(p => p.volume)
+      };
+      try {
+        summary = generateLLMTechnicalSummary(rawData);
+      } catch (err) {
+        console.warn('[API_KLINE] Summary calculation failed:', err.message);
+      }
+    }
 
     // Why: Determine date threshold according to specified range parameter.
     const latestDate = new Date(prices[prices.length - 1].date);
@@ -167,7 +186,8 @@ export async function GET(request, context) {
       volume,
       ma5,
       ma20,
-      ma60
+      ma60,
+      summary
     });
   } catch (error) {
     console.error(`[API_KLINE] Exception in GET for symbol:`, error);
