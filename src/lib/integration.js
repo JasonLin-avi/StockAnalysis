@@ -11,7 +11,7 @@ const { performNewsAnalysis } = require('./news-analysis');
 const { generateInvestmentAdvice } = require('./investment-advisor');
 const { calculateBacktest } = require('./technical-analysis/backtest');
 const { connectToDatabase, getActiveDatabase } = require('./database/connection');
-const { saveStock } = require('./database/queries');
+const { saveStock, insertStockDataBatch } = require('./database/queries');
 
 
 
@@ -35,17 +35,30 @@ async function performFullAnalysis(symbol, db = null) {
   ]);
 
   // Connect to the active database (or open default one) to perform price sync and backtest.
-  // We use this pattern so that in integration tests, we automatically inherit the :memory: database.
   const activeDb = db || getActiveDatabase() || await connectToDatabase();
   const stockId = await saveStock(activeDb, { symbol: ticker, market: ticker.includes('.') ? 'TW' : 'US' });
-
-  // 1. Sync price data incrementally and cache in local database
+  // Sync recent price data
   await syncStockPricesIncremental(activeDb, stockId, ticker);
-  
-  // 2. Fetch full 3 years local historical data for backtesting
-  const localPrices = await getLocal3YearPrices(activeDb, stockId);
-  
-  // 3. Run pattern matching backtest
+  // Ensure we have at least one year of historical data for backtesting
+  const ONE_YEAR_DAYS = 365; // target coverage
+  // Get all local prices (could be more than needed)
+  let localPrices = await getLocal3YearPrices(activeDb, stockId);
+  // Determine if we have enough recent data (within the past year)
+  const today = new Date();
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setDate(oneYearAgo.getDate() - ONE_YEAR_DAYS);
+  const startDateStr = oneYearAgo.toISOString().slice(0,10);
+  const recentPrices = localPrices.filter(p => p.date >= startDateStr);
+  if (recentPrices.length < ONE_YEAR_DAYS) {
+    // Missing data for the past year; fetch exactly one year of history
+    const missingDataResult = await fetchHistoricalData(ticker, '1y');
+    const missingData = missingDataResult.data || [];
+    if (missingData.length > 0) {
+      await insertStockDataBatch(activeDb, stockId, missingData);
+      // Refresh localPrices after insertion
+      localPrices = await getLocal3YearPrices(activeDb, stockId);
+    }
+  }
   const backtestResult = calculateBacktest(localPrices);
 
   // 2. Perform technical analysis
@@ -90,7 +103,7 @@ async function performFullAnalysis(symbol, db = null) {
   
   const advice = generateInvestmentAdvice(consolidated);
 
-  return {
+  const finalResult = {
     symbol: ticker,
     name: stockInfo.name || ticker,
     price: stockInfo.price,
@@ -106,6 +119,26 @@ async function performFullAnalysis(symbol, db = null) {
     advice,
     backtest: backtestResult
   };
+
+  // Unify and encapsulate DB write logic directly in the integration layer
+  try {
+    const { saveStockData, saveAnalysisResults } = require('./database/queries');
+    const dailyPrices = historical.data.map(item => ({
+      date: item.date,
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      close: item.close,
+      volume: item.volume
+    }));
+    await saveStockData(activeDb, ticker, dailyPrices);
+    await saveAnalysisResults(activeDb, ticker, finalResult.date, finalResult);
+  } catch (dbError) {
+    const logger = require('./logger');
+    logger.error('INTEGRATION_DB_SAVE', `Failed to auto-save results for ${ticker}`, dbError);
+  }
+
+  return finalResult;
 }
 
 module.exports = { performFullAnalysis };

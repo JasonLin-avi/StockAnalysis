@@ -67,8 +67,23 @@ function connectToDatabase(dbPath = 'data/stock.db') {
               }
               const hasBacktest = columns.some(col => col.name === 'backtest');
               const onDone = () => {
-                activeDbInstance = db;
-                resolve(db);
+                db.exec(`
+                  CREATE TABLE IF NOT EXISTS market_funds_flow (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    market TEXT NOT NULL,
+                    date DATE NOT NULL,
+                    prompt TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(market, date)
+                  );
+                `, (execErr) => {
+                  if (execErr) {
+                    return reject(new Error(`Failed to apply market_funds_flow DDL: ${execErr.message}`));
+                  }
+                  activeDbInstance = db;
+                  resolve(db);
+                });
               };
               if (!hasBacktest) {
                 db.run("ALTER TABLE analysis_results ADD COLUMN backtest TEXT;", (alterErr) => {

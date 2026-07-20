@@ -1,7 +1,34 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function Header() {
+  const [marketData, setMarketData] = useState({
+    twii: { displayPrice: '23,450.80', displayChange: '▲ +0.85%', color: 'text-emerald-400' },
+    gspc: { displayPrice: '5,632.10', displayChange: '▼ -0.21%', color: 'text-rose-400' }
+  });
+
+  useEffect(() => {
+    async function fetchMarket() {
+      try {
+        const res = await fetch('/api/market');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.twii && data.gspc) {
+            setMarketData(data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch dynamic market data:', err);
+      }
+    }
+    fetchMarket();
+    // Poll every 60 seconds
+    const interval = setInterval(fetchMarket, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="w-full">
       {/* Top Live Market Pulse Ticker Bar */}
@@ -18,14 +45,14 @@ export default function Header() {
           <div className="hidden sm:flex items-center gap-6">
             <span className="flex items-center gap-1.5">
               <span className="text-slate-400">台股加權:</span>
-              <span className="text-emerald-400 font-semibold">23,450.80</span>
-              <span className="text-emerald-400 text-[10px]">▲ +0.85%</span>
+              <span className={`${marketData.twii.color} font-semibold`}>{marketData.twii.displayPrice}</span>
+              <span className={`${marketData.twii.color} text-[10px]`}>{marketData.twii.displayChange}</span>
             </span>
             <span className="text-slate-700">|</span>
             <span className="flex items-center gap-1.5">
               <span className="text-slate-400">S&P 500:</span>
-              <span className="text-rose-400 font-semibold">5,632.10</span>
-              <span className="text-rose-400 text-[10px]">▼ -0.21%</span>
+              <span className={`${marketData.gspc.color} font-semibold`}>{marketData.gspc.displayPrice}</span>
+              <span className={`${marketData.gspc.color} text-[10px]`}>{marketData.gspc.displayChange}</span>
             </span>
             <span className="text-slate-700">|</span>
             <span className="flex items-center gap-1.5">
@@ -70,6 +97,9 @@ export default function Header() {
                 </Link>
                 <Link href="/reports" className="text-xs font-semibold px-3 py-2 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-all">
                   歷史報告
+                </Link>
+                <Link href="/funds-flow" className="text-xs font-semibold px-3 py-2 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-all">
+                  市場資金流
                 </Link>
               </nav>
             </div>

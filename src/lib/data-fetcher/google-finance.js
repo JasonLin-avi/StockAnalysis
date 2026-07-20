@@ -207,8 +207,8 @@ async function fetchHistoricalData(symbol, period = '1mo') {
       '1mo': '1d',
       '3mo': '1d',
       '6mo': '1d',
-      '1y': '1wk',
-      '2y': '1wk',
+      '1y': '1d',
+      '2y': '1d',
       '5y': '1mo',
       '10y': '1mo',
       'max': '3mo'

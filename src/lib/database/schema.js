@@ -46,6 +46,16 @@ const schema = `
     UNIQUE(stock_id, date),
     FOREIGN KEY (stock_id) REFERENCES stocks (id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS market_funds_flow (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    market TEXT NOT NULL,          -- 'US' 或 'TW'
+    date DATE NOT NULL,            -- 分析基準日 (YYYY-MM-DD)
+    prompt TEXT NOT NULL,          -- 呼叫時使用的 Prompt 內容 (用於 Prompt 版本更新時使快取失效)
+    content TEXT NOT NULL,         -- Gemini 回傳的 Markdown 文字內容
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(market, date)
+  );
 `;
 
 module.exports = { schema };

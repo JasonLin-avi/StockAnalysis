@@ -29,28 +29,6 @@ export async function GET(request) {
       logger.warn('API_ANALYZE', `Backtest results are missing for ${symbol}`);
     }
     
-    // Persistent storage integration
-    try {
-      logger.info('API_ANALYZE', `Connecting to database to persist ${symbol} data`);
-      const db = await connectToDatabase();
-      const historical = await fetchHistoricalData(symbol, '3mo');
-      const dailyPrices = historical.data.map(item => ({
-        date: item.date,
-        open: item.open,
-        high: item.high,
-        low: item.low,
-        close: item.close,
-        volume: item.volume
-      }));
-      
-      logger.info('API_ANALYZE', `Saving daily prices and analysis results to database for ${symbol}`);
-      await saveStockData(db, symbol, dailyPrices);
-      await saveAnalysisResults(db, symbol, analysisResults.date, analysisResults);
-      logger.info('API_ANALYZE', `Successfully saved ${symbol} data to database`);
-    } catch (dbError) {
-      logger.error('API_ANALYZE', `Database save error (non-blocking) for ${symbol}`, dbError);
-    }
-
     return NextResponse.json(analysisResults);
   } catch (error) {
     logger.error('API_ANALYZE', `Analysis failed for ${symbol}`, error);

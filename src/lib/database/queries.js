@@ -423,6 +423,51 @@ function getLatestBacktestResults(db) {
   });
 }
 
+/**
+ * Retrieves cached market funds flow report for a given market and date.
+ * 
+ * @param {sqlite3.Database} db 
+ * @param {string} market - 'US' or 'TW'
+ * @param {string} date - YYYY-MM-DD
+ * @returns {Promise<Object|null>}
+ */
+function getMarketFundsFlow(db, market, date) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT * FROM market_funds_flow WHERE market = ? AND date = ?;`,
+      [market, date],
+      (err, row) => {
+        if (err) return reject(err);
+        resolve(row || null);
+      }
+    );
+  });
+}
+
+/**
+ * Saves a new market funds flow report.
+ * 
+ * @param {sqlite3.Database} db 
+ * @param {Object} data
+ * @param {string} data.market
+ * @param {string} data.date
+ * @param {string} data.prompt
+ * @param {string} data.content
+ * @returns {Promise<void>}
+ */
+function saveMarketFundsFlow(db, data) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT OR REPLACE INTO market_funds_flow (market, date, prompt, content) VALUES (?, ?, ?, ?);`,
+      [data.market, data.date, data.prompt, data.content],
+      (err) => {
+        if (err) return reject(err);
+        resolve();
+      }
+    );
+  });
+}
+
 module.exports = {
   saveStock,
   saveStockData,
@@ -434,7 +479,9 @@ module.exports = {
   getMaxPriceDate,
   insertStockDataBatch,
   getHistoricalPricesFromDB,
-  getLatestBacktestResults
+  getLatestBacktestResults,
+  getMarketFundsFlow,
+  saveMarketFundsFlow
 };
 
 

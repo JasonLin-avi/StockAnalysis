@@ -220,4 +220,56 @@ describe('Database Module', () => {
       expect(msft).toBeUndefined();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Market Funds Flow Queries
+  // ---------------------------------------------------------------------------
+  describe('Market Funds Flow', () => {
+    const { saveMarketFundsFlow, getMarketFundsFlow } = require('../../src/lib/database/queries');
+
+    test('saves and retrieves market funds flow correctly', async () => {
+      const data = {
+        market: 'US',
+        date: '2026-07-15',
+        prompt: 'test prompt',
+        content: '# Test Content'
+      };
+
+      await saveMarketFundsFlow(db, data);
+
+      const retrieved = await getMarketFundsFlow(db, 'US', '2026-07-15');
+      expect(retrieved).not.toBeNull();
+      expect(retrieved.market).toBe('US');
+      expect(retrieved.date).toBe('2026-07-15');
+      expect(retrieved.prompt).toBe('test prompt');
+      expect(retrieved.content).toBe('# Test Content');
+    });
+
+    test('updates existing market funds flow (INSERT OR REPLACE)', async () => {
+      const initial = {
+        market: 'TW',
+        date: '2026-07-16',
+        prompt: 'prompt 1',
+        content: 'content 1'
+      };
+      const updated = {
+        market: 'TW',
+        date: '2026-07-16',
+        prompt: 'prompt 2',
+        content: 'content 2'
+      };
+
+      await saveMarketFundsFlow(db, initial);
+      await saveMarketFundsFlow(db, updated);
+
+      const retrieved = await getMarketFundsFlow(db, 'TW', '2026-07-16');
+      expect(retrieved.prompt).toBe('prompt 2');
+      expect(retrieved.content).toBe('content 2');
+    });
+
+    test('returns null for non-existent market funds flow', async () => {
+      const result = await getMarketFundsFlow(db, 'US', '2020-01-01');
+      expect(result).toBeNull();
+    });
+  });
 });

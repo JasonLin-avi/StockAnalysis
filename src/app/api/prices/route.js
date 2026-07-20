@@ -47,7 +47,22 @@ export async function GET(request) {
 
         if (db) {
           try {
-            const analysis = await getLatestAnalysisResults(db, symbol);
+            let analysis = await getLatestAnalysisResults(db, symbol);
+            
+            // Check if analysis or backtest data is missing or incomplete
+            // incomplete means it only has 5d, 10d, 20d (old format) but is missing 40d, 60d, 120d, 240d
+            const hasCompleteBacktest = analysis && 
+                                       analysis.backtest && 
+                                       analysis.backtest.winRate40d !== undefined && 
+                                       analysis.backtest.winRate240d !== undefined;
+            
+            // If missing backtest or data is incomplete (old schema), trigger analysis to fetch and calculate
+            if (!hasCompleteBacktest) {
+              logger.info('API_PRICES', `No complete backtest found for ${symbol}. Triggering performFullAnalysis in-flight...`);
+              const { performFullAnalysis } = require('../../../lib/integration');
+              analysis = await performFullAnalysis(symbol, db);
+            }
+
             if (analysis && analysis.backtest) {
               horizons.forEach(h => {
                 backtestMetrics[`winRate${h}d`] = analysis.backtest[`winRate${h}d`] || 0;
@@ -55,7 +70,7 @@ export async function GET(request) {
               });
             }
           } catch (dbErr) {
-            logger.warn('API_PRICES', `Could not fetch backtest for ${symbol}`, dbErr);
+            logger.warn('API_PRICES', `Could not fetch or calculate backtest for ${symbol}`, dbErr);
           }
         }
 

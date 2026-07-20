@@ -70,3 +70,63 @@ body {
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Custom Markdown Rendering Styles (Bypassing Tailwind Preflight reset) */
+.markdown-body h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1rem !important;
+  border-bottom: 1px solid #1e293b !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.markdown-body h3 {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #22d3ee !important; /* cyan-400 */
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.markdown-body p {
+  line-height: 1.75 !important;
+  margin-bottom: 1rem !important;
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.markdown-body ul {
+  list-style-type: disc !important;
+  margin-left: 2rem !important;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  display: block !important;
+}
+
+.markdown-body ol {
+  list-style-type: decimal !important;
+  margin-left: 2rem !important;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  display: block !important;
+}
+
+.markdown-body li {
+  display: list-item !important;
+  list-style-position: outside !important;
+  margin-bottom: 0.5rem !important;
+  padding-left: 0.5rem !important;
+  color: #cbd5e1 !important;
+}
+
+.markdown-body li strong {
+  color: #f8fafc !important; /* slate-50 */
+  font-weight: 600 !important;
+}
+
+.markdown-body li::marker {
+  color: #22d3ee !important; /* cyan-400 */
+}
+
+
+
