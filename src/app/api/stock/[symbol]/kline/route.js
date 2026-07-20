@@ -16,7 +16,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../../lib/database/connection';
 import { saveStock, getHistoricalPricesFromDB } from '../../../../../lib/database/queries';
 import { syncStockPricesIncremental } from '../../../../../lib/data-fetcher';
-const { generateLLMTechnicalSummary } = require('@/lib/technical-analysis/klineanalysis');
+import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 
 export const dynamic = 'force-dynamic';
 
