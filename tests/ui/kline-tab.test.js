@@ -153,4 +153,57 @@ describe('KlineTab Component', () => {
 
     expect(mockChart.remove).toHaveBeenCalled();
   });
+
+  test('renders quantitative technical diagnosis summary panel when summary data is present', async () => {
+    const responseWithSummary = {
+      ...sampleKlineResponse,
+      summary: {
+        date: '2026-07-20',
+        price_action: {
+          current_close: 157,
+          change_from_prev: 3,
+          change_pct: 1.95,
+          support_level_20d: 148,
+          resistance_level_20d: 160,
+          support_level_60d: 135,
+          resistance_level_60d: 165
+        },
+        technical_indicators: {
+          MA5: 155.2,
+          MA20: 150.1,
+          MA60: 142.5,
+          trend_short_term: '多頭排列 (短均高於長均)',
+          trend_long_term: '長線多頭結構 (價格在季線上方且季線走揚)',
+          RSI_14: 62.4,
+          MACD_status: 'DIF在訊號線上方，柱狀體擴張 (多方動能增強)'
+        },
+        volume_analysis: {
+          current_volume: 12000,
+          volume_vs_5d_avg: '爆量'
+        }
+      }
+    };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(responseWithSummary)
+      })
+    );
+
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    expect(screen.getByText('🧠 量化技術診斷')).toBeInTheDocument();
+    expect(screen.getByText('2026-07-20')).toBeInTheDocument();
+    expect(screen.getByText('157')).toBeInTheDocument();
+    expect(screen.getByText(/155.2/)).toBeInTheDocument();
+    expect(screen.getByText(/150.1/)).toBeInTheDocument();
+    expect(screen.getByText(/142.5/)).toBeInTheDocument();
+    expect(screen.getByText(/62.4/)).toBeInTheDocument();
+    expect(screen.getByText(/多頭排列/)).toBeInTheDocument();
+    expect(screen.getByText(/長線多頭結構/)).toBeInTheDocument();
+  });
 });
+

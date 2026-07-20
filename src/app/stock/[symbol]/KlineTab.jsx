@@ -63,16 +63,51 @@ function SummaryPanel({ summary, isLoading }) {
     return 'text-slate-300';
   };
 
-  // Why: Volume comparison badge to highlight abnormal trading volume.
-  const volumeBadge = (ratio) => {
-    if (ratio == null) return null;
-    if (ratio >= 1.5) {
+  // Why: Volume comparison badge to highlight abnormal trading volume (supports both number ratios and status strings).
+  const volumeBadge = (val) => {
+    if (val == null) return null;
+    if (typeof val === 'string') {
+      const isSurge = val.includes('爆量');
+      return (
+        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+          isSurge 
+            ? 'bg-red-400/10 text-red-400 border-red-400/20 font-semibold' 
+            : 'bg-slate-700/60 text-slate-400 border-slate-700'
+        }`}>
+          {val}
+        </span>
+      );
+    }
+    if (val >= 1.5) {
       return <span className="text-xs px-2 py-0.5 rounded-full bg-red-400/10 text-red-400 border border-red-400/20 font-semibold">爆量</span>;
     }
     return <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 border border-slate-700 font-medium">量能平穩</span>;
   };
 
-  const changePct = summary.change_pct;
+  // Why: Normalize fields whether summary is returned in a nested structure (price_action, technical_indicators, volume_analysis) or flat structure.
+  const priceAction = summary.price_action || {};
+  const techIndicators = summary.technical_indicators || {};
+  const volumeAnalysis = summary.volume_analysis || {};
+
+  const currentClose = priceAction.current_close ?? summary.current_close;
+  const changeFromPrev = priceAction.change_from_prev ?? summary.change_from_prev;
+  const changePct = priceAction.change_pct ?? summary.change_pct;
+  const support20d = priceAction.support_level_20d ?? summary.support_20d;
+  const resistance20d = priceAction.resistance_level_20d ?? summary.resistance_20d;
+  const support60d = priceAction.support_level_60d ?? summary.support_60d;
+  const resistance60d = priceAction.resistance_level_60d ?? summary.resistance_60d;
+
+  const ma5Value = techIndicators.MA5 ?? summary.ma5_value;
+  const ma20Value = techIndicators.MA20 ?? summary.ma20_value;
+  const ma60Value = techIndicators.MA60 ?? summary.ma60_value;
+  const shortTermTrend = techIndicators.trend_short_term ?? summary.short_term_trend;
+  const longTermTrend = techIndicators.trend_long_term ?? summary.long_term_trend;
+  const rsi14 = techIndicators.RSI_14 ?? summary.rsi_14;
+  const macdStatus = techIndicators.MACD_status ?? summary.macd_status;
+
+  const currentVolume = volumeAnalysis.current_volume ?? summary.current_volume;
+  const volumeVs5dAvg = volumeAnalysis.volume_vs_5d_avg ?? summary.volume_vs_5d_avg;
+
   const changeColor = changePct > 0 ? 'text-green-400' : changePct < 0 ? 'text-red-400' : 'text-slate-400';
 
   return (
@@ -91,10 +126,10 @@ function SummaryPanel({ summary, isLoading }) {
       <div className="space-y-2">
         <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">收盤價 & 支撐壓力</div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-slate-100">{summary.current_close?.toLocaleString()}</span>
-          {summary.change_from_prev != null && (
+          <span className="text-2xl font-bold text-slate-100">{currentClose != null ? currentClose.toLocaleString() : '—'}</span>
+          {changeFromPrev != null && (
             <span className={`text-sm font-semibold ${changeColor}`}>
-              {summary.change_from_prev > 0 ? '+' : ''}{summary.change_from_prev?.toFixed(2)}
+              {changeFromPrev > 0 ? '+' : ''}{changeFromPrev?.toFixed(2)}
               {changePct != null && (
                 <span className="ml-1 text-xs">({changePct > 0 ? '+' : ''}{changePct?.toFixed(2)}%)</span>
               )}
@@ -104,19 +139,19 @@ function SummaryPanel({ summary, isLoading }) {
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="bg-slate-800/50 rounded-lg p-2">
             <div className="text-slate-500 mb-0.5">20日支撐</div>
-            <div className="text-slate-200 font-semibold">{summary.support_20d?.toLocaleString() ?? '—'}</div>
+            <div className="text-slate-200 font-semibold">{support20d != null ? support20d.toLocaleString() : '—'}</div>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-2">
             <div className="text-slate-500 mb-0.5">20日壓力</div>
-            <div className="text-slate-200 font-semibold">{summary.resistance_20d?.toLocaleString() ?? '—'}</div>
+            <div className="text-slate-200 font-semibold">{resistance20d != null ? resistance20d.toLocaleString() : '—'}</div>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-2">
             <div className="text-slate-500 mb-0.5">60日支撐</div>
-            <div className="text-slate-200 font-semibold">{summary.support_60d?.toLocaleString() ?? '—'}</div>
+            <div className="text-slate-200 font-semibold">{support60d != null ? support60d.toLocaleString() : '—'}</div>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-2">
             <div className="text-slate-500 mb-0.5">60日壓力</div>
-            <div className="text-slate-200 font-semibold">{summary.resistance_60d?.toLocaleString() ?? '—'}</div>
+            <div className="text-slate-200 font-semibold">{resistance60d != null ? resistance60d.toLocaleString() : '—'}</div>
           </div>
         </div>
       </div>
@@ -126,24 +161,24 @@ function SummaryPanel({ summary, isLoading }) {
         <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">均線與趨勢</div>
         <div className="flex flex-wrap gap-1.5">
           <span className="text-xs px-2 py-0.5 rounded-full bg-[#EAB308]/10 text-[#EAB308] border border-[#EAB308]/20 font-semibold">
-            MA5: {summary.ma5_value?.toFixed(2) ?? '—'}
+            MA5: {ma5Value != null ? ma5Value.toFixed(2) : '—'}
           </span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20 font-semibold">
-            MA20: {summary.ma20_value?.toFixed(2) ?? '—'}
+            MA20: {ma20Value != null ? ma20Value.toFixed(2) : '—'}
           </span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-[#A855F7]/10 text-[#A855F7] border border-[#A855F7]/20 font-semibold">
-            MA60: {summary.ma60_value?.toFixed(2) ?? '—'}
+            MA60: {ma60Value != null ? ma60Value.toFixed(2) : '—'}
           </span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {summary.short_term_trend && (
-            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${trendColor(summary.short_term_trend)}`}>
-              短期: {summary.short_term_trend}
+          {shortTermTrend && (
+            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${trendColor(shortTermTrend)}`}>
+              短期: {shortTermTrend}
             </span>
           )}
-          {summary.long_term_trend && (
-            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${trendColor(summary.long_term_trend)}`}>
-              長期: {summary.long_term_trend}
+          {longTermTrend && (
+            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${trendColor(longTermTrend)}`}>
+              長期: {longTermTrend}
             </span>
           )}
         </div>
@@ -155,15 +190,15 @@ function SummaryPanel({ summary, isLoading }) {
         <div className="flex items-center gap-3 text-sm">
           <div>
             <span className="text-slate-500 text-xs mr-1">RSI(14):</span>
-            <span className={`font-bold ${rsiColor(summary.rsi_14)}`}>
-              {summary.rsi_14?.toFixed(1) ?? '—'}
+            <span className={`font-bold ${rsiColor(rsi14)}`}>
+              {rsi14 != null ? rsi14.toFixed(1) : '—'}
             </span>
           </div>
         </div>
-        {summary.macd_status && (
+        {macdStatus && (
           <div className="text-xs text-slate-400">
             <span className="text-slate-500 mr-1">MACD:</span>
-            {summary.macd_status}
+            {macdStatus}
           </div>
         )}
       </div>
@@ -173,9 +208,9 @@ function SummaryPanel({ summary, isLoading }) {
         <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">量能分析</div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-200 font-semibold">
-            {summary.current_volume?.toLocaleString() ?? '—'}
+            {currentVolume != null ? currentVolume.toLocaleString() : '—'}
           </span>
-          {volumeBadge(summary.volume_vs_5d_avg)}
+          {volumeBadge(volumeVs5dAvg)}
         </div>
       </div>
     </div>
