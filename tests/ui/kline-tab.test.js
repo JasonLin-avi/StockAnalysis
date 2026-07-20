@@ -14,6 +14,14 @@ import '@testing-library/jest-dom';
 import KlineTab from '../../src/app/stock/[symbol]/KlineTab';
 import * as lightweightCharts from 'lightweight-charts';
 
+// Mock react-markdown and remark-gfm modules for Jest ESM compatibility
+jest.mock('react-markdown', () => {
+  const MockMarkdown = ({ children }) => <div>{children}</div>;
+  MockMarkdown.displayName = 'MockMarkdown';
+  return MockMarkdown;
+});
+jest.mock('remark-gfm', () => ({}));
+
 // Mock lightweight-charts module
 jest.mock('lightweight-charts', () => {
   return {
@@ -69,12 +77,21 @@ describe('KlineTab Component', () => {
 
     lightweightCharts.createChart.mockReturnValue(mockChart);
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    global.fetch = jest.fn((url) => {
+      if (typeof url === 'string' && url.includes('/technical-ai')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            symbol: 'AAPL',
+            markdown: '### 🤖 15年資深量化專家 AI 深度診斷\n\n- **長線波段佈局**: 趨勢向上'
+          })
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(sampleKlineResponse)
-      })
-    );
+      });
+    });
   });
 
   afterEach(() => {
@@ -205,5 +222,19 @@ describe('KlineTab Component', () => {
     expect(screen.getByText(/多頭排列/)).toBeInTheDocument();
     expect(screen.getByText(/長線多頭結構/)).toBeInTheDocument();
   });
+
+  test('fetches /api/stock/[symbol]/technical-ai and renders full-width TechnicalAISummaryPanel with AI diagnosis markdown', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai');
+
+    await waitFor(() => {
+      expect(screen.getByText('🤖 15年資深量化專家 AI 深度診斷')).toBeInTheDocument();
+      expect(screen.getByText(/長線波段佈局/)).toBeInTheDocument();
+    });
+  });
 });
+
 
