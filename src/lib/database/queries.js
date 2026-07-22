@@ -515,6 +515,36 @@ function savePromptAnalysis(db, symbol, analysis_type, date, content) {
 }
 
 /**
+ * Retrieves the latest cached prompt analysis result within a specific number of days.
+ *
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string} symbol - Stock ticker
+ * @param {string} analysis_type - Type of analysis, e.g., 'fundamental'
+ * @param {number} days - Number of days to look back
+ * @returns {Promise<string|null>} Markdown content or null if not found
+ */
+function getRecentPromptAnalysis(db, symbol, analysis_type, days) {
+  return new Promise((resolve, reject) => {
+    // Why: Calculate the ISO date string representing N days ago as our cutoff limit.
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+
+    // Why: Query for matches where symbol/type match and date is greater than or equal to cutoff.
+    db.get(
+      `SELECT content FROM stock_prompt_analysis 
+       WHERE symbol = ? AND analysis_type = ? AND date >= ? 
+       ORDER BY date DESC LIMIT 1;`,
+      [symbol.toUpperCase(), analysis_type, cutoffStr],
+      (err, row) => {
+        if (err) return reject(new Error(`Failed to fetch recent prompt analysis: ${err.message}`));
+        resolve(row ? row.content : null);
+      }
+    );
+  });
+}
+
+/**
  * Retrieves the latest cached market overview metrics (within 24 hours).
  */
 function getMarketOverviewMetrics(db) {
@@ -568,8 +598,10 @@ module.exports = {
   saveMarketFundsFlow,
   getPromptAnalysis,
   savePromptAnalysis,
+  getRecentPromptAnalysis,
   getMarketOverviewMetrics,
   saveMarketOverviewMetrics
 };
+
 
 
