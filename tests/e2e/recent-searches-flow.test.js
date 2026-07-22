@@ -14,6 +14,22 @@ import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '../../src/app/page';
+
+// Mock ESM-only modules to prevent Jest SyntaxError (Unexpected token 'export')
+jest.mock('react-markdown', () => {
+  const ReactMarkdown = ({ children }) => <>{children}</>;
+  ReactMarkdown.displayName = 'ReactMarkdown';
+  return ReactMarkdown;
+});
+jest.mock('remark-gfm', () => ({}));
+
+// Mock KlineTab to prevent loading lightweight-charts which fails in Jest jsdom environment
+jest.mock('../../src/app/stock/[symbol]/KlineTab', () => {
+  const MockKlineTab = () => <div>Mock KlineTab</div>;
+  MockKlineTab.displayName = 'MockKlineTab';
+  return MockKlineTab;
+});
+
 import StockDetail from '../../src/app/stock/[symbol]/page';
 
 // Mock next/navigation to prevent "invariant expected app router to be mounted" error
@@ -125,9 +141,7 @@ describe('Recent Searches End-to-End Flow', () => {
 
 
     // 2. Render Homepage — RecentSearches reads from localStorage that HistoryTracker wrote above.
-    // Resolve the async Server Component Home before rendering.
-    const homeElement = await Home();
-    render(homeElement);
+    render(<Home />);
 
     // 3. Assert the recent searches section heading and AAPL card are visible.
     //    We use getAllByText because 'AAPL' appears in multiple places:
