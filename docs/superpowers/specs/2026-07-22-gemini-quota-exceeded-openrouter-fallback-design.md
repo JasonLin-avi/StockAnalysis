@@ -106,7 +106,8 @@ export async function callGemini(prompt, options = {}) {
     process.env.GEMINI_MODEL_NAME ||
     'gemini-1.5-flash';
     
-  const tools = options.tools || [];
+  // Enable Google Search grounding tool by default, unless overridden in options
+  const tools = options.tools !== undefined ? options.tools : [{ googleSearch: {} }];
 
   try {
     const model = genAI.getGenerativeModel({
