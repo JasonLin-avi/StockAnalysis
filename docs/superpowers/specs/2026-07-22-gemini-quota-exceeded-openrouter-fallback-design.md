@@ -19,6 +19,7 @@ We will modify the codebase in the following locations:
 
 ### 3.1 Environmental Variables
 The following environment variables will be defined in `.env.local` (or standard environment config):
+* `OPENROUTER_API_URL`: The full URL endpoint for OpenRouter completion (e.g., `https://openrouter.ai/api/v1/chat/completions`).
 * `OPENROUTER_GEMINI_API_KEY`: API key for OpenRouter service.
 * `OPENROUTER_GEMINI_MODEL_NAME`: The model name identifier on OpenRouter (e.g., `google/gemini-2.5-flash`).
 
@@ -36,7 +37,7 @@ graph TD
     C -->|No| E{Error contains "Quota exceeded"?}
     E -->|No| F[Re-throw Error]
     E -->|Yes| G[Log warning and call callOpenRouter]
-    G --> H[Read OPENROUTER_GEMINI_API_KEY & OPENROUTER_GEMINI_MODEL_NAME]
+    G --> H[Read OPENROUTER_API_URL, KEY & MODEL]
     H --> I[Fetch from OpenRouter API]
     I --> J[Return OpenRouter Response]
 ```
@@ -54,9 +55,13 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
  * @returns {Promise<string>} Generative text output.
  */
 async function callOpenRouter(prompt) {
+  const apiUrl = process.env.OPENROUTER_API_URL;
   const apiKey = process.env.OPENROUTER_GEMINI_API_KEY;
   const modelName = process.env.OPENROUTER_GEMINI_MODEL_NAME;
 
+  if (!apiUrl) {
+    throw new Error('OPENROUTER_API_URL is not set in environment variables');
+  }
   if (!apiKey) {
     throw new Error('OPENROUTER_GEMINI_API_KEY is not set in environment variables');
   }
@@ -64,7 +69,7 @@ async function callOpenRouter(prompt) {
     throw new Error('OPENROUTER_GEMINI_MODEL_NAME is not set in environment variables');
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
