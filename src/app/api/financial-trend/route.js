@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callGemini } from '../../../lib/gemini/client';
 import { connectToDatabase } from '../../../lib/database/connection';
-const { getPromptAnalysis, savePromptAnalysis } = require('../../../lib/database/queries');
+const { getRecentPromptAnalysis, savePromptAnalysis } = require('../../../lib/database/queries');
 
 export const dynamic = 'force-dynamic';
 
@@ -30,8 +30,8 @@ export async function GET(request) {
     const db = await connectToDatabase();
     const today = new Date().toISOString().split('T')[0];
 
-    // Check DB cache for 'financial_trend'
-    const cached = await getPromptAnalysis(db, symbol, 'financial_trend', today);
+    // Query cache using 7-day window to avoid re-generating structural financial analysis repeatedly
+    const cached = await getRecentPromptAnalysis(db, symbol, 'financial_trend', 7);
     if (cached) {
       return NextResponse.json({ markdown: cached }, { status: 200 });
     }
