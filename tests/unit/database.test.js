@@ -277,7 +277,6 @@ describe('Database Module', () => {
   // Prompt Analysis Cache Range Queries
   // ---------------------------------------------------------------------------
   describe('Prompt Analysis Cache Range Queries', () => {
-    // Note: getRecentPromptAnalysis is not implemented or exported yet
     const { savePromptAnalysis, getRecentPromptAnalysis } = require('../../src/lib/database/queries');
 
     test('saves prompt analysis and retrieves it within valid days limit', async () => {
