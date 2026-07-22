@@ -272,4 +272,36 @@ describe('Database Module', () => {
       expect(result).toBeNull();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Prompt Analysis Cache Range Queries
+  // ---------------------------------------------------------------------------
+  describe('Prompt Analysis Cache Range Queries', () => {
+    // Note: getRecentPromptAnalysis is not implemented or exported yet
+    const { savePromptAnalysis, getRecentPromptAnalysis } = require('../../src/lib/database/queries');
+
+    test('saves prompt analysis and retrieves it within valid days limit', async () => {
+      const today = new Date().toISOString().split('T')[0];
+      await savePromptAnalysis(db, 'AAPL', 'fundamental', today, '# AAPL Fundamental');
+
+      const cached = await getRecentPromptAnalysis(db, 'AAPL', 'fundamental', 7);
+      expect(cached).toBe('# AAPL Fundamental');
+    });
+
+    test('returns null if latest cache is older than specified days', async () => {
+      const tenDaysAgo = new Date();
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+      const oldDate = tenDaysAgo.toISOString().split('T')[0];
+
+      await savePromptAnalysis(db, 'AAPL', 'fundamental', oldDate, '# AAPL Old Fundamental');
+
+      const cached = await getRecentPromptAnalysis(db, 'AAPL', 'fundamental', 7);
+      expect(cached).toBeNull();
+    });
+
+    test('returns null if no cache exists for the symbol and type', async () => {
+      const cached = await getRecentPromptAnalysis(db, 'MSFT', 'fundamental', 7);
+      expect(cached).toBeNull();
+    });
+  });
 });
