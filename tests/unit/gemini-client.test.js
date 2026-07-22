@@ -12,12 +12,16 @@ describe('Gemini Client', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGenerateContent = jest.fn();
-    GoogleGenerativeAI.prototype.getGenerativeModel = jest.fn().mockReturnValue({
+    GoogleGenerativeAI.prototype.getGenerativeModel.mockReturnValue({
       generateContent: mockGenerateContent
     });
     
     // Mock global fetch
-    global.fetch = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+      text: async () => ''
+    });
     
     // Setup mock env variables
     process.env.GEMINI_API_KEY = 'mock-google-key';
@@ -70,6 +74,18 @@ describe('Gemini Client', () => {
         })
       })
     );
+  });
+
+  test('throws error when OpenRouter API call fails', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('API quota exceeded for this project.'));
+    
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => 'Internal Server Error'
+    });
+
+    await expect(callGemini('Hello World')).rejects.toThrow('OpenRouter API error (500): Internal Server Error');
   });
 
   test('throws original error if error is not quota related', async () => {

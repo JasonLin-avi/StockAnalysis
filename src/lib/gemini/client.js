@@ -5,12 +5,19 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
 /**
  * Universal helper to call OpenRouter API (OpenAI chat completions compatible format).
  * @param {string} prompt - The final prompt string.
+ * @param {Object} options - Optional configuration options.
  * @returns {Promise<string>} Generative text output.
  */
-async function callOpenRouter(prompt) {
+async function callOpenRouter(prompt, options = {}) {
+  if (options.tools && Array.isArray(options.tools) && options.tools.some(tool => tool && tool.googleSearch !== undefined)) {
+    console.warn('[Gemini Client] Google Search tool grounding is not supported on OpenRouter and will be skipped.');
+  }
+
   const apiUrl = process.env.OPENROUTER_API_URL;
   const apiKey = process.env.OPENROUTER_GEMINI_API_KEY;
   const modelName = process.env.OPENROUTER_GEMINI_MODEL_NAME;
@@ -59,8 +66,6 @@ async function callOpenRouter(prompt) {
  * @returns {Promise<string>} Generative text output.
  */
 export async function callGemini(prompt, options = {}) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
   // Model priority: options.model -> process.env.GEMINI_MODEL_NAME -> fallback 'gemini-1.5-flash'
   const modelName =
     options.model ||
@@ -83,7 +88,7 @@ export async function callGemini(prompt, options = {}) {
     // Why: Dynamically intercept Quota exceeded errors (case-insensitive) and switch to OpenRouter.
     if (/quota exceeded/i.test(errorMsg)) {
       console.warn('[Gemini Client] Google Gemini API Quota exceeded. Falling back to OpenRouter API...');
-      return await callOpenRouter(prompt);
+      return await callOpenRouter(prompt, options);
     }
     throw error;
   }
