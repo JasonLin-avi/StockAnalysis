@@ -42,6 +42,24 @@ describe('Database Module', () => {
         done();
       });
     });
+
+    test('does not attempt to create directory on disk if TURSO_DATABASE_URL is set', async () => {
+      // Temporarily set Turso URL env to file::memory: to bypass network call but trigger env check
+      process.env.TURSO_DATABASE_URL = 'file::memory:';
+      const fs = require('fs');
+      const spy = jest.spyOn(fs, 'mkdirSync');
+
+      try {
+        // This will connect via libsql-adapter mock database to memory or dummy
+        // Use a nonexistent directory path to trigger fs.existsSync === false
+        const testDb = await connectToDatabase('nonexistent-dir/test-dummy-turso.db');
+        expect(spy).not.toHaveBeenCalled();
+        await new Promise((resolve) => testDb.close(resolve));
+      } finally {
+        spy.mockRestore();
+        delete process.env.TURSO_DATABASE_URL;
+      }
+    });
   });
 
   // ---------------------------------------------------------------------------

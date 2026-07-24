@@ -35,7 +35,10 @@ let activeDbInstance = null;
 function connectToDatabase(dbPath = 'data/stock.db') {
   return new Promise((resolve, reject) => {
     // Ensure the parent directory exists if initializing a physical database file on disk.
-    if (dbPath !== ':memory:') {
+    // Why: Vercel serverless environment has a read-only filesystem under /var/task.
+    // If TURSO_DATABASE_URL is set, we connect to the cloud database and must not try to create local directories on Vercel.
+    const useTurso = !!process.env.TURSO_DATABASE_URL;
+    if (!useTurso && dbPath !== ':memory:') {
       const dir = path.dirname(path.isAbsolute(dbPath) ? dbPath : path.resolve(process.cwd(), dbPath));
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
