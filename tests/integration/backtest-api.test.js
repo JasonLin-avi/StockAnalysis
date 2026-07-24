@@ -38,12 +38,6 @@ jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => {
   };
 });
 
-// Mock Google Finance to prevent fallbacks from accessing network
-jest.mock('../../src/lib/data-fetcher/google-finance', () => ({
-  fetchStockData: jest.fn(),
-  fetchHistoricalData: jest.fn()
-}));
-
 // Mock news analysis to avoid external RSS parser execution
 jest.mock('../../src/lib/news-analysis', () => ({
   performNewsAnalysis: jest.fn().mockResolvedValue({

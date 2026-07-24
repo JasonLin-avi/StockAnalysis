@@ -1,27 +1,22 @@
 const yahoo = require('./yahoo-finance');
-const google = require('./google-finance');
 
 /**
- * Fetches current stock data with Yahoo Finance as primary and Google Finance as fallback.
+ * Fetches current stock data using Yahoo Finance.
+ * Why: Google Finance API is permanently offline and legacy fallback mirror has been deprecated.
  * @param {string} symbol - Stock symbol (e.g. 'AAPL')
  * @returns {Promise<Object>} Standardized stock data
  */
 async function fetchStockData(symbol) {
   try {
     return await yahoo.fetchStockData(symbol);
-  } catch (yahooError) {
-    try {
-      return await google.fetchStockData(symbol);
-    } catch (googleError) {
-      throw new Error(
-        `Failed to fetch stock data for ${symbol}: Yahoo (${yahooError.message}), Google (${googleError.message})`
-      );
-    }
+  } catch (error) {
+    throw new Error(`Failed to fetch stock data for ${symbol}: ${error.message}`);
   }
 }
 
 /**
- * Fetches historical data with Yahoo Finance as primary and Google Finance as fallback.
+ * Fetches historical data using Yahoo Finance.
+ * Why: Google Finance API is permanently offline and legacy fallback mirror has been deprecated.
  * @param {string} symbol - Stock symbol
  * @param {string} period - Time range (default: '1mo')
  * @returns {Promise<Object>} Standardized historical data
@@ -29,14 +24,8 @@ async function fetchStockData(symbol) {
 async function fetchHistoricalData(symbol, period = '1mo') {
   try {
     return await yahoo.fetchHistoricalData(symbol, period);
-  } catch (yahooError) {
-    try {
-      return await google.fetchHistoricalData(symbol, period);
-    } catch (googleError) {
-      throw new Error(
-        `Failed to fetch historical data for ${symbol}: Yahoo (${yahooError.message}), Google (${googleError.message})`
-      );
-    }
+  } catch (error) {
+    throw new Error(`Failed to fetch historical data for ${symbol}: ${error.message}`);
   }
 }
 
