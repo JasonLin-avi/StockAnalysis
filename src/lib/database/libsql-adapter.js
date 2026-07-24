@@ -27,7 +27,7 @@ class Database {
 
     // Simulate async callback mechanism expected by sqlite3 connection constructor
     if (callback) {
-      setTimeout(() => callback(null), 10);
+      process.nextTick(() => callback(null));
     }
   }
 
@@ -84,8 +84,8 @@ class Database {
       .then(res => {
         if (callback) {
           const ctx = {
-            // Convert bigint to Number for sqlite3 callback compatibility
-            lastID: res.lastInsertRowid ? Number(res.lastInsertRowid) : undefined,
+            // Convert bigint lastInsertRowid from libsql client to Number for backward compatibility with sqlite3
+            lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null) ? Number(res.lastInsertRowid) : undefined,
             changes: res.rowsAffected
           };
           callback.call(ctx, null);
@@ -164,7 +164,7 @@ class Statement {
       .then(res => {
         if (callback) {
           const ctx = {
-            lastID: res.lastInsertRowid ? Number(res.lastInsertRowid) : undefined,
+            lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null) ? Number(res.lastInsertRowid) : undefined,
             changes: res.rowsAffected
           };
           callback.call(ctx, null);
@@ -172,7 +172,6 @@ class Statement {
       })
       .catch(err => {
         if (callback) callback(err);
-        throw err;
       });
 
     this.promises.push(p);

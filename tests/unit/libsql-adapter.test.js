@@ -69,4 +69,26 @@ describe("Libsql Adapter - sqlite3 Compatibility API", () => {
       });
     });
   });
+
+  test("should handle lastID === 0 correctly when inserting explicit id 0", (done) => {
+    db.run("CREATE TABLE zero_table (id INTEGER PRIMARY KEY, name TEXT);", (err) => {
+      expect(err).toBeNull();
+      db.run("INSERT INTO zero_table (id, name) VALUES (0, 'Zero');", function(err) {
+        expect(err).toBeNull();
+        expect(this.lastID).toBe(0);
+        done();
+      });
+    });
+  });
+
+  test("should handle Statement.run error gracefully without UnhandledPromiseRejection", (done) => {
+    const stmt = db.prepare("INSERT INTO nonexistent_table (col) VALUES (?);");
+    stmt.run([123], (err) => {
+      expect(err).toBeTruthy();
+      stmt.finalize((err) => {
+        expect(err).toBeNull();
+        done();
+      });
+    });
+  });
 });
