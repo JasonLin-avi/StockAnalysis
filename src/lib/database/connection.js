@@ -14,7 +14,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+// Why: Replace native sqlite3 driver with libsql-adapter to support local file and Turso cloud database across environments.
+const sqlite3 = require('./libsql-adapter');
 const { schema } = require('./schema');
 
 /**

@@ -1,4 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
+// Why: Replace native sqlite3 with libsql-adapter in watchlist migration test.
+const sqlite3 = require('../../src/lib/database/libsql-adapter');
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
@@ -20,7 +21,13 @@ describe('Watchlist Migration', () => {
 
   afterAll((done) => {
     db.close(() => {
-      if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+      if (fs.existsSync(dbPath)) {
+        try {
+          fs.unlinkSync(dbPath);
+        } catch (e) {
+          // Ignore EBUSY on Windows during temp file cleanup
+        }
+      }
       done();
     });
   });

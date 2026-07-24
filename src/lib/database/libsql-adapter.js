@@ -37,7 +37,9 @@ class Database {
   close(callback) {
     try {
       this.client.close();
-      if (callback) callback(null);
+      if (callback) {
+        setTimeout(() => callback(null), 50);
+      }
     } catch (err) {
       if (callback) callback(err);
     }
