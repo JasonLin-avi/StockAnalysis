@@ -24,6 +24,11 @@ class Database {
     }
 
     this.client = createClient({ url, authToken });
+    
+    // Why: Support stateless transaction buffering over HTTP remote connections.
+    // We queue SQL commands executed inside BEGIN/COMMIT blocks and execute them atomically via client.batch on COMMIT.
+    this.inTransaction = false;
+    this.txQueue = [];
 
     // Simulate async callback mechanism expected by sqlite3 connection constructor
     if (callback) {
@@ -75,6 +80,7 @@ class Database {
 
   /**
    * Run write query and return context with lastID and changes count.
+   * Intercepts transaction flow (BEGIN/COMMIT/ROLLBACK) for buffering.
    */
   run(sql, params, callback) {
     if (typeof params === 'function') {
@@ -82,11 +88,84 @@ class Database {
       params = [];
     }
 
+    const cleanSql = sql.trim().toUpperCase();
+
+    // 1. Intercept BEGIN TRANSACTION
+    if (cleanSql.startsWith("BEGIN TRANSACTION") || cleanSql.startsWith("BEGIN;")) {
+      this.inTransaction = true;
+      this.txQueue = [];
+      if (callback) {
+        const ctx = { changes: 0, lastID: 0 };
+        process.nextTick(() => callback.call(ctx, null));
+      }
+      return;
+    }
+
+    // 2. Intercept COMMIT
+    if (cleanSql.startsWith("COMMIT") || cleanSql.startsWith("END TRANSACTION")) {
+      if (!this.inTransaction) {
+        if (callback) {
+          process.nextTick(() => callback(new Error("cannot commit - no transaction is active")));
+        }
+        return;
+      }
+
+      this.inTransaction = false;
+      const statements = [...this.txQueue];
+      this.txQueue = [];
+
+      if (statements.length === 0) {
+        if (callback) {
+          const ctx = { changes: 0, lastID: 0 };
+          process.nextTick(() => callback.call(ctx, null));
+        }
+        return;
+      }
+
+      // Execute all buffered transaction queries atomically in a single HTTP batch request
+      this.client.batch(statements, 'write')
+        .then(results => {
+          if (callback) {
+            const lastRes = results[results.length - 1];
+            const ctx = {
+              lastID: (lastRes?.lastInsertRowid !== undefined && lastRes?.lastInsertRowid !== null) ? Number(lastRes.lastInsertRowid) : undefined,
+              changes: lastRes?.rowsAffected || 0
+            };
+            callback.call(ctx, null);
+          }
+        })
+        .catch(err => {
+          if (callback) callback(err);
+        });
+      return;
+    }
+
+    // 3. Intercept ROLLBACK
+    if (cleanSql.startsWith("ROLLBACK")) {
+      this.inTransaction = false;
+      this.txQueue = [];
+      if (callback) {
+        const ctx = { changes: 0, lastID: 0 };
+        process.nextTick(() => callback.call(ctx, null));
+      }
+      return;
+    }
+
+    // 4. Buffer ordinary queries if inside transaction block
+    if (this.inTransaction) {
+      this.txQueue.push({ sql, args: params || [] });
+      if (callback) {
+        const ctx = { changes: 1, lastID: 1 };
+        process.nextTick(() => callback.call(ctx, null));
+      }
+      return;
+    }
+
+    // 5. Normal stateless query execution
     this.client.execute({ sql, args: params || [] })
       .then(res => {
         if (callback) {
           const ctx = {
-            // Convert bigint lastInsertRowid from libsql client to Number for backward compatibility with sqlite3
             lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null) ? Number(res.lastInsertRowid) : undefined,
             changes: res.rowsAffected
           };
@@ -140,21 +219,21 @@ class Database {
    * Create prepared statement object.
    */
   prepare(sql, callback) {
-    const stmt = new Statement(this.client, sql);
+    const stmt = new Statement(this, sql);
     if (callback) callback(null, stmt);
     return stmt;
   }
 }
 
 class Statement {
-  constructor(client, sql) {
-    this.client = client;
+  constructor(database, sql) {
+    this.database = database;
     this.sql = sql;
     this.promises = [];
   }
 
   /**
-   * Execute prepared statement and queue promise for batch finalization.
+   * Execute prepared statement. Diverts to database.run buffering if inside a transaction block.
    */
   run(params, callback) {
     if (typeof params === 'function') {
@@ -162,7 +241,12 @@ class Statement {
       params = [];
     }
 
-    const p = this.client.execute({ sql: this.sql, args: params || [] })
+    if (this.database.inTransaction) {
+      this.database.run(this.sql, params, callback);
+      return this;
+    }
+
+    const p = this.database.client.execute({ sql: this.sql, args: params || [] })
       .then(res => {
         if (callback) {
           const ctx = {

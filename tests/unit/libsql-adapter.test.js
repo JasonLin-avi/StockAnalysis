@@ -91,4 +91,33 @@ describe("Libsql Adapter - sqlite3 Compatibility API", () => {
       });
     });
   });
+
+  test("should support sqlite3 transaction API pattern (BEGIN/COMMIT) via buffering", (done) => {
+    db.run("CREATE TABLE tx_table (id INTEGER PRIMARY KEY, item TEXT);", (err) => {
+      expect(err).toBeNull();
+
+      db.run("BEGIN TRANSACTION;", (err) => {
+        expect(err).toBeNull();
+      });
+
+      db.run("INSERT INTO tx_table (item) VALUES (?);", ["Sword"], (err) => {
+        expect(err).toBeNull();
+      });
+
+      const stmt = db.prepare("INSERT INTO tx_table (item) VALUES (?);");
+      stmt.run(["Shield"]);
+      stmt.finalize((err) => {
+        expect(err).toBeFalsy();
+      });
+
+      db.run("COMMIT;", function(err) {
+        expect(err).toBeNull();
+        db.all("SELECT id, item FROM tx_table ORDER BY id ASC;", (err, rows) => {
+          expect(err).toBeNull();
+          expect(rows).toEqual([{ id: 1, item: "Sword" }, { id: 2, item: "Shield" }]);
+          done();
+        });
+      });
+    });
+  });
 });
