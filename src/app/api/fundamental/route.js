@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callGemini } from '../../../lib/gemini/client';
-import { connectToDatabase } from '../../../lib/database/connection';
-const { getRecentPromptAnalysis, savePromptAnalysis } = require('../../../lib/database/queries');
+import { connectToDatabase } from '../../../external/database/connection';
+const { getRecentPromptAnalysis, savePromptAnalysis } = require('../../../external/database/queries');
 
 export const dynamic = 'force-dynamic';
 

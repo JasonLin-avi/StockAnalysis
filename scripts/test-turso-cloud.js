@@ -35,7 +35,7 @@ if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
   process.exit(1);
 }
 
-const { connectToDatabase } = require('../src/lib/database/connection');
+const { connectToDatabase } = require('../src/external/database/connection');
 
 async function testTurso() {
   try {

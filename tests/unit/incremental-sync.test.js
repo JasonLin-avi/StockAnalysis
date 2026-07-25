@@ -11,7 +11,7 @@ jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => ({
 }));
 
 const { syncStockPricesIncremental, getLocal3YearPrices } = require('../../src/lib/data-fetcher');
-const { connectToDatabase } = require('../../src/lib/database/connection');
+const { connectToDatabase } = require('../../src/external/database/connection');
 
 describe('Incremental Price Sync Tests', () => {
   let db;

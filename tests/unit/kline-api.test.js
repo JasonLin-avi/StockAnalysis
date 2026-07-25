@@ -12,11 +12,11 @@ const mockSaveStock = jest.fn();
 const mockGetHistoricalPricesFromDB = jest.fn();
 const mockSyncStockPricesIncremental = jest.fn();
 
-jest.mock('../../src/lib/database/connection', () => ({
+jest.mock('../../src/external/database/connection', () => ({
   connectToDatabase: () => mockConnectToDatabase()
 }));
 
-jest.mock('../../src/lib/database/queries', () => ({
+jest.mock('../../src/external/database/queries', () => ({
   saveStock: (db, stock) => mockSaveStock(db, stock),
   getHistoricalPricesFromDB: (db, stockId) => mockGetHistoricalPricesFromDB(db, stockId)
 }));

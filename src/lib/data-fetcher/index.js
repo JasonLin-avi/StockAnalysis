@@ -50,7 +50,7 @@ async function fetchFundamentalData(symbol) {
   }
 }
 
-const { getMaxPriceDate, insertStockDataBatch, getHistoricalPricesFromDB } = require('../database/queries');
+const { getMaxPriceDate, insertStockDataBatch, getHistoricalPricesFromDB } = require('../../external/database/queries');
 
 /**
  * Incrementally syncs prices from Yahoo/Google Finance to SQLite local db.

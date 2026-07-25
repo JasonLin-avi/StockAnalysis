@@ -1,7 +1,7 @@
 // src/app/api/leaderboard/route.js
 import { NextResponse } from 'next/server';
-const { connectToDatabase } = require('../../../lib/database/connection');
-const { getLatestBacktestResults, getAllAnalyzedStocks } = require('../../../lib/database/queries');
+const { connectToDatabase } = require('../../../external/database/connection');
+const { getLatestBacktestResults, getAllAnalyzedStocks } = require('../../../external/database/queries');
 const { performFullAnalysis } = require('../../../lib/integration');
 
 // Why: Next.js statically optimizes GET routes without dynamic functions. Force dynamic prevents static evaluation at build time.

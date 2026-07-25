@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '../../../../lib/database/connection';
+import { connectToDatabase } from '../../../../external/database/connection';
 import { calculateMarketOverviewMetrics } from '../../../../lib/finnhub/marketMetrics';
-const { getMarketOverviewMetrics, saveMarketOverviewMetrics } = require('../../../../lib/database/queries');
+const { getMarketOverviewMetrics, saveMarketOverviewMetrics } = require('../../../../external/database/queries');
 
 export const revalidate = 3600; // 1 hour cache at Next.js edge
 

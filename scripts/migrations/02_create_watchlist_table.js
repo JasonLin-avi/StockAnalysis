@@ -1,5 +1,5 @@
 // Why: Replace native sqlite3 driver with libsql-adapter for database migration script.
-const sqlite3 = require('../../src/lib/database/libsql-adapter');
+const sqlite3 = require('../../src/external/database/libsql-adapter');
 const path = require('path');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '../../database.sqlite');

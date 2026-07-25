@@ -1,5 +1,5 @@
 // Why: Route database connections through libsql-adapter for unified sqlite3 compatibility across local and serverless environments.
-import sqlite3 from '@/lib/database/libsql-adapter';
+import sqlite3 from '@/external/database/libsql-adapter';
 import path from 'path';
 import { NextResponse } from 'next/server';
 

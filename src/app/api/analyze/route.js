@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 const { performFullAnalysis } = require('../../../lib/integration');
-const { connectToDatabase } = require('../../../lib/database/connection');
-const { saveStockData, saveAnalysisResults } = require('../../../lib/database/queries');
+const { connectToDatabase } = require('../../../external/database/connection');
+const { saveStockData, saveAnalysisResults } = require('../../../external/database/queries');
 const { fetchHistoricalData } = require('../../../lib/data-fetcher');
 const logger = require('../../../lib/logger');
 

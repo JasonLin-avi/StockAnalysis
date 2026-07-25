@@ -1,6 +1,6 @@
 // tests/unit/libsql-adapter.test.js
 // Verify sqlite3-compatible API behavior over @libsql/client in-memory mode.
-const { Database } = require('../../src/lib/database/libsql-adapter');
+const { Database } = require('../../src/external/database/libsql-adapter');
 
 describe("Libsql Adapter - sqlite3 Compatibility API", () => {
   let db;

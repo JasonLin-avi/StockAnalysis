@@ -13,8 +13,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '../../../../../lib/database/connection';
-import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis } from '../../../../../lib/database/queries';
+import { connectToDatabase } from '../../../../../external/database/connection';
+import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis } from '../../../../../external/database/queries';
 import { syncStockPricesIncremental } from '../../../../../lib/data-fetcher';
 import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 import { callGemini } from '../../../../../lib/gemini/client';

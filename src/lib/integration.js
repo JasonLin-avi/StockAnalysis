@@ -10,8 +10,8 @@ const { performFundamentalAnalysis } = require('./fundamental-analysis');
 const { performNewsAnalysis } = require('./news-analysis');
 const { generateInvestmentAdvice } = require('./investment-advisor');
 const { calculateBacktest } = require('./technical-analysis/backtest');
-const { connectToDatabase, getActiveDatabase } = require('./database/connection');
-const { saveStock, insertStockDataBatch } = require('./database/queries');
+const { connectToDatabase, getActiveDatabase } = require('../external/database/connection');
+const { saveStock, insertStockDataBatch } = require('../external/database/queries');
 
 
 
@@ -122,7 +122,7 @@ async function performFullAnalysis(symbol, db = null) {
 
   // Unify and encapsulate DB write logic directly in the integration layer
   try {
-    const { saveStockData, saveAnalysisResults } = require('./database/queries');
+    const { saveStockData, saveAnalysisResults } = require('../external/database/queries');
     const dailyPrices = historical.data.map(item => ({
       date: item.date,
       open: item.open,

@@ -5,12 +5,12 @@
  */
 
 const { GET } = require('../../src/app/api/stock/[symbol]/technical-ai/route');
-const { connectToDatabase } = require('../../src/lib/database/connection');
-const queries = require('../../src/lib/database/queries');
+const { connectToDatabase } = require('../../src/external/database/connection');
+const queries = require('../../src/external/database/queries');
 const { callGemini } = require('../../src/lib/gemini/client');
 
-jest.mock('../../src/lib/database/connection');
-jest.mock('../../src/lib/database/queries');
+jest.mock('../../src/external/database/connection');
+jest.mock('../../src/external/database/queries');
 jest.mock('../../src/lib/gemini/client');
 jest.mock('../../src/lib/data-fetcher', () => ({
   syncStockPricesIncremental: jest.fn().mockResolvedValue(true)

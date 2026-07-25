@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import yahooFinance from '../../../lib/data-fetcher/yahoo-finance';
 const { fetchStockData } = yahooFinance;
-const { connectToDatabase } = require('../../../lib/database/connection');
-const { getLatestAnalysisResults } = require('../../../lib/database/queries');
+const { connectToDatabase } = require('../../../external/database/connection');
+const { getLatestAnalysisResults } = require('../../../external/database/queries');
 const logger = require('../../../lib/logger');
 
 // Why: Next.js might statically optimize API routes without dynamic functions. This ensures we always fetch fresh prices.

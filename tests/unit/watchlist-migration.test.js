@@ -1,5 +1,5 @@
 // Why: Replace native sqlite3 with libsql-adapter in watchlist migration test.
-const sqlite3 = require('../../src/lib/database/libsql-adapter');
+const sqlite3 = require('../../src/external/database/libsql-adapter');
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
