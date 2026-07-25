@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
-const { performFullAnalysis } = require('../../../lib/integration');
-const { connectToDatabase } = require('../../../external/database/connection');
-const { saveStockData, saveAnalysisResults } = require('../../../external/database/queries');
-const { fetchHistoricalData } = require('../../../external/data-fetcher');
+const { performFullAnalysis } = require('../../../services/analysis.service');
 const logger = require('../../../lib/logger');
 
 export const dynamic = 'force-dynamic';

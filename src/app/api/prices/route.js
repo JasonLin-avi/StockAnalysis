@@ -59,7 +59,7 @@ export async function GET(request) {
             // If missing backtest or data is incomplete (old schema), trigger analysis to fetch and calculate
             if (!hasCompleteBacktest) {
               logger.info('API_PRICES', `No complete backtest found for ${symbol}. Triggering performFullAnalysis in-flight...`);
-              const { performFullAnalysis } = require('../../../lib/integration');
+              const { performFullAnalysis } = require('../../../services/analysis.service');
               analysis = await performFullAnalysis(symbol, db);
             }
 
