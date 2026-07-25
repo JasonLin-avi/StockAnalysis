@@ -7,11 +7,11 @@
 const { GET } = require('../../src/app/api/stock/[symbol]/technical-ai/route');
 const { connectToDatabase } = require('../../src/external/database/connection');
 const queries = require('../../src/external/database/queries');
-const { callGemini } = require('../../src/lib/gemini/client');
+const { callGemini } = require('../../src/external/gemini/client');
 
 jest.mock('../../src/external/database/connection');
 jest.mock('../../src/external/database/queries');
-jest.mock('../../src/lib/gemini/client');
+jest.mock('../../src/external/gemini/client');
 jest.mock('../../src/services/data-sync.service', () => ({
   syncStockPrices: jest.fn().mockResolvedValue(true)
 }));

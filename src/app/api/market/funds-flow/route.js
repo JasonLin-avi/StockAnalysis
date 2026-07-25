@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../external/database/connection';
 import { getMarketFundsFlow, saveMarketFundsFlow } from '../../../../external/database/queries';
-import { callGemini } from '../../../../lib/gemini/client';
+import { callGemini } from '../../../../external/gemini/client';
 
 // Business logic: Prompt definition resides in the business API domain
 function getPrompt(market, date) {

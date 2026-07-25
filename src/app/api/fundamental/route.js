@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { callGemini } from '../../../lib/gemini/client';
+import { callGemini } from '../../../external/gemini/client';
 import { connectToDatabase } from '../../../external/database/connection';
 const { getRecentPromptAnalysis, savePromptAnalysis } = require('../../../external/database/queries');
 

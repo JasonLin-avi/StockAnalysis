@@ -17,7 +17,7 @@ import { connectToDatabase } from '../../../../../external/database/connection';
 import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis } from '../../../../../external/database/queries';
 import { syncStockPrices } from '../../../../../services/data-sync.service';
 import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
-import { callGemini } from '../../../../../lib/gemini/client';
+import { callGemini } from '../../../../../external/gemini/client';
 
 export const dynamic = 'force-dynamic';
 
