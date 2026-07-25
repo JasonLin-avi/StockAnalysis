@@ -99,6 +99,11 @@ function connectToDatabase(dbPath = 'data/stock.db') {
                       win_rate REAL,
                       updated_at TEXT DEFAULT (datetime('now'))
                     );
+                    CREATE TABLE IF NOT EXISTS watchlist (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol TEXT UNIQUE NOT NULL,
+                      added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
                   `, (execErr) => {
                     if (execErr) {
                       return reject(new Error(`Failed to apply dynamic tables DDL: ${execErr.message}`));
