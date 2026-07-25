@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 // Why: Import from the service layer to delegate database actions, keeping API routing concern thin.
-import { getWatchlistSymbols, addSymbolToWatchlist } from '@/services/watchlist.service';
+import { getWatchlistSymbols, addSymbolToWatchlist, removeSymbolFromWatchlist } from '@/services/watchlist.service';
 
 /**
  * Handles GET requests to retrieve the current user's stock watchlist.
@@ -43,3 +43,43 @@ export async function POST(req) {
     return NextResponse.json({ error: e.message || 'Invalid Request' }, { status: 400 });
   }
 }
+
+/**
+ * Handles DELETE requests to remove a stock symbol from the watchlist.
+ * We support parsing the symbol from the URL query parameter (standard REST preference)
+ * or falling back to the JSON request body.
+ * @param {Request} req - The incoming request containing symbol
+ * @returns {Promise<NextResponse>} JSON response indicating operation success
+ */
+export async function DELETE(req) {
+  try {
+    let symbol = null;
+
+    // Why: Try parsing from URL query parameter first as it is standard REST pattern for DELETE.
+    const { searchParams } = new URL(req.url);
+    symbol = searchParams.get('symbol');
+
+    // Why: Fallback to reading the JSON body if query parameters did not specify a symbol.
+    if (!symbol) {
+      try {
+        const body = await req.json();
+        symbol = body.symbol;
+      } catch (e) {
+        // Why: Ignore JSON parsing errors here, since we validate presence of symbol next.
+      }
+    }
+
+    // Why: Validate that a symbol is present before calling the service layer.
+    if (!symbol) {
+      return NextResponse.json({ error: 'Missing symbol' }, { status: 400 });
+    }
+
+    // Why: Delegate to the service layer for database deletion.
+    await removeSymbolFromWatchlist(symbol);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    // Why: Handle validation errors or database errors from the service layer.
+    return NextResponse.json({ error: err.message || 'Invalid Request' }, { status: 400 });
+  }
+}
+

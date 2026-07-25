@@ -57,4 +57,12 @@ describe('Watchlist Service', () => {
     await expect(addSymbolToWatchlist('   ')).rejects.toThrow("Missing symbol");
     await expect(addSymbolToWatchlist(123)).rejects.toThrow("Missing symbol");
   });
+
+  it('should throw error when removing empty, whitespace-only, or invalid symbol type', async () => {
+    // Why: Verifies validation logic that errors out when invalid, empty, or whitespace-only symbols are passed to removeSymbolFromWatchlist.
+    await expect(removeSymbolFromWatchlist(null)).rejects.toThrow("Missing symbol");
+    await expect(removeSymbolFromWatchlist('')).rejects.toThrow("Missing symbol");
+    await expect(removeSymbolFromWatchlist('   ')).rejects.toThrow("Missing symbol");
+    await expect(removeSymbolFromWatchlist(123)).rejects.toThrow("Missing symbol");
+  });
 });
