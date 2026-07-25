@@ -582,6 +582,73 @@ function saveMarketOverviewMetrics(db, metrics) {
   });
 }
 
+/**
+ * Retrieves all stock symbols in the watchlist, ordered by the added timestamp descending.
+ * 
+ * Why: Decouples DB connection query string from the service layer, keeping DB query logic centralized.
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @returns {Promise<string[]>} Resolved with the array of watchlist stock symbols
+ */
+function getWatchlist(db) {
+  return new Promise((resolve, reject) => {
+    db.all("SELECT symbol FROM watchlist ORDER BY added_at DESC;", [], (err, rows) => {
+      if (err) {
+        return reject(new Error(`Failed to fetch watchlist: ${err.message}`));
+      }
+      resolve((rows || []).map(row => row.symbol));
+    });
+  });
+}
+
+/**
+ * Saves a stock symbol to the watchlist database, ignoring duplicates.
+ * 
+ * Why: Centralizes raw SQL query for inserting symbols to the watchlist.
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string} symbol - Stock ticker symbol
+ * @returns {Promise<void>} Resolves when done
+ */
+function saveWatchlist(db, symbol) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      "INSERT OR IGNORE INTO watchlist (symbol) VALUES (?);",
+      [symbol.toUpperCase()],
+      (err) => {
+        if (err) {
+          return reject(new Error(`Failed to save to watchlist: ${err.message}`));
+        }
+        resolve();
+      }
+    );
+  });
+}
+
+/**
+ * Removes a stock symbol from the watchlist database.
+ * 
+ * Why: Centralizes raw SQL query for deleting symbols from the watchlist.
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string} symbol - Stock ticker symbol
+ * @returns {Promise<void>} Resolves when done
+ */
+function removeWatchlist(db, symbol) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      "DELETE FROM watchlist WHERE symbol = ?;",
+      [symbol.toUpperCase()],
+      (err) => {
+        if (err) {
+          return reject(new Error(`Failed to remove from watchlist: ${err.message}`));
+        }
+        resolve();
+      }
+    );
+  });
+}
+
 module.exports = {
   saveStock,
   saveStockData,
@@ -600,7 +667,10 @@ module.exports = {
   savePromptAnalysis,
   getRecentPromptAnalysis,
   getMarketOverviewMetrics,
-  saveMarketOverviewMetrics
+  saveMarketOverviewMetrics,
+  getWatchlist,
+  saveWatchlist,
+  removeWatchlist
 };
 
 

@@ -1,12 +1,12 @@
 // Why: Test suite for Watchlist Service to verify CRUD operations on the SQLite database.
 // We use an in-memory database configuration to avoid interfering with physical test/prod data.
 
-const { connectToDatabase } = require('../../src/external/database/connection');
-const { 
+import { connectToDatabase } from '../../src/external/database/connection';
+import { 
   getWatchlistSymbols, 
   addSymbolToWatchlist, 
   removeSymbolFromWatchlist 
-} = require('../../src/services/watchlist.service');
+} from '../../src/services/watchlist.service';
 
 describe('Watchlist Service', () => {
   let db;
@@ -50,9 +50,11 @@ describe('Watchlist Service', () => {
     expect(symbols).toContain('MSFT');
   });
 
-  it('should throw error when adding empty symbol', async () => {
-    // Why: Verifies validation logic that errors out when invalid/missing symbols are provided.
+  it('should throw error when adding empty, whitespace-only, or invalid symbol type', async () => {
+    // Why: Verifies validation logic that errors out when invalid, empty, or whitespace-only symbols are provided.
     await expect(addSymbolToWatchlist(null)).rejects.toThrow("Missing symbol");
     await expect(addSymbolToWatchlist('')).rejects.toThrow("Missing symbol");
+    await expect(addSymbolToWatchlist('   ')).rejects.toThrow("Missing symbol");
+    await expect(addSymbolToWatchlist(123)).rejects.toThrow("Missing symbol");
   });
 });
