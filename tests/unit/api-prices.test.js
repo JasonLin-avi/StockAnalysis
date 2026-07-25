@@ -8,7 +8,7 @@ const { GET } = require('../../src/app/api/prices/route');
 const mockFetchStockData = jest.fn();
 
 // Why: Mock yahoo-finance module explicitly so we can control mock behavior in individual test blocks.
-jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => ({
+jest.mock('../../src/external/data-fetcher/yahoo-finance', () => ({
   __esModule: true,
   default: {
     fetchStockData: (symbol) => mockFetchStockData(symbol)

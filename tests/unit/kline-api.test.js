@@ -10,7 +10,7 @@ const { GET } = require('../../src/app/api/stock/[symbol]/kline/route');
 const mockConnectToDatabase = jest.fn();
 const mockSaveStock = jest.fn();
 const mockGetHistoricalPricesFromDB = jest.fn();
-const mockSyncStockPricesIncremental = jest.fn();
+const mockSyncStockPrices = jest.fn();
 
 jest.mock('../../src/external/database/connection', () => ({
   connectToDatabase: () => mockConnectToDatabase()
@@ -21,8 +21,8 @@ jest.mock('../../src/external/database/queries', () => ({
   getHistoricalPricesFromDB: (db, stockId) => mockGetHistoricalPricesFromDB(db, stockId)
 }));
 
-jest.mock('../../src/lib/data-fetcher', () => ({
-  syncStockPricesIncremental: (db, stockId, symbol) => mockSyncStockPricesIncremental(db, stockId, symbol)
+jest.mock('../../src/services/data-sync.service', () => ({
+  syncStockPrices: (db, stockId, symbol) => mockSyncStockPrices(db, stockId, symbol)
 }));
 
 describe('GET /api/stock/[symbol]/kline', () => {
@@ -30,7 +30,7 @@ describe('GET /api/stock/[symbol]/kline', () => {
     jest.clearAllMocks();
     mockConnectToDatabase.mockResolvedValue({});
     mockSaveStock.mockResolvedValue(1);
-    mockSyncStockPricesIncremental.mockResolvedValue(true);
+    mockSyncStockPrices.mockResolvedValue(true);
   });
 
   function generatePrices(count) {
@@ -68,7 +68,7 @@ describe('GET /api/stock/[symbol]/kline', () => {
 
     expect(response.status).toBe(200);
     expect(mockSaveStock).toHaveBeenCalled();
-    expect(mockSyncStockPricesIncremental).toHaveBeenCalledWith(expect.anything(), 1, 'AAPL');
+    expect(mockSyncStockPrices).toHaveBeenCalledWith(expect.anything(), 1, 'AAPL');
 
     expect(body.candles.length).toBe(70);
     expect(body.volume.length).toBe(70);

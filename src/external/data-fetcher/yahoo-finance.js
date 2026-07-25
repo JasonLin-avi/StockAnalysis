@@ -1,5 +1,5 @@
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
-const logger = require('../logger');
+const logger = require('../../lib/logger');
 
 /**
  * Helper to fetch a URL with automatic retries and exponential backoff.

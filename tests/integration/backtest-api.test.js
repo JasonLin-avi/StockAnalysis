@@ -2,7 +2,7 @@ const { performFullAnalysis } = require('../../src/lib/integration');
 const { connectToDatabase } = require('../../src/external/database/connection');
 
 // Mock Yahoo Finance to ensure zero network requests during tests
-jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => {
+jest.mock('../../src/external/data-fetcher/yahoo-finance', () => {
   return {
     fetchStockData: jest.fn().mockResolvedValue({
       symbol: 'AAPL',

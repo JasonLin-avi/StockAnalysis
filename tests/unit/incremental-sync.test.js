@@ -1,4 +1,4 @@
-jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => ({
+jest.mock('../../src/external/data-fetcher/yahoo-finance', () => ({
   fetchHistoricalData: jest.fn().mockImplementation((symbol, period) => {
     return Promise.resolve({
       symbol,
@@ -10,7 +10,8 @@ jest.mock('../../src/lib/data-fetcher/yahoo-finance', () => ({
   })
 }));
 
-const { syncStockPricesIncremental, getLocal3YearPrices } = require('../../src/lib/data-fetcher');
+const { getLocal3YearPrices } = require('../../src/external/data-fetcher');
+const { syncStockPrices } = require('../../src/services/data-sync.service');
 const { connectToDatabase } = require('../../src/external/database/connection');
 
 describe('Incremental Price Sync Tests', () => {
@@ -29,7 +30,7 @@ describe('Incremental Price Sync Tests', () => {
 
   test('should sync data incrementally and fetch from local database', async () => {
     // 測試同步程序
-    const success = await syncStockPricesIncremental(db, 1, 'AAPL');
+    const success = await syncStockPrices(db, 1, 'AAPL');
     expect(success).toBe(true);
 
     const prices = await getLocal3YearPrices(db, 1);

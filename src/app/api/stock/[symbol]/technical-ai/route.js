@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../../external/database/connection';
 import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis } from '../../../../../external/database/queries';
-import { syncStockPricesIncremental } from '../../../../../lib/data-fetcher';
+import { syncStockPrices } from '../../../../../services/data-sync.service';
 import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 import { callGemini } from '../../../../../lib/gemini/client';
 
@@ -79,9 +79,9 @@ export async function GET(request, context) {
       market: upperSymbol.includes('.') ? 'TW' : 'US'
     });
 
-    if (typeof syncStockPricesIncremental === 'function') {
+    if (typeof syncStockPrices === 'function') {
       try {
-        await syncStockPricesIncremental(db, stockId, upperSymbol);
+        await syncStockPrices(db, stockId, upperSymbol);
       } catch (syncErr) {
         console.warn(`[API_TECHNICAL_AI] Incremental sync warning for ${upperSymbol}:`, syncErr.message);
       }

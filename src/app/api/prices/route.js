@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import yahooFinance from '../../../lib/data-fetcher/yahoo-finance';
+import yahooFinance from '../../../external/data-fetcher/yahoo-finance';
 const { fetchStockData } = yahooFinance;
 const { connectToDatabase } = require('../../../external/database/connection');
 const { getLatestAnalysisResults } = require('../../../external/database/queries');

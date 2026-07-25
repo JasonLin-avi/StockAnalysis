@@ -1,4 +1,4 @@
-const { fetchStockData, fetchHistoricalData } = require('../../src/lib/data-fetcher');
+const { fetchStockData, fetchHistoricalData } = require('../../src/external/data-fetcher');
 
 // ============================================================
 // Mock Yahoo Finance responses

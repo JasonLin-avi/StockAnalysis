@@ -12,8 +12,8 @@ const { callGemini } = require('../../src/lib/gemini/client');
 jest.mock('../../src/external/database/connection');
 jest.mock('../../src/external/database/queries');
 jest.mock('../../src/lib/gemini/client');
-jest.mock('../../src/lib/data-fetcher', () => ({
-  syncStockPricesIncremental: jest.fn().mockResolvedValue(true)
+jest.mock('../../src/services/data-sync.service', () => ({
+  syncStockPrices: jest.fn().mockResolvedValue(true)
 }));
 
 describe('GET /api/stock/[symbol]/technical-ai', () => {

@@ -2,9 +2,9 @@ const {
   fetchStockData, 
   fetchHistoricalData, 
   fetchFundamentalData,
-  syncStockPricesIncremental,
   getLocal3YearPrices
-} = require('./data-fetcher');
+} = require('../external/data-fetcher');
+const { syncStockPrices } = require('../services/data-sync.service');
 const { performTechnicalAnalysis } = require('./technical-analysis');
 const { performFundamentalAnalysis } = require('./fundamental-analysis');
 const { performNewsAnalysis } = require('./news-analysis');
@@ -38,7 +38,7 @@ async function performFullAnalysis(symbol, db = null) {
   const activeDb = db || getActiveDatabase() || await connectToDatabase();
   const stockId = await saveStock(activeDb, { symbol: ticker, market: ticker.includes('.') ? 'TW' : 'US' });
   // Sync recent price data
-  await syncStockPricesIncremental(activeDb, stockId, ticker);
+  await syncStockPrices(activeDb, stockId, ticker);
   // Ensure we have at least one year of historical data for backtesting
   const ONE_YEAR_DAYS = 365; // target coverage
   // Get all local prices (could be more than needed)

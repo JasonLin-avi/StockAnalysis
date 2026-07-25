@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../../external/database/connection';
 import { saveStock, getHistoricalPricesFromDB } from '../../../../../external/database/queries';
-import { syncStockPricesIncremental } from '../../../../../lib/data-fetcher';
+import { syncStockPrices } from '../../../../../services/data-sync.service';
 import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 
 export const dynamic = 'force-dynamic';
@@ -110,7 +110,7 @@ export async function GET(request, context) {
     });
 
     // Why: Perform incremental sync from external providers (Yahoo/Google) to keep database updated before fetching.
-    await syncStockPricesIncremental(db, stockId, upperSymbol);
+    await syncStockPrices(db, stockId, upperSymbol);
 
     // Why: Fetch full historical price dataset from database sorted ASC by date.
     const prices = await getHistoricalPricesFromDB(db, stockId);
