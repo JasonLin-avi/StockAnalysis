@@ -15,7 +15,14 @@ const { performNewsAnalysis } = require('../lib/news-analysis');
 const { generateInvestmentAdvice } = require('../lib/investment-advisor');
 const { calculateBacktest } = require('../lib/technical-analysis/backtest');
 const { connectToDatabase, getActiveDatabase } = require('../external/database/connection');
-const { saveStock, insertStockDataBatch } = require('../external/database/queries');
+const { 
+  saveStock, 
+  insertStockDataBatch,
+  saveStockData,
+  saveAnalysisResults,
+  getLatestAnalysisResults
+} = require('../external/database/queries');
+const logger = require('../lib/logger');
 
 /**
  * Performs a comprehensive multi-factor stock analysis.
@@ -125,7 +132,6 @@ async function performFullAnalysis(symbol, db = null) {
 
   // Unify and encapsulate DB write logic directly in the integration layer
   try {
-    const { saveStockData, saveAnalysisResults } = require('../external/database/queries');
     const dailyPrices = historical.data.map(item => ({
       date: item.date,
       open: item.open,
@@ -137,7 +143,6 @@ async function performFullAnalysis(symbol, db = null) {
     await saveStockData(activeDb, ticker, dailyPrices);
     await saveAnalysisResults(activeDb, ticker, finalResult.date, finalResult);
   } catch (dbError) {
-    const logger = require('../lib/logger');
     logger.error('INTEGRATION_DB_SAVE', `Failed to auto-save results for ${ticker}`, dbError);
   }
 
@@ -161,14 +166,11 @@ async function getLatestPricesAndBacktest(symbols) {
   // Why: Connect to database to check for cached analysis results.
   let db = null;
   try {
-    db = await connectToDatabase();
+    db = getActiveDatabase() || await connectToDatabase();
   } catch (e) {
-    const logger = require('../lib/logger');
     logger.warn('ANALYSIS_SERVICE', 'Database connection unavailable for backtest metrics', e);
   }
 
-  const { getLatestAnalysisResults } = require('../external/database/queries');
-  const logger = require('../lib/logger');
 
   // Why: Fetch stock data and backtests in parallel to optimize latency.
   await Promise.all(symbols.map(async (symbol) => {
