@@ -57,4 +57,12 @@ describe('Chatbot Service', () => {
 
     await expect(handleChatResponse([], 'MSFT')).rejects.toThrow('Agent failure');
   });
+
+  test('should reject invalid messages inputs (such as null, strings, or numbers)', async () => {
+    // Why: Verify handleChatResponse rejects non-array inputs with precise error message.
+    await expect(handleChatResponse(null, 'AAPL')).rejects.toThrow('Messages must be an array');
+    await expect(handleChatResponse('not an array', 'AAPL')).rejects.toThrow('Messages must be an array');
+    await expect(handleChatResponse(12345, 'AAPL')).rejects.toThrow('Messages must be an array');
+    await expect(handleChatResponse({}, 'AAPL')).rejects.toThrow('Messages must be an array');
+  });
 });

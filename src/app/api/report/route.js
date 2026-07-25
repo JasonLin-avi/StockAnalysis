@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-const reportService = require('../../../services/report.service');
-const logger = require('../../../lib/logger');
+import reportService from '../../../services/report.service';
+import logger from '../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
 

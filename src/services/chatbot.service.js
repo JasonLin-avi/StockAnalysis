@@ -15,6 +15,11 @@ const logger = require('../lib/logger');
  * @returns {Promise<Array<Object>>} Serialized messages history.
  */
 async function handleChatResponse(messages, ticker) {
+  // Why: Ensure the messages argument is an array to prevent mapping errors.
+  if (!Array.isArray(messages)) {
+    throw new Error('Messages must be an array');
+  }
+
   // Why: Map the custom JSON message objects to LangChain message classes required by the state graph.
   const formattedMessages = messages.map(msg => {
     if (msg.role === 'user') return new HumanMessage(msg.content);

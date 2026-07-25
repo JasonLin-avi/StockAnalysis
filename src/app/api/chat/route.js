@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-const chatbotService = require('../../../services/chatbot.service');
-const logger = require('../../../lib/logger');
+import chatbotService from '../../../services/chatbot.service';
+import logger from '../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
 
