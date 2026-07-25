@@ -144,4 +144,104 @@ async function performFullAnalysis(symbol, db = null) {
   return finalResult;
 }
 
-module.exports = { performFullAnalysis };
+/**
+ * Fetches the latest stock price and backtest results for a list of symbols.
+ * If data is missing or incomplete, triggers performance analysis in-flight.
+ * Formats the prices and change percentages, compiling all backtest horizons.
+ * 
+ * @param {Array<string>} symbols - Array of stock symbols
+ * @returns {Promise<Object>} Compiled results map
+ */
+async function getLatestPricesAndBacktest(symbols) {
+  const results = {};
+  if (!symbols || symbols.length === 0) {
+    return results;
+  }
+
+  // Why: Connect to database to check for cached analysis results.
+  let db = null;
+  try {
+    db = await connectToDatabase();
+  } catch (e) {
+    const logger = require('../lib/logger');
+    logger.warn('ANALYSIS_SERVICE', 'Database connection unavailable for backtest metrics', e);
+  }
+
+  const { getLatestAnalysisResults } = require('../external/database/queries');
+  const logger = require('../lib/logger');
+
+  // Why: Fetch stock data and backtests in parallel to optimize latency.
+  await Promise.all(symbols.map(async (symbol) => {
+    try {
+      const data = await fetchStockData(symbol);
+      const horizons = [5, 10, 20, 40, 60, 120, 240];
+      const backtestMetrics = {};
+
+      horizons.forEach(h => {
+        backtestMetrics[`winRate${h}d`] = 0;
+        backtestMetrics[`avgReturn${h}d`] = 0;
+      });
+
+      if (db) {
+        try {
+          let analysis = await getLatestAnalysisResults(db, symbol);
+
+          // Why: Incomplete analysis means it is missing critical horizons like 40d or 240d.
+          const hasCompleteBacktest = analysis && 
+                                     analysis.backtest && 
+                                     analysis.backtest.winRate40d !== undefined && 
+                                     analysis.backtest.winRate240d !== undefined;
+
+          if (!hasCompleteBacktest) {
+            logger.info('ANALYSIS_SERVICE', `No complete backtest found for ${symbol}. Triggering performFullAnalysis in-flight...`);
+            analysis = await performFullAnalysis(symbol, db);
+          }
+
+          if (analysis && analysis.backtest) {
+            horizons.forEach(h => {
+              backtestMetrics[`winRate${h}d`] = analysis.backtest[`winRate${h}d`] || 0;
+              backtestMetrics[`avgReturn${h}d`] = analysis.backtest[`avgReturn${h}d`] || 0;
+            });
+          }
+        } catch (dbErr) {
+          logger.warn('ANALYSIS_SERVICE', `Could not fetch or calculate backtest for ${symbol}`, dbErr);
+        }
+      }
+
+      if (!data) {
+        logger.warn('ANALYSIS_SERVICE', `No data returned for symbol: ${symbol}`);
+        results[symbol] = {
+          price: '$0.00',
+          change: '+0.00%',
+          color: 'text-emerald-400',
+          ...backtestMetrics
+        };
+        return;
+      }
+
+      const isPriceValid = typeof data.price === 'number' && !isNaN(data.price);
+      const isChangePercentValid = typeof data.changePercent === 'number' && !isNaN(data.changePercent);
+
+      const priceVal = isPriceValid ? data.price : 0;
+      const changePercentVal = isChangePercentValid ? data.changePercent : 0;
+
+      // Why: Select colors dynamically (rose for negative, emerald for positive changes) to conform to design aesthetic standards.
+      const color = changePercentVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      const sign = changePercentVal >= 0 ? '+' : '';
+      results[symbol] = {
+        price: `$${priceVal.toFixed(2)}`,
+        change: `${sign}${changePercentVal.toFixed(2)}%`,
+        color,
+        ...backtestMetrics
+      };
+
+      logger.info('ANALYSIS_SERVICE', `Successfully fetched price for ${symbol}: ${results[symbol].price} (${results[symbol].change})`);
+    } catch (err) {
+      logger.error('ANALYSIS_SERVICE', `Failed to fetch price for ${symbol}`, err);
+    }
+  }));
+
+  return results;
+}
+
+module.exports = { performFullAnalysis, getLatestPricesAndBacktest };

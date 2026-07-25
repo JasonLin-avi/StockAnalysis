@@ -1,4 +1,4 @@
-const { performFullAnalysis } = require('../../src/services/analysis.service');
+const { performFullAnalysis, getLatestPricesAndBacktest } = require('../../src/services/analysis.service');
 const { connectToDatabase } = require('../../src/external/database/connection');
 
 // Why: Mock Yahoo Finance API calls to ensure zero external network query overhead in unit tests.
@@ -65,7 +65,7 @@ describe('Analysis Service', () => {
   });
 
   it('should successfully run performFullAnalysis and return correct structure', async () => {
-    const result = await performFullAnalysis('AAPL');
+    const result = await performFullAnalysis('AAPL', db);
     expect(result).toBeDefined();
     expect(result.symbol).toBe('AAPL');
     expect(result.name).toBeDefined();
@@ -75,10 +75,28 @@ describe('Analysis Service', () => {
     expect(result.backtest).toBeDefined();
   });
 
+  it('should successfully run getLatestPricesAndBacktest and return formatted metrics', async () => {
+    // Why: getLatestPricesAndBacktest uses fetchStockData, which is mocked, and getLatestAnalysisResults / performFullAnalysis.
+    // In this test, we verify it returns the formatted structure including color, change, price, and horizons.
+    const results = await getLatestPricesAndBacktest(['AAPL']);
+    expect(results).toBeDefined();
+    expect(results.AAPL).toBeDefined();
+    expect(results.AAPL.price).toBe('$150.00');
+    expect(results.AAPL.change).toBe('+1.50%');
+    expect(results.AAPL.color).toBe('text-emerald-400');
+    
+    // Verify that backtest metrics are present
+    const horizons = [5, 10, 20, 40, 60, 120, 240];
+    horizons.forEach(h => {
+      expect(results.AAPL[`winRate${h}d`]).toBeDefined();
+      expect(results.AAPL[`avgReturn${h}d`]).toBeDefined();
+    });
+  });
+
   it('should throw an error when passed invalid input (null or empty string)', async () => {
     // Why: Ensure edge cases (like null/undefined parameters) are correctly caught.
-    await expect(performFullAnalysis(null)).rejects.toThrow('Symbol is required');
-    await expect(performFullAnalysis('')).rejects.toThrow('Symbol is required');
+    await expect(performFullAnalysis(null, db)).rejects.toThrow('Symbol is required');
+    await expect(performFullAnalysis('', db)).rejects.toThrow('Symbol is required');
   });
 });
 
