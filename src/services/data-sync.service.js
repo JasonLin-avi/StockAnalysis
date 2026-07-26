@@ -1,4 +1,4 @@
-const { syncStockPricesIncremental } = require('../external/data-fetcher');
+import { syncStockPricesIncremental }  from '../external/data-fetcher';
 
 /**
  * Coordinates stock price synchronization from external fetchers to the local database.
@@ -14,4 +14,4 @@ async function syncStockPrices(db, stockId, ticker) {
   return syncStockPricesIncremental(db, stockId, ticker);
 }
 
-module.exports = { syncStockPrices };
+export {syncStockPrices};

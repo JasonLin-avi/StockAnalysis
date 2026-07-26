@@ -1,4 +1,4 @@
-const yahoo = require('./yahoo-finance');
+import * as yahoo from './yahoo-finance';
 
 /**
  * Fetches current stock data using Yahoo Finance.
@@ -50,7 +50,7 @@ async function fetchFundamentalData(symbol) {
   }
 }
 
-const { getMaxPriceDate, insertStockDataBatch, getHistoricalPricesFromDB } = require('../database/queries');
+import { getMaxPriceDate, insertStockDataBatch, getHistoricalPricesFromDB }  from '../database/queries';
 
 /**
  * Incrementally syncs prices from Yahoo/Google Finance to SQLite local db.
@@ -117,11 +117,9 @@ async function getLocal3YearPrices(db, stockId) {
   return await getHistoricalPricesFromDB(db, stockId);
 }
 
-module.exports = {
-  fetchStockData,
+export {fetchStockData,
   fetchHistoricalData,
   fetchFundamentalData,
   syncStockPricesIncremental,
-  getLocal3YearPrices
-};
+  getLocal3YearPrices};
 

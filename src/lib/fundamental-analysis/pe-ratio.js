@@ -75,4 +75,4 @@ function analyzePERatio(stockData) {
   };
 }
 
-module.exports = { analyzePERatio };
+export {analyzePERatio};

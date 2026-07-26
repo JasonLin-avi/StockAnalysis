@@ -377,4 +377,4 @@ const htmlTemplate = `
 </html>
 `;
 
-module.exports = { htmlTemplate };
+export {htmlTemplate};

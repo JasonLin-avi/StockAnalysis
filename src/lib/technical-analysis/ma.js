@@ -30,4 +30,4 @@ function calculateMA(prices, period) {
   return result;
 }
 
-module.exports = { calculateMA };
+export {calculateMA};

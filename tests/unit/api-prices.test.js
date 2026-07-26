@@ -3,7 +3,7 @@
  * We mock yahoo-finance data fetcher to isolate the API logic and avoid network calls.
  */
 
-const { GET } = require('../../src/app/api/prices/route');
+import { GET }  from '../../src/app/api/prices/route';
 
 const mockFetchStockData = jest.fn();
 

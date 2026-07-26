@@ -1,11 +1,11 @@
-const { createDeepAgent } = require('deepagents');
-const { ChatOpenAI } = require('@langchain/openai');
-const {
+import { createDeepAgent }  from 'deepagents';
+import { ChatOpenAI }  from '@langchain/openai';
+import {
   getTechnicalIndicatorsTool,
   getFundamentalMetricsTool,
   getNewsSentimentTool,
   getInvestmentAdviceTool,
-} = require('./tools');
+} from './tools.js';
 
 // Why: Initialize NVIDIA NIM compatible OpenAI wrapper using configuration from environment variables.
 const minimaxModel = new ChatOpenAI({
@@ -31,4 +31,4 @@ const financialAdvisorAgent = createDeepAgent({
 請優先使用工具查詢數據，切勿憑空捏造不存在的股票數值或建議。請以繁體中文回答。`,
 });
 
-module.exports = { financialAdvisorAgent };
+export {financialAdvisorAgent};

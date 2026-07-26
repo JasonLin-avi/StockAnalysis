@@ -4,10 +4,17 @@
  * and Gemini LLM call with prompt analysis caching.
  */
 
-const { GET } = require('../../src/app/api/stock/[symbol]/technical-ai/route');
-const { connectToDatabase } = require('../../src/external/database/connection');
-const queries = require('../../src/external/database/queries');
-const { callGemini } = require('../../src/external/gemini/client');
+import { GET } from '../../src/app/api/stock/[symbol]/technical-ai/route';
+import { connectToDatabase } from '../../src/external/database/connection';
+// Why: Import named exports to match how the route actually imports them.
+// The route uses `import { saveStock, getHistoricalPricesFromDB, ... } from '...'`.
+import {
+  saveStock,
+  getHistoricalPricesFromDB,
+  getPromptAnalysis,
+  savePromptAnalysis
+} from '../../src/external/database/queries';
+import { callGemini } from '../../src/external/gemini/client';
 
 jest.mock('../../src/external/database/connection');
 jest.mock('../../src/external/database/queries');
@@ -34,7 +41,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
   });
 
   test('returns cached markdown when SQLite cache hits', async () => {
-    queries.getPromptAnalysis.mockResolvedValue('## Cached AI Analysis');
+    getPromptAnalysis.mockResolvedValue('## Cached AI Analysis');
 
     const request = new Request('http://localhost/api/stock/AAPL/technical-ai');
     const response = await GET(request, { params: { symbol: 'AAPL' } });
@@ -46,9 +53,9 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
   });
 
   test('returns fallback message when historical prices < 60 days', async () => {
-    queries.getPromptAnalysis.mockResolvedValue(null);
-    queries.saveStock = jest.fn().mockResolvedValue(1);
-    queries.getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 30 }, (_, i) => ({
+    getPromptAnalysis.mockResolvedValue(null);
+    saveStock.mockResolvedValue(1);
+    getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 30 }, (_, i) => ({
       date: `2026-06-${String(i + 1).padStart(2, '0')}`, open: 100, high: 105, low: 95, close: 102, volume: 10000
     })));
 
@@ -62,9 +69,9 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
   });
 
   test('fetches price data, generates prompt, calls Gemini, and caches result on cache miss', async () => {
-    queries.getPromptAnalysis.mockResolvedValue(null);
-    queries.saveStock = jest.fn().mockResolvedValue(1);
-    queries.getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 70 }, (_, i) => ({
+    getPromptAnalysis.mockResolvedValue(null);
+    saveStock.mockResolvedValue(1);
+    getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 70 }, (_, i) => ({
       date: `2026-05-${String((i % 30) + 1).padStart(2, '0')}`, open: 100 + i, high: 105 + i, low: 95 + i, close: 102 + i, volume: 50000
     })));
 
@@ -80,7 +87,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
       expect.stringContaining('你是一位擁有 15 年經驗的資深量化交易員與資產配置專家'),
       expect.objectContaining({ tools: [{ googleSearch: {} }] })
     );
-    expect(queries.savePromptAnalysis).toHaveBeenCalledWith(
+    expect(savePromptAnalysis).toHaveBeenCalledWith(
       mockDb,
       'AAPL',
       'technical',

@@ -74,4 +74,4 @@ function analyzeRevenueGrowth(stockData) {
   };
 }
 
-module.exports = { analyzeRevenueGrowth };
+export {analyzeRevenueGrowth};

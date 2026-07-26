@@ -11,9 +11,9 @@
  * @module investment-advisor
  */
 
-const { generatePortfolioAdvice } = require('./portfolio');
-const { generateBuySellAdvice } = require('./buy-sell');
-const { generateRiskManagementAdvice } = require('./risk-management');
+import { generatePortfolioAdvice }  from './portfolio';
+import { generateBuySellAdvice }  from './buy-sell';
+import { generateRiskManagementAdvice }  from './risk-management';
 
 /**
  * Generates comprehensive investment and risk advice for a stock based on all analytical angles.
@@ -35,9 +35,7 @@ function generateInvestmentAdvice(analysisResults) {
   };
 }
 
-module.exports = {
-  generateInvestmentAdvice,
+export {generateInvestmentAdvice,
   generatePortfolioAdvice,
   generateBuySellAdvice,
-  generateRiskManagementAdvice
-};
+  generateRiskManagementAdvice};

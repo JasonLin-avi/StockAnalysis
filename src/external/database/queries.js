@@ -649,7 +649,13 @@ function removeWatchlist(db, symbol) {
   });
 }
 
-module.exports = {
+
+
+
+
+export { saveStock, saveStockData, saveAnalysisResults, getStock, getStockData, getLatestAnalysisResults, getAllAnalyzedStocks, getLatestBacktestResults, getMarketFundsFlow, saveMarketFundsFlow, getPromptAnalysis, savePromptAnalysis, getRecentPromptAnalysis, getMarketOverviewMetrics, saveMarketOverviewMetrics, getWatchlist, saveWatchlist, removeWatchlist, getMaxPriceDate, getHistoricalPricesFromDB, insertStockDataBatch };
+
+export default {
   saveStock,
   saveStockData,
   saveAnalysisResults,
@@ -657,9 +663,6 @@ module.exports = {
   getStockData,
   getLatestAnalysisResults,
   getAllAnalyzedStocks,
-  getMaxPriceDate,
-  insertStockDataBatch,
-  getHistoricalPricesFromDB,
   getLatestBacktestResults,
   getMarketFundsFlow,
   saveMarketFundsFlow,
@@ -670,8 +673,10 @@ module.exports = {
   saveMarketOverviewMetrics,
   getWatchlist,
   saveWatchlist,
-  removeWatchlist
+  removeWatchlist,
+  getMaxPriceDate,
+  getHistoricalPricesFromDB,
+  insertStockDataBatch
 };
-
 
 

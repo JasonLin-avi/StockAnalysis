@@ -107,4 +107,4 @@ function calculateMACD(prices, fastPeriod = 12, slowPeriod = 26, signalPeriod = 
   return { macdLine, signalLine, histogram };
 }
 
-module.exports = { calculateMACD, calculateEMA };
+export {calculateMACD, calculateEMA};

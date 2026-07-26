@@ -2,9 +2,9 @@
 // Why: Report service layer that wraps report compiling workflow.
 // Orchestrates stock analysis data gathering and delegates page formatting to specific template engines.
 
-const { performFullAnalysis } = require('../lib/integration');
-const { generateReport: libGenerateReport } = require('../lib/report-generator');
-const logger = require('../lib/logger');
+import { performFullAnalysis } from '../lib/integration.js';
+import { generateReport as libGenerateReport } from '../lib/report-generator/index.js';
+import logger  from '../lib/logger';
 
 /**
  * Executes a full stock analysis and generates the report document.
@@ -27,6 +27,8 @@ async function generateReport(symbol, format = 'html') {
   return content;
 }
 
-module.exports = {
-  generateReport
-};
+export {generateReport};
+
+// Why: report/route.js uses `import reportService from '...'`
+// and calls `reportService.generateReport(...)`. Provide default export to match.
+export default { generateReport };

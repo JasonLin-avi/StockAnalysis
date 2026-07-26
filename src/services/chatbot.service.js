@@ -2,9 +2,9 @@
 // Why: Chatbot service layer encapsulating LLM processing logic and LangChain message normalization.
 // Decouples HTTP request/response parsing from AI agent graph invocation.
 
-const { financialAdvisorAgent } = require('../lib/chatbot/deep-agent');
-const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/messages');
-const logger = require('../lib/logger');
+import { financialAdvisorAgent }  from '../lib/chatbot/deep-agent';
+import { HumanMessage, AIMessage, SystemMessage }  from '@langchain/core/messages';
+import logger  from '../lib/logger';
 
 /**
  * Normalizes input messages, invokes the financial advisor AI agent, and filters/serializes the response.
@@ -56,6 +56,8 @@ async function handleChatResponse(messages, ticker) {
   return serializableMessages;
 }
 
-module.exports = {
-  handleChatResponse
-};
+export {handleChatResponse};
+
+// Why: The chat API route uses `import chatbotService from '...'` (default import)
+// and calls `chatbotService.handleChatResponse(...)`. Provide default export to match.
+export default { handleChatResponse };

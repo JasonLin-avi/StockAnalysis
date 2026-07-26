@@ -1,4 +1,4 @@
-const { generateReport } = require('../../src/lib/report-generator');
+import { generateReport }  from '../../src/lib/report-generator';
 
 describe('Report Generator Module', () => {
   const mockAnalysisData = {

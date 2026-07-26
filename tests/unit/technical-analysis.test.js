@@ -3,10 +3,10 @@
  * Tests MA, RSI, MACD calculations and integration.
  */
 
-const { calculateMA } = require('../../src/lib/technical-analysis/ma');
-const { calculateRSI } = require('../../src/lib/technical-analysis/rsi');
-const { calculateMACD, calculateEMA } = require('../../src/lib/technical-analysis/macd');
-const { performTechnicalAnalysis } = require('../../src/lib/technical-analysis/index');
+import { calculateMA }  from '../../src/lib/technical-analysis/ma';
+import { calculateRSI }  from '../../src/lib/technical-analysis/rsi';
+import { calculateMACD, calculateEMA }  from '../../src/lib/technical-analysis/macd';
+import { performTechnicalAnalysis }  from '../../src/lib/technical-analysis/index';
 
 // ---------------------------------------------------------------------------
 // MA Tests

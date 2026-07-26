@@ -69,4 +69,4 @@ function analyzeDebtRatio(stockData) {
   };
 }
 
-module.exports = { analyzeDebtRatio };
+export {analyzeDebtRatio};

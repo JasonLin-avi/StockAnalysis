@@ -79,4 +79,4 @@ const schema = `
 
 `;
 
-module.exports = { schema };
+export {schema};

@@ -1,7 +1,7 @@
-const { performFullAnalysis } = require('../../src/lib/integration');
-const { generateReport } = require('../../src/lib/report-generator');
-const { connectToDatabase } = require('../../src/external/database/connection');
-const { saveStockData, saveAnalysisResults } = require('../../src/external/database/queries');
+import { performFullAnalysis }  from '../../src/lib/integration';
+import { generateReport }  from '../../src/lib/report-generator';
+import { connectToDatabase }  from '../../src/external/database/connection';
+import { saveStockData, saveAnalysisResults }  from '../../src/external/database/queries';
 
 describe('End-to-End Stock Analysis Workflow', () => {
   let db;

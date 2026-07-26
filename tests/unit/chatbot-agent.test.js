@@ -6,8 +6,8 @@ const {
   clearCache,
   getCachedAnalysis
 } = require('../../src/lib/chatbot/tools');
-const { financialAdvisorAgent } = require('../../src/lib/chatbot/deep-agent');
-const integration = require('../../src/lib/integration');
+import { financialAdvisorAgent }  from '../../src/lib/chatbot/deep-agent';
+import integration  from '../../src/lib/integration';
 
 jest.mock('../../src/lib/integration', () => ({
   performFullAnalysis: jest.fn()

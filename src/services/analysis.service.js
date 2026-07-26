@@ -2,27 +2,16 @@
 // separating API delivery concerns from business logic workflow.
 // Following Google Engineering Standards, we define performFullAnalysis as the service's primary export.
 
-const { 
-  fetchStockData, 
-  fetchHistoricalData, 
-  fetchFundamentalData,
-  getLocal3YearPrices
-} = require('../external/data-fetcher');
-const { syncStockPrices } = require('./data-sync.service');
-const { performTechnicalAnalysis } = require('../lib/technical-analysis');
-const { performFundamentalAnalysis } = require('../lib/fundamental-analysis');
-const { performNewsAnalysis } = require('../lib/news-analysis');
-const { generateInvestmentAdvice } = require('../lib/investment-advisor');
-const { calculateBacktest } = require('../lib/technical-analysis/backtest');
-const { connectToDatabase, getActiveDatabase } = require('../external/database/connection');
-const { 
-  saveStock, 
-  insertStockDataBatch,
-  saveStockData,
-  saveAnalysisResults,
-  getLatestAnalysisResults
-} = require('../external/database/queries');
-const logger = require('../lib/logger');
+import { fetchStockData, fetchHistoricalData, fetchFundamentalData, getLocal3YearPrices } from '../external/data-fetcher';
+import { syncStockPrices }  from './data-sync.service.js';
+import { performTechnicalAnalysis }  from '../lib/technical-analysis/index.js';
+import { performFundamentalAnalysis }  from '../lib/fundamental-analysis/index.js';
+import { performNewsAnalysis }  from '../lib/news-analysis/index.js';
+import { generateInvestmentAdvice }  from '../lib/investment-advisor/index.js';
+import { calculateBacktest }  from '../lib/technical-analysis/backtest.js';
+import { connectToDatabase, getActiveDatabase }  from '../external/database/connection.js';
+import { saveStock, insertStockDataBatch, saveStockData, saveAnalysisResults, getLatestAnalysisResults } from '../external/database/queries.js';
+import logger  from '../lib/logger.js';
 
 /**
  * Performs a comprehensive multi-factor stock analysis.
@@ -246,4 +235,4 @@ async function getLatestPricesAndBacktest(symbols) {
   return results;
 }
 
-module.exports = { performFullAnalysis, getLatestPricesAndBacktest };
+export {performFullAnalysis, getLatestPricesAndBacktest};

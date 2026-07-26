@@ -1,4 +1,4 @@
-const { generateHTMLReport } = require('./html-report');
+import { generateHTMLReport }  from './html-report';
 
 /**
  * Generates a stock analysis report in the requested format.
@@ -13,4 +13,4 @@ async function generateReport(analysisData, format = 'html') {
   throw new Error(`Unsupported report format: ${format}`);
 }
 
-module.exports = { generateReport, generateHTMLReport };
+export {generateReport, generateHTMLReport};

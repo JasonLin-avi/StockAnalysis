@@ -72,4 +72,4 @@ function analyzeEPS(stockData) {
   return { value, trend, status };
 }
 
-module.exports = { analyzeEPS };
+export {analyzeEPS};

@@ -10,7 +10,7 @@
  * @module news-analysis/financial-news
  */
 
-const logger = require('../logger');
+import logger  from '../logger';
 
 const POSITIVE_WORDS = ['record', 'beat', 'upgrade', 'breakthrough', 'increase', 'profit', 'growth', 'success', 'buy', 'win', 'surge', 'rally', 'strong'];
 const NEGATIVE_WORDS = ['scrutiny', 'investigation', 'cut', 'shortage', 'loss', 'decline', 'drop', 'risk', 'warning', 'sell', 'fall', 'crash', 'weak', 'miss'];
@@ -119,4 +119,4 @@ async function analyzeFinancialNews(symbol) {
   }
 }
 
-module.exports = { analyzeFinancialNews };
+export {analyzeFinancialNews};

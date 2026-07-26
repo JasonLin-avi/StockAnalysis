@@ -2,9 +2,9 @@
 // Why: Unit tests for Chatbot Service layer.
 // Verifies message format adaptation, agent invocation, and response serialization logic.
 
-const { handleChatResponse } = require('../../src/services/chatbot.service');
-const { financialAdvisorAgent } = require('../../src/lib/chatbot/deep-agent');
-const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/messages');
+import { handleChatResponse }  from '../../src/services/chatbot.service';
+import { financialAdvisorAgent }  from '../../src/lib/chatbot/deep-agent';
+import { HumanMessage, AIMessage, SystemMessage }  from '@langchain/core/messages';
 
 jest.mock('../../src/lib/chatbot/deep-agent', () => ({
   financialAdvisorAgent: {

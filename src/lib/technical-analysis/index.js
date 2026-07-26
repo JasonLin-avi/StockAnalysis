@@ -4,9 +4,9 @@
  * @module technical-analysis
  */
 
-const { calculateMA } = require('./ma');
-const { calculateRSI } = require('./rsi');
-const { calculateMACD } = require('./macd');
+import { calculateMA }  from './ma';
+import { calculateRSI }  from './rsi';
+import { calculateMACD }  from './macd';
 
 /**
  * Runs all technical indicators on the provided historical price data.
@@ -33,4 +33,4 @@ function performTechnicalAnalysis(historicalData) {
   return { ma, rsi, macd };
 }
 
-module.exports = { performTechnicalAnalysis, calculateMA, calculateRSI, calculateMACD };
+export {performTechnicalAnalysis, calculateMA, calculateRSI, calculateMACD};

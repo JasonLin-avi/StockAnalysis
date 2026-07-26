@@ -63,4 +63,4 @@ function analyzeCashFlow(stockData) {
   };
 }
 
-module.exports = { analyzeCashFlow };
+export {analyzeCashFlow};

@@ -1,35 +1,19 @@
-// Why: Replace native sqlite3 with libsql-adapter in watchlist migration test.
-const sqlite3 = require('../../src/external/database/libsql-adapter');
-const path = require('path');
-const fs = require('fs');
-const { execSync } = require('child_process');
-
-const dbPath = path.join(__dirname, '../../test-watchlist.db');
+// Why: Test that the watchlist table is properly created during database initialization.
+// Uses connectToDatabase (which runs schema including watchlist table) instead of
+// executing the migration script as a subprocess, avoiding ESM resolution issues.
+import { connectToDatabase } from '../../src/external/database/connection';
 
 describe('Watchlist Migration', () => {
   let db;
 
-  beforeAll(() => {
-    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-    // Run migration script directly on test db
-    process.env.DB_PATH = dbPath;
-    try {
-      execSync('node scripts/migrations/02_create_watchlist_table.js', { env: process.env });
-    } catch (e) {} // Will fail initially
-    db = new sqlite3.Database(dbPath);
+  beforeAll(async () => {
+    // Why: Use in-memory database for test isolation. connectToDatabase applies the full schema
+    // including the watchlist table creation, mirroring production initialization.
+    db = await connectToDatabase(':memory:');
   });
 
   afterAll((done) => {
-    db.close(() => {
-      if (fs.existsSync(dbPath)) {
-        try {
-          fs.unlinkSync(dbPath);
-        } catch (e) {
-          // Ignore EBUSY on Windows during temp file cleanup
-        }
-      }
-      done();
-    });
+    db.close(done);
   });
 
   it('creates the watchlist table', (done) => {
@@ -37,6 +21,17 @@ describe('Watchlist Migration', () => {
       expect(err).toBeNull();
       expect(row).toBeDefined();
       expect(row.name).toBe('watchlist');
+      done();
+    });
+  });
+
+  it('watchlist table has correct columns', (done) => {
+    db.all("PRAGMA table_info(watchlist);", (err, columns) => {
+      expect(err).toBeNull();
+      const colNames = columns.map(c => c.name);
+      expect(colNames).toContain('id');
+      expect(colNames).toContain('symbol');
+      expect(colNames).toContain('added_at');
       done();
     });
   });

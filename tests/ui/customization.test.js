@@ -1,4 +1,4 @@
-const { saveUserPreferences, getUserPreferences } = require('../../src/lib/user-preferences');
+import { saveUserPreferences, getUserPreferences }  from '../../src/lib/user-preferences';
 
 describe('User Preferences API', () => {
   beforeEach(() => {

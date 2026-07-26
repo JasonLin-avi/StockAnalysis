@@ -1,4 +1,4 @@
-const { htmlTemplate } = require('./template');
+import { htmlTemplate }  from './template';
 
 /**
  * Generates an HTML report string by injecting analysis results into the template.
@@ -149,4 +149,4 @@ function generateHTMLReport(analysisData) {
   return html;
 }
 
-module.exports = { generateHTMLReport };
+export {generateHTMLReport};

@@ -1,6 +1,6 @@
-const { DynamicStructuredTool } = require('@langchain/core/tools');
-const { z } = require('zod');
-const { performFullAnalysis } = require('../integration');
+import { DynamicStructuredTool }  from '@langchain/core/tools';
+import { z }  from 'zod';
+import { performFullAnalysis }  from '../integration';
 
 let analysisCache = {};
 let cacheTimestamp = {};
@@ -107,11 +107,9 @@ const getInvestmentAdviceTool = new DynamicStructuredTool({
   },
 });
 
-module.exports = {
-  getTechnicalIndicatorsTool,
+export {getTechnicalIndicatorsTool,
   getFundamentalMetricsTool,
   getNewsSentimentTool,
   getInvestmentAdviceTool,
   clearCache,
-  getCachedAnalysis,
-};
+  getCachedAnalysis,};

@@ -2,8 +2,8 @@
 // Why: Unit tests for Report Service layer.
 // Verifies integration flow coordination and report compilation delegation.
 
-const { generateReport } = require('../../src/services/report.service');
-const { performFullAnalysis } = require('../../src/lib/integration');
+import { generateReport }  from '../../src/services/report.service';
+import { performFullAnalysis }  from '../../src/lib/integration';
 const { generateReport: libGenerateReport } = require('../../src/lib/report-generator');
 
 jest.mock('../../src/lib/integration', () => ({

@@ -1,5 +1,5 @@
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
-const logger = require('../../lib/logger');
+import logger  from '../../lib/logger';
 
 /**
  * Helper to fetch a URL with automatic retries and exponential backoff.
@@ -347,6 +347,6 @@ function processSummaryResponse(data, symbol) {
   };
 }
 
-module.exports = { fetchStockData, fetchHistoricalData, fetchFundamentalData };
+export {fetchStockData, fetchHistoricalData, fetchFundamentalData};
 
 

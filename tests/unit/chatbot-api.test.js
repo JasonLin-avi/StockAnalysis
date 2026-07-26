@@ -1,20 +1,39 @@
 /**
  * @fileoverview Unit tests for the Chatbot API Route.
- * Why: Verify that the /api/chat route handles input validation, formats messages
- * correctly for LangChain, and serializes the agent response properly.
+ * Why: Verify that the /api/chat route handles input validation, delegates to the
+ * chatbot service layer, and formats error responses correctly.
  */
 
-const { POST } = require('../../src/app/api/chat/route');
-const { financialAdvisorAgent } = require('../../src/lib/chatbot/deep-agent');
+// Why: Mock the chatbot service (not deep-agent) because the route delegates to the service layer.
+jest.mock('../../src/services/chatbot.service', () => ({
+  __esModule: true,
+  default: {
+    handleChatResponse: jest.fn()
+  },
+  handleChatResponse: jest.fn()
+}));
 
-// Why: Mock the deep-agent module so we can control mock behavior and isolate testing to the API route logic.
-jest.mock('../../src/lib/chatbot/deep-agent', () => ({
-  financialAdvisorAgent: {
-    invoke: jest.fn()
+// Why: Mock logger to prevent console noise during tests.
+jest.mock('../../src/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn()
   }
 }));
 
+import { POST } from '../../src/app/api/chat/route';
+
+// Why: Import the mocked service to control return values in each test case.
+const chatbotService = require('../../src/services/chatbot.service');
+const mockHandleChatResponse = chatbotService.default?.handleChatResponse || chatbotService.handleChatResponse;
+
 describe('Chatbot API Route', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   test('POST returns 400 when messages or ticker is missing', async () => {
     // Why: Simulate an empty JSON payload to test if validation triggers and returns a 400 Bad Request error.
     const mockReq = {
@@ -26,16 +45,13 @@ describe('Chatbot API Route', () => {
     expect(data.error).toBe('Messages and ticker are required');
   });
 
-  test('POST returns updated messages on successful agent invocation', async () => {
-    // Why: Mock a successful response from the financialAdvisorAgent graph run.
-    financialAdvisorAgent.invoke.mockResolvedValue({
-      messages: [
-        { role: 'user', content: 'hello' },
-        { role: 'assistant', content: 'hello user' }
-      ]
-    });
+  test('POST returns updated messages on successful service invocation', async () => {
+    // Why: Mock a successful response from the chatbot service.
+    mockHandleChatResponse.mockResolvedValue([
+      { role: 'user', content: 'hello' },
+      { role: 'assistant', content: 'hello user' }
+    ]);
 
-    // Why: Simulate a valid request payload containing previous chat messages and target stock ticker.
     const mockReq = {
       json: async () => ({
         messages: [{ role: 'user', content: 'hello' }],
@@ -50,9 +66,9 @@ describe('Chatbot API Route', () => {
     expect(data.messages[1].content).toBe('hello user');
   });
 
-  test('POST returns 500 and user-friendly error message on agent failure', async () => {
-    // Why: Mock agent invocation throwing an error to test the API fallback response.
-    financialAdvisorAgent.invoke.mockRejectedValue(new Error('Internal agent failure'));
+  test('POST returns 500 and user-friendly error message on service failure', async () => {
+    // Why: Mock service invocation throwing an error to test the API fallback response.
+    mockHandleChatResponse.mockRejectedValue(new Error('Internal service failure'));
 
     const mockReq = {
       json: async () => ({

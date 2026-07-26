@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-const { connectToDatabase } = require('../../../../external/database/connection');
-const { getLatestAnalysisResults, getStockData } = require('../../../../external/database/queries');
+import { connectToDatabase }  from '../../../../external/database/connection.js';
+import { getLatestAnalysisResults, getStockData }  from '../../../../external/database/queries.js';
 
 export const dynamic = 'force-dynamic';
 

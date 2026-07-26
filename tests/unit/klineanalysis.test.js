@@ -1,4 +1,4 @@
-const { generateLLMTechnicalSummary } = require('../../src/lib/technical-analysis/klineanalysis');
+import { generateLLMTechnicalSummary }  from '../../src/lib/technical-analysis/klineanalysis';
 
 describe('generateLLMTechnicalSummary (with Long-Term Analysis Support)', () => {
   const createMockData = (count = 80, trend = 'up') => ({

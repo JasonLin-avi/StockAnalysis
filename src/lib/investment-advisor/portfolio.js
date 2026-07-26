@@ -150,4 +150,4 @@ function generatePortfolioAdvice(analysisResults) {
   };
 }
 
-module.exports = { generatePortfolioAdvice };
+export {generatePortfolioAdvice};

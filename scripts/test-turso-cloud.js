@@ -1,8 +1,8 @@
 // scripts/test-turso-cloud.js
 // Script to test connection to remote Turso database using credentials in .env.local
 
-const fs = require('fs');
-const path = require('path');
+import fs  from 'fs';
+import path  from 'path';
 
 // 1. Manually parse .env.local if present
 const envPath = path.resolve(process.cwd(), '.env.local');
@@ -35,7 +35,7 @@ if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
   process.exit(1);
 }
 
-const { connectToDatabase } = require('../src/external/database/connection');
+import { connectToDatabase }  from '../src/external/database/connection';
 
 async function testTurso() {
   try {

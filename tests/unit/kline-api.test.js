@@ -4,7 +4,7 @@
  * moving average calculation, and timeframe filtering.
  */
 
-const { GET } = require('../../src/app/api/stock/[symbol]/kline/route');
+import { GET }  from '../../src/app/api/stock/[symbol]/kline/route';
 
 // Mocks for DB and data-fetcher
 const mockConnectToDatabase = jest.fn();

@@ -7,7 +7,7 @@
  * @module lib/technical-analysis/klineanalysis
  */
 
-const { SMA, RSI, MACD } = require('technicalindicators');
+import { SMA, RSI, MACD }  from 'technicalindicators';
 
 /**
  * 將 OHLCV 資料轉換為 LLM 專用的結構化技術摘要（含短線與長線特徵）
@@ -137,9 +137,7 @@ function generateLLMTechnicalSummary(rawData) {
     };
 }
 
-module.exports = {
-  generateLLMTechnicalSummary
-};
+export {generateLLMTechnicalSummary};
 
 // === 測試範例資料 ===
 if (require.main === module) {

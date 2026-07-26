@@ -1,6 +1,12 @@
 // Why: Replace native sqlite3 driver with libsql-adapter for database migration script.
-const sqlite3 = require('../../src/external/database/libsql-adapter');
-const path = require('path');
+// Uses import.meta.url + fileURLToPath for ESM __dirname equivalent.
+import sqlite3 from '../../src/external/database/libsql-adapter.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Why: ESM doesn't have __dirname. Use import.meta.url to derive the directory path.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '../../database.sqlite');
 const db = new sqlite3.Database(dbPath);

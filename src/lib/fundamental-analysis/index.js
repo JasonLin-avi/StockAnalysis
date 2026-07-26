@@ -11,11 +11,11 @@
  * @module fundamental-analysis
  */
 
-const { analyzePERatio } = require('./pe-ratio');
-const { analyzeEPS } = require('./eps');
-const { analyzeDebtRatio } = require('./debt-ratio');
-const { analyzeRevenueGrowth } = require('./revenue-growth');
-const { analyzeCashFlow } = require('./cash-flow');
+import { analyzePERatio }  from './pe-ratio';
+import { analyzeEPS }  from './eps';
+import { analyzeDebtRatio }  from './debt-ratio';
+import { analyzeRevenueGrowth }  from './revenue-growth';
+import { analyzeCashFlow }  from './cash-flow';
 
 /**
  * Performs a comprehensive fundamental analysis using the provided stock data.
@@ -41,11 +41,9 @@ function performFundamentalAnalysis(stockData) {
   };
 }
 
-module.exports = {
-  performFundamentalAnalysis,
+export {performFundamentalAnalysis,
   analyzePERatio,
   analyzeEPS,
   analyzeDebtRatio,
   analyzeRevenueGrowth,
-  analyzeCashFlow
-};
+  analyzeCashFlow};

@@ -1,4 +1,4 @@
-const { calculateBacktest } = require('../../src/lib/technical-analysis/backtest');
+import { calculateBacktest }  from '../../src/lib/technical-analysis/backtest';
 
 describe('Backtest Engine Mathematical Verification', () => {
   test('should return correct win rates and similarity rankings', () => {

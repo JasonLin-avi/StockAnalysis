@@ -3,16 +3,9 @@
  * Validates connection initialization, transactional DDL, and CRUD queries using an in-memory database.
  */
 
-const { connectToDatabase } = require('../../src/external/database/connection');
-const {
-  saveStock,
-  saveStockData,
-  saveAnalysisResults,
-  getStock,
-  getStockData,
-  getLatestAnalysisResults,
-  getLatestBacktestResults
-} = require('../../src/external/database/queries');
+import { connectToDatabase }  from '../../src/external/database/connection';
+
+import { saveStock, saveStockData, saveAnalysisResults, getStock, getStockData, getLatestAnalysisResults, getLatestBacktestResults, getMarketFundsFlow, saveMarketFundsFlow, getPromptAnalysis, savePromptAnalysis, getRecentPromptAnalysis, getMarketOverviewMetrics, saveMarketOverviewMetrics, getWatchlist, saveWatchlist, removeWatchlist } from '../../src/external/database/queries';
 
 describe('Database Module', () => {
   let db;
@@ -243,7 +236,7 @@ describe('Database Module', () => {
   // Market Funds Flow Queries
   // ---------------------------------------------------------------------------
   describe('Market Funds Flow', () => {
-    const { saveMarketFundsFlow, getMarketFundsFlow } = require('../../src/external/database/queries');
+
 
     test('saves and retrieves market funds flow correctly', async () => {
       const data = {
@@ -295,7 +288,7 @@ describe('Database Module', () => {
   // Prompt Analysis Cache Range Queries
   // ---------------------------------------------------------------------------
   describe('Prompt Analysis Cache Range Queries', () => {
-    const { savePromptAnalysis, getRecentPromptAnalysis } = require('../../src/external/database/queries');
+
 
     test('saves prompt analysis and retrieves it within valid days limit', async () => {
       const today = new Date().toISOString().split('T')[0];

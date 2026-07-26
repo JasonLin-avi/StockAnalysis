@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getLatestPricesAndBacktest } from '../../../services/analysis.service';
-const logger = require('../../../lib/logger');
+import logger  from '../../../lib/logger';
 
 // Why: Next.js might statically optimize API routes without dynamic functions. This ensures we always fetch fresh prices.
 export const dynamic = 'force-dynamic';

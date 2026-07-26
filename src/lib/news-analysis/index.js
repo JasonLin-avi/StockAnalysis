@@ -11,9 +11,9 @@
  * @module news-analysis
  */
 
-const { analyzeFinancialNews } = require('./financial-news');
-const { analyzeSocialSentiment } = require('./social-sentiment');
-const { analyzeMajorEvents } = require('./major-events');
+import { analyzeFinancialNews }  from './financial-news';
+import { analyzeSocialSentiment }  from './social-sentiment';
+import { analyzeMajorEvents }  from './major-events';
 
 /**
  * Performs a complete news, sentiment, and event analysis for a given stock symbol.
@@ -38,9 +38,7 @@ async function performNewsAnalysis(symbol) {
   };
 }
 
-module.exports = {
-  performNewsAnalysis,
+export {performNewsAnalysis,
   analyzeFinancialNews,
   analyzeSocialSentiment,
-  analyzeMajorEvents
-};
+  analyzeMajorEvents};

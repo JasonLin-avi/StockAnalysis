@@ -1,6 +1,6 @@
-const { connectToDatabase } = require('../../src/external/database/connection');
+import { connectToDatabase }  from '../../src/external/database/connection';
 // Why: Use libsql-adapter to replace sqlite3 import in test suite.
-const sqlite3 = require('../../src/external/database/libsql-adapter');
+import sqlite3  from '../../src/external/database/libsql-adapter';
 
 describe('Database Migration Tests', () => {
   let db;

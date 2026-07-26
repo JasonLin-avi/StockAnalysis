@@ -1,5 +1,5 @@
-const { performFullAnalysis } = require('../../src/lib/integration');
-const { connectToDatabase } = require('../../src/external/database/connection');
+import { performFullAnalysis }  from '../../src/lib/integration';
+import { connectToDatabase }  from '../../src/external/database/connection';
 
 // Mock Yahoo Finance to ensure zero network requests during tests
 jest.mock('../../src/external/data-fetcher/yahoo-finance', () => {

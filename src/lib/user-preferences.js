@@ -22,4 +22,4 @@ function getUserPreferences() {
   return {};
 }
 
-module.exports = { saveUserPreferences, getUserPreferences };
+export {saveUserPreferences, getUserPreferences};

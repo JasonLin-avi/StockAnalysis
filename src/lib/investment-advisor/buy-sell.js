@@ -262,4 +262,4 @@ function generateBuySellAdvice(analysisResults) {
   };
 }
 
-module.exports = { generateBuySellAdvice };
+export {generateBuySellAdvice};

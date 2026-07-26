@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import yahooFinance from '../../../external/data-fetcher/yahoo-finance';
-const { fetchStockData } = yahooFinance;
+import { fetchStockData } from '../../../external/data-fetcher/yahoo-finance';
 
 export const dynamic = 'force-dynamic';
 

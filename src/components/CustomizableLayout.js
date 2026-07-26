@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-const { saveUserPreferences, getUserPreferences } = require('../lib/user-preferences');
+import { saveUserPreferences, getUserPreferences }  from '../lib/user-preferences';
 
 export default function CustomizableLayout({ children, defaultWidgets = ['technical', 'fundamental', 'news'] }) {
   const [visibleWidgets, setVisibleWidgets] = useState(defaultWidgets);

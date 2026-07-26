@@ -1,5 +1,5 @@
-const { performFullAnalysis, getLatestPricesAndBacktest } = require('../../src/services/analysis.service');
-const { connectToDatabase } = require('../../src/external/database/connection');
+import { performFullAnalysis, getLatestPricesAndBacktest }  from '../../src/services/analysis.service';
+import { connectToDatabase }  from '../../src/external/database/connection';
 
 // Why: Mock Yahoo Finance API calls to ensure zero external network query overhead in unit tests.
 jest.mock('../../src/external/data-fetcher/yahoo-finance', () => {

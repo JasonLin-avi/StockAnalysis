@@ -237,5 +237,5 @@ function calculateBacktest(prices) {
   return result;
 }
 
-module.exports = { calculateBacktest };
+export {calculateBacktest};
 

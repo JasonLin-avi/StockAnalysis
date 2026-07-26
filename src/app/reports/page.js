@@ -1,8 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
-const { connectToDatabase } = require('../../external/database/connection');
-const { getAllAnalyzedStocks } = require('../../external/database/queries');
+import { connectToDatabase }  from '../../external/database/connection';
+import { getAllAnalyzedStocks }  from '../../external/database/queries';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

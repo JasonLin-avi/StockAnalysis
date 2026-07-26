@@ -11,7 +11,7 @@
  * @module news-analysis/social-sentiment
  */
 
-const logger = require('../logger');
+import logger  from '../logger';
 
 /**
  * Returns ISO date string for N days ago.
@@ -118,4 +118,4 @@ async function analyzeSocialSentiment(symbol) {
   }
 }
 
-module.exports = { analyzeSocialSentiment };
+export {analyzeSocialSentiment};

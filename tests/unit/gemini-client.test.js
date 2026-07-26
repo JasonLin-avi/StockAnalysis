@@ -1,8 +1,8 @@
 // tests/unit/gemini-client.test.js
 // Why: Test that client.js defaults to googleSearch tools, redirects to OpenRouter on Quota exceeded, and bubbles up other errors.
 
-const { callGemini } = require('../../src/external/gemini/client');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { callGemini }  from '../../src/external/gemini/client';
+import { GoogleGenerativeAI }  from '@google/generative-ai';
 
 jest.mock('@google/generative-ai');
 

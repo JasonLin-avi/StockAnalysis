@@ -10,9 +10,9 @@ jest.mock('../../src/external/data-fetcher/yahoo-finance', () => ({
   })
 }));
 
-const { getLocal3YearPrices } = require('../../src/external/data-fetcher');
-const { syncStockPrices } = require('../../src/services/data-sync.service');
-const { connectToDatabase } = require('../../src/external/database/connection');
+import { getLocal3YearPrices }  from '../../src/external/data-fetcher';
+import { syncStockPrices }  from '../../src/services/data-sync.service';
+import { connectToDatabase }  from '../../src/external/database/connection';
 
 describe('Incremental Price Sync Tests', () => {
   let db;

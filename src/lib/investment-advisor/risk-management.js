@@ -80,4 +80,4 @@ function generateRiskManagementAdvice(analysisResults) {
   };
 }
 
-module.exports = { generateRiskManagementAdvice };
+export {generateRiskManagementAdvice};

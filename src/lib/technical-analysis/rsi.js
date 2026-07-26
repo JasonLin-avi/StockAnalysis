@@ -72,4 +72,4 @@ function calculateRSI(prices, period = 14) {
   return result;
 }
 
-module.exports = { calculateRSI };
+export {calculateRSI};

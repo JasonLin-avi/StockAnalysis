@@ -1,97 +1,72 @@
-// src/lib/database/libsql-adapter.js
-// Wrap @libsql/client (Turso) to provide a sqlite3-compatible interface (Database, Statement, run, get, all, exec, serialize).
-// This adapter allows seamlessly replacing native sqlite3 in Vercel/Next.js serverless environments.
+// src/external/database/libsql-adapter.js
+// CommonJS adapter providing sqlite3‑like interface using @libsql/client.
 
-const { createClient } = require('@libsql/client');
+import { createClient } from '@libsql/client';
 
+/**
+ * Database class mimics the sqlite3.Database API but uses @libsql/client under the hood.
+ * Why: Enables seamless replacement of the native sqlite3 driver with a cloud‑compatible implementation.
+ */
 class Database {
   /**
-   * Initialize Libsql client based on database path or environment variables.
-   * Remote Turso URLs take precedence if present; otherwise local file or in-memory sqlite is used.
+   * Initialize LibSQL client based on a path or environment variables.
+   * @param {string} dbPath - Path to the SQLite file or ':memory:'.
+   * @param {(err?: Error) => void} [callback] - Optional callback matching sqlite3 constructor signature.
    */
   constructor(dbPath, callback) {
-    let url;
     const authToken = process.env.TURSO_AUTH_TOKEN || '';
-
+    let url;
     if (process.env.TURSO_DATABASE_URL) {
       url = process.env.TURSO_DATABASE_URL;
+    } else if (dbPath === ':memory:') {
+      url = 'file::memory:';
     } else {
-      if (dbPath === ':memory:') {
-        url = 'file::memory:';
-      } else {
-        url = dbPath.startsWith('file:') ? dbPath : `file:${dbPath}`;
-      }
+      url = dbPath.startsWith('file:') ? dbPath : `file:${dbPath}`;
     }
-
     this.client = createClient({ url, authToken });
-    
-    // Why: Support stateless transaction buffering over HTTP remote connections.
-    // We queue SQL commands executed inside BEGIN/COMMIT blocks and execute them atomically via client.batch on COMMIT.
     this.inTransaction = false;
     this.txQueue = [];
-
-    // Simulate async callback mechanism expected by sqlite3 connection constructor
     if (callback) {
+      // Mimic async constructor callback of sqlite3.
       process.nextTick(() => callback(null));
     }
   }
 
-  /**
-   * Close database connection client gracefully.
-   */
+  /** Close the client connection. */
   close(callback) {
     try {
       this.client.close();
-      if (callback) {
-        setTimeout(() => callback(null), 50);
-      }
+      if (callback) setTimeout(() => callback(null), 50);
     } catch (err) {
       if (callback) callback(err);
     }
   }
 
-  /**
-   * Execute batch multi-statement SQL text.
-   * Split statements by semicolon as @libsql client batch API expects structured individual statement objects.
-   */
+  /** Execute a batch of statements (used for exec). */
   exec(sql, callback) {
     const statements = sql
       .split(';')
       .map(s => s.trim())
       .filter(s => s.length > 0)
       .map(s => ({ sql: s, args: [] }));
-
     this.client.batch(statements, 'write')
-      .then(() => {
-        if (callback) callback(null);
-      })
-      .catch(err => {
-        if (callback) callback(err);
-      });
+      .then(() => callback && callback(null))
+      .catch(err => callback && callback(err));
   }
 
-  /**
-   * No-op implementation of serialize for sqlite3 API compatibility.
-   * Libsql operations are handled asynchronously over HTTP/WebSockets or local driver.
-   */
+  /** No‑op serialize for compatibility. */
   serialize(callback) {
     if (callback) callback();
   }
 
-  /**
-   * Run write query and return context with lastID and changes count.
-   * Intercepts transaction flow (BEGIN/COMMIT/ROLLBACK) for buffering.
-   */
+  /** Run a write query, supporting transaction buffering. */
   run(sql, params, callback) {
     if (typeof params === 'function') {
       callback = params;
       params = [];
     }
-
     const cleanSql = sql.trim().toUpperCase();
-
-    // 1. Intercept BEGIN TRANSACTION
-    if (cleanSql.startsWith("BEGIN TRANSACTION") || cleanSql.startsWith("BEGIN;")) {
+    if (cleanSql.startsWith('BEGIN TRANSACTION') || cleanSql.startsWith('BEGIN;')) {
       this.inTransaction = true;
       this.txQueue = [];
       if (callback) {
@@ -100,20 +75,14 @@ class Database {
       }
       return;
     }
-
-    // 2. Intercept COMMIT
-    if (cleanSql.startsWith("COMMIT") || cleanSql.startsWith("END TRANSACTION")) {
+    if (cleanSql.startsWith('COMMIT') || cleanSql.startsWith('END TRANSACTION')) {
       if (!this.inTransaction) {
-        if (callback) {
-          process.nextTick(() => callback(new Error("cannot commit - no transaction is active")));
-        }
+        if (callback) process.nextTick(() => callback(new Error('cannot commit - no transaction is active')));
         return;
       }
-
       this.inTransaction = false;
       const statements = [...this.txQueue];
       this.txQueue = [];
-
       if (statements.length === 0) {
         if (callback) {
           const ctx = { changes: 0, lastID: 0 };
@@ -121,27 +90,23 @@ class Database {
         }
         return;
       }
-
-      // Execute all buffered transaction queries atomically in a single HTTP batch request
       this.client.batch(statements, 'write')
         .then(results => {
           if (callback) {
             const lastRes = results[results.length - 1];
             const ctx = {
-              lastID: (lastRes?.lastInsertRowid !== undefined && lastRes?.lastInsertRowid !== null) ? Number(lastRes.lastInsertRowid) : undefined,
-              changes: lastRes?.rowsAffected || 0
+              lastID: (lastRes?.lastInsertRowid !== undefined && lastRes?.lastInsertRowid !== null)
+                ? Number(lastRes.lastInsertRowid)
+                : undefined,
+              changes: lastRes?.rowsAffected || 0,
             };
             callback.call(ctx, null);
           }
         })
-        .catch(err => {
-          if (callback) callback(err);
-        });
+        .catch(err => callback && callback(err));
       return;
     }
-
-    // 3. Intercept ROLLBACK
-    if (cleanSql.startsWith("ROLLBACK")) {
+    if (cleanSql.startsWith('ROLLBACK')) {
       this.inTransaction = false;
       this.txQueue = [];
       if (callback) {
@@ -150,8 +115,6 @@ class Database {
       }
       return;
     }
-
-    // 4. Buffer ordinary queries if inside transaction block
     if (this.inTransaction) {
       this.txQueue.push({ sql, args: params || [] });
       if (callback) {
@@ -160,64 +123,50 @@ class Database {
       }
       return;
     }
-
-    // 5. Normal stateless query execution
     this.client.execute({ sql, args: params || [] })
       .then(res => {
         if (callback) {
           const ctx = {
-            lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null) ? Number(res.lastInsertRowid) : undefined,
-            changes: res.rowsAffected
+            lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null)
+              ? Number(res.lastInsertRowid)
+              : undefined,
+            changes: res.rowsAffected,
           };
           callback.call(ctx, null);
         }
       })
-      .catch(err => {
-        if (callback) callback(err);
-      });
+      .catch(err => callback && callback(err));
   }
 
-  /**
-   * Fetch single matching row.
-   */
+  /** Fetch a single row. */
   get(sql, params, callback) {
     if (typeof params === 'function') {
       callback = params;
       params = [];
     }
-
     this.client.execute({ sql, args: params || [] })
       .then(res => {
         const row = res.rows[0] ? { ...res.rows[0] } : undefined;
         if (callback) callback(null, row);
       })
-      .catch(err => {
-        if (callback) callback(err);
-      });
+      .catch(err => callback && callback(err));
   }
 
-  /**
-   * Fetch all matching rows.
-   */
+  /** Fetch all matching rows. */
   all(sql, params, callback) {
     if (typeof params === 'function') {
       callback = params;
       params = [];
     }
-
     this.client.execute({ sql, args: params || [] })
       .then(res => {
-        const rows = res.rows.map(row => ({ ...row }));
+        const rows = res.rows.map(r => ({ ...r }));
         if (callback) callback(null, rows);
       })
-      .catch(err => {
-        if (callback) callback(err);
-      });
+      .catch(err => callback && callback(err));
   }
 
-  /**
-   * Create prepared statement object.
-   */
+  /** Prepare a statement compatible with sqlite3 API. */
   prepare(sql, callback) {
     const stmt = new Statement(this, sql);
     if (callback) callback(null, stmt);
@@ -225,6 +174,7 @@ class Database {
   }
 }
 
+/** Statement class mimics sqlite3.Statement. */
 class Statement {
   constructor(database, sql) {
     this.database = database;
@@ -232,53 +182,48 @@ class Statement {
     this.promises = [];
   }
 
-  /**
-   * Execute prepared statement. Diverts to database.run buffering if inside a transaction block.
-   */
+  /** Execute the prepared statement (run). */
   run(params, callback) {
     if (typeof params === 'function') {
       callback = params;
       params = [];
     }
-
     if (this.database.inTransaction) {
       this.database.run(this.sql, params, callback);
       return this;
     }
-
     const p = this.database.client.execute({ sql: this.sql, args: params || [] })
       .then(res => {
         if (callback) {
           const ctx = {
-            lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null) ? Number(res.lastInsertRowid) : undefined,
-            changes: res.rowsAffected
+            lastID: (res.lastInsertRowid !== undefined && res.lastInsertRowid !== null)
+              ? Number(res.lastInsertRowid)
+              : undefined,
+            changes: res.rowsAffected,
           };
           callback.call(ctx, null);
         }
       })
-      .catch(err => {
-        if (callback) callback(err);
-      });
-
+      .catch(err => callback && callback(err));
     this.promises.push(p);
     return this;
   }
 
-  /**
-   * Wait for all queued execution promises to complete before resolving.
-   */
+  /** Wait for all run promises to settle. */
   finalize(callback) {
     Promise.all(this.promises)
-      .then(() => {
-        if (callback) callback(null);
-      })
-      .catch(err => {
-        if (callback) callback(err);
-      });
+      .then(() => callback && callback(null))
+      .catch(err => callback && callback(err));
   }
 }
 
-module.exports = {
-  Database,
-  verbose: function() { return this; }
-};
+/** Verbose shim – matches sqlite3.verbose(). */
+function verbose() {
+  return { verbose: () => ({}) };
+}
+
+export { Database, verbose };
+
+// Why: Migration scripts and legacy consumers use `import sqlite3 from './libsql-adapter'`
+// then call `new sqlite3.Database(...)`. Default export mirrors the sqlite3 package shape.
+export default { Database, verbose };

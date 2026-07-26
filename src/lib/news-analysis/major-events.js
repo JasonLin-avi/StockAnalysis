@@ -12,7 +12,7 @@
  * @module news-analysis/major-events
  */
 
-const logger = require('../logger');
+import logger  from '../logger';
 
 /**
  * Returns ISO date string for N days from today.
@@ -128,4 +128,4 @@ async function analyzeMajorEvents(symbol) {
   }
 }
 
-module.exports = { analyzeMajorEvents };
+export {analyzeMajorEvents};
