@@ -1,9 +1,13 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
+// Why: Under "type": "module", CJS interop wraps default exports in an object with a .default property during Next.js server build.
+const NextAuthHandler = NextAuth.default || NextAuth;
+const GoogleProviderHandler = GoogleProvider.default || GoogleProvider;
+
 export const authOptions = {
   providers: [
-    GoogleProvider({
+    GoogleProviderHandler({
       clientId: process.env.GOOGLE_CLIENT_ID || "dummy-client-id",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy-client-secret",
     }),
@@ -32,5 +36,5 @@ export const authOptions = {
   },
 };
 
-const handler = NextAuth(authOptions);
+const handler = NextAuthHandler(authOptions);
 export { handler as GET, handler as POST };
