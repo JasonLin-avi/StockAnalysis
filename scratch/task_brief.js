@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import fs  from 'fs';
+import path  from 'path';
 
 if (process.argv.length < 4) {
   console.error("Usage: node task_brief.js <PLAN_FILE> <TASK_NUMBER> [OUTFILE]");

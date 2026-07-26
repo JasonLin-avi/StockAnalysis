@@ -1,4 +1,4 @@
-const { fetchFundamentalData } = require('../src/lib/data-fetcher/yahoo-finance');
+import { fetchFundamentalData }  from '../src/lib/data-fetcher/yahoo-finance';
 
 async function testTsla() {
   try {

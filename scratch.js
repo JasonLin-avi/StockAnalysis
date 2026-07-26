@@ -1,4 +1,4 @@
-const dotenv = require('dotenv');
+import dotenv  from 'dotenv';
 dotenv.config({ path: '.env.local' });
 const apiKey = process.env.FINNHUB_API_KEY;
 console.log('Using API key:', apiKey);

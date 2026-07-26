@@ -1,4 +1,4 @@
-const { fetchHistoricalData } = require('../src/lib/data-fetcher');
+import { fetchHistoricalData }  from '../src/lib/data-fetcher';
 
 async function main() {
   try {

@@ -1,4 +1,4 @@
-const { fetchFundamentalData, fetchStockData } = require('../src/lib/data-fetcher');
+import { fetchFundamentalData, fetchStockData }  from '../src/lib/data-fetcher';
 
 async function main() {
   try {
