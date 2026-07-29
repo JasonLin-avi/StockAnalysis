@@ -6,6 +6,7 @@ import {
   getNewsSentimentTool,
   getInvestmentAdviceTool,
 } from './tools.js';
+import logger  from '../../lib/logger.js';
 
 // Why: Initialize NVIDIA NIM compatible OpenAI wrapper using configuration from environment variables.
 const minimaxModel = new ChatOpenAI({
@@ -13,9 +14,11 @@ const minimaxModel = new ChatOpenAI({
   configuration: {
     baseURL: process.env.NV_API_URL || 'https://integrate.api.nvidia.com/v1',
   },
-  modelName: process.env.NV_MODEL_NAME || 'minimaxai/minimax-m2.7',
+  modelName: process.env.NV_MODEL_NAME || 'meta/llama-3.1-70b-instruct',
   temperature: 0.2,
 });
+
+logger.info('DEEP_AGENT', `Initialized DeepAgent with model: ${minimaxModel.model} at ${minimaxModel.clientConfig.baseURL}`);
 
 // Why: Compile the agent using deepagents runner with full accessibility tools bound for stock analysis lookups.
 const financialAdvisorAgent = createDeepAgent({

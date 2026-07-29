@@ -28,6 +28,6 @@ export default withAuth(
 export const config = {
   // 保護全站所有頁面與 API，但排除 OAuth 驗證端點 (api/auth) 與前端靜態資源，避免無窮重導向
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|api/chat|_next/static|_next/image|favicon.ico).*)",
   ],
 };

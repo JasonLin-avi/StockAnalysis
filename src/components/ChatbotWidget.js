@@ -75,7 +75,9 @@ export default function ChatbotWidget() {
       });
 
       if (!response.ok) {
-        throw new Error('對話連線失敗，請稍後再試');
+        const errorText = await response.text();
+        console.error('Chat API Failed:', response.status, errorText);
+        throw new Error(`對話連線失敗，請稍後再試 (Status: ${response.status})`);
       }
 
       const data = await response.json();

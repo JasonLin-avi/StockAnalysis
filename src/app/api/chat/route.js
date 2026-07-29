@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]/route';
 import chatbotService from '../../../services/chatbot.service';
 import logger from '../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 延長 Vercel Serverless Function 執行時間限制 (最大 60 秒)
 
 /**
  * Handle POST request for the chatbot API route.
@@ -15,6 +18,13 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   let tickerContext = 'N/A';
   try {
+    const session = await getServerSession(authOptions);
+    const allowedEmails = process.env.ALLOWED_EMAILS?.split(",") || [];
+    
+    if (!session || !session.user || !allowedEmails.includes(session.user.email)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { messages, ticker } = await request.json();
     tickerContext = ticker || 'N/A';
     

@@ -59,12 +59,13 @@ export default function Header() {
     fetchMarket();
     fetchSentiment();
 
-    // Poll every 60 seconds
+    // Poll every interval (default 60 seconds)
+    const pollInterval = parseInt(process.env.NEXT_PUBLIC_MARKET_POLL_INTERVAL_MS, 10) || 60000;
     const interval = setInterval(() => {
       updateTime();
       fetchMarket();
       fetchSentiment();
-    }, 60000);
+    }, pollInterval);
 
     return () => clearInterval(interval);
   }, []);
