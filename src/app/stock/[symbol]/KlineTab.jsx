@@ -16,6 +16,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries, ColorType } from 'lightweight-charts';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import EmbeddedBacktestPanel from '@/components/backtest/EmbeddedBacktestPanel';
+
 
 /**
  * SummaryPanel Sub-Component
@@ -227,6 +229,7 @@ function SummaryPanel({ summary, isLoading }) {
  */
 export default function KlineTab({ symbol }) {
   const [range, setRange] = useState('1Y');
+  const [middleTab, setMiddleTab] = useState('ai_summary'); // 'ai_summary' | 'backtest_sandbox'
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -511,8 +514,39 @@ export default function KlineTab({ symbol }) {
         </div>
       </div>
 
-      {/* Full-width AI Technical Diagnosis Panel */}
-      <TechnicalAISummaryPanel symbol={symbol} />
+      {/* Section 2: Sub-Tabs for Current AI Technical Interpretation & Backtest Sandbox */}
+      <div className="space-y-4 mt-6">
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+          <button
+            type="button"
+            onClick={() => setMiddleTab('ai_summary')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              middleTab === 'ai_summary'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            <span>🤖</span> 當前 AI 技術面解讀
+          </button>
+          <button
+            type="button"
+            onClick={() => setMiddleTab('backtest_sandbox')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              middleTab === 'backtest_sandbox'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            <span>⏳</span> 歷史時點模擬與回測沙盒
+          </button>
+        </div>
+
+        {middleTab === 'ai_summary' ? (
+          <TechnicalAISummaryPanel symbol={symbol} />
+        ) : (
+          <EmbeddedBacktestPanel symbol={symbol} />
+        )}
+      </div>
     </div>
   );
 }

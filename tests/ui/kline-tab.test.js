@@ -235,6 +235,42 @@ describe('KlineTab Component', () => {
       expect(screen.getByText(/長線波段佈局/)).toBeInTheDocument();
     });
   });
+
+  test('renders sub-tabs and switches between AI technical summary and embedded backtest sandbox panel', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    // Verify sub-tab buttons render
+    const aiSummaryTabBtn = screen.getByRole('button', { name: /當前 AI 技術面解讀/i });
+    const backtestSandboxTabBtn = screen.getByRole('button', { name: /歷史時點模擬與回測沙盒/i });
+    expect(aiSummaryTabBtn).toBeInTheDocument();
+    expect(backtestSandboxTabBtn).toBeInTheDocument();
+
+    // Default active tab should show TechnicalAISummaryPanel content
+    await waitFor(() => {
+      expect(screen.getAllByText(/15年資深量化專家 AI 深度診斷/i)[0]).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/歷史時點 AI 技術回測沙盒/i)).not.toBeInTheDocument();
+
+    // Switch to backtest sandbox tab
+    await act(async () => {
+      fireEvent.click(backtestSandboxTabBtn);
+    });
+
+    // Backtest sandbox panel content should now be rendered
+    expect(screen.getByText(/歷史時點 AI 技術回測沙盒 \(AAPL\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/歷史基準日/i)).toBeInTheDocument();
+
+    // Switch back to AI summary tab
+    await act(async () => {
+      fireEvent.click(aiSummaryTabBtn);
+    });
+
+    expect(screen.getAllByText(/15年資深量化專家 AI 深度診斷/i)[0]).toBeInTheDocument();
+  });
 });
+
+
 
 
