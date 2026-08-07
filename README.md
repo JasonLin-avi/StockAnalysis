@@ -1,50 +1,54 @@
 # 🌌 Antigravity Stock Analytics - 智能化股市分析與投資決策顧問平台
 
-一個整合台灣與美國股市的智能化分析與策略建議平台。本專案使用 Next.js (App Router) 與 Docker 進行全棧式容器化開發，結合多因子數據模型、輿情情緒分析及風險防護機制，為投資人生成全面的智能決策報告。
+一個整合台灣與美國股市的智能化分析與策略建議平台。本專案使用 Next.js (App Router) 與 Docker 進行全棧式容器化開發，結合多因子數據模型、輿情情緒分析、歷史 K 線 LLM 時點回測及風險防護機制，為投資人生成全面的智能決策報告。
 
 ---
 
 ## 🚀 核心功能特色
 
-1. **📊 雙數據源高可用容錯獲取 (Data Fetcher Mirror Fallback)**
+1. **📈 K 線 LLM 歷史時點回測與驗證沙盒 (Point-in-Time Backtest Sandbox)**
+   - **Lookahead 物理隔離保護**：設定過去任何指定日期（Cutoff Date），後端嚴格物理切割數據，只傳送基準日前的歷史 OHLCV 與技術指標給 **Predictor LLM**，防止未來看板數據洩漏。
+   - **雙 LLM 引擎對比**：Predictor LLM 站在歷史當下給出趨勢預測（多/空/盤整）、目標價區間與推理理由；點擊「揭曉未來」後，解鎖實際歷史走勢並由 **Evaluator 裁判 LLM** 自動比對預測與真實價格變幅，給予 0-100 分精準度評分與覆盤評語。
+   - **經典歷史案例選單 (Presets)**：內建經典歷史行情突破案例（如台積電千元前夕、NVIDIA 財報大漲點），可一鍵載入體驗。
+
+2. **📊 雙數據源高可用容錯獲取 (Data Fetcher Mirror Fallback)**
    - 整合 **Yahoo Finance (query1)** 作為主要即時股票、歷史線圖及財務資訊來源。
-   - **真 Fallback 備用源**：由於 Google Finance 舊 API 已關閉，專案於生產運行環境中已安全轉向 Yahoo **query2** 鏡像伺服器，作為真正可靠的生產備用源，以防主服務限流或異常；同時在測試環境下自動切換回 Google mock URL 以相容 Jest 測試。
+   - **真 Fallback 備用源**：生產運行環境中安全轉向 Yahoo **query2** 鏡像伺服器，作為真正可靠的生產備用源，以防主服務限流或異常；測試環境自動切換至 Mock 測試源。
 
-2. **🤖 互動式 AI 投資顧問助理 (LangChain LLM Agent)**
+3. **🤖 互動式 AI 投資顧問助理 (LangChain & Gemini LLM Agent)**
    - **浮動對話介面 (Chatbot Widget)**：支援個股 context 快捷 Badge、自動對焦及 Aria-labels 網頁無障礙設計。
-   - **金融智能代理**：基於 LangChain 與 NVIDIA NIM (Minimax) 模型，綁定四個金融分析 Tools (技術指標、基本面、新聞輿情、投資建議)。AI 能在對話中**即時調用後端分析引擎**，獲取最新個股指標並給出精闢解答。
+   - **金融智能代理**：結合 Google Gemini / OpenRouter 雙模型備援機制與金融分析 Tools（技術指標、基本面、新聞輿情、投資建議）。AI 能在對話中**即時調用後端分析引擎**，獲取最新個股指標並給出精闢解答。
 
-3. **📈 多維度分析引擎 (Consolidated Analysis Engine)**
-   - **技術面分析**：計算 移動平均線 (MA)、相對強弱指標 (RSI)、MACD 指標以判斷買賣訊號與超買/超賣區間。
+4. **📈 多維度分析引擎 (Consolidated Analysis Engine)**
+   - **技術面分析**：計算移動平均線 (MA5/20/60)、相對強弱指標 (RSI)、MACD 與布林通道以判斷買賣訊號與超買/超賣區間。
    - **基本面財務評級**：自動評估市盈率 (P/E)、每股收益 (EPS) 成長趨勢、負債比率、季度營收成長率，以及盈餘品質（營業現金流與資本支出）。
-   - **新聞與輿情情緒**：藉由關鍵字權重模型平行評估財經新聞情緒（Finnhub company-news）、Reddit & Twitter/X 社群討論熱度/加權情緒指標，並偵測高影響力財報發布日曆與 EPS 預估事件。
+   - **新聞與輿情情緒**：藉由關鍵字權重模型平行評估財經新聞情緒（Finnhub company-news）、社群討論熱度/加權情緒指標，並偵測高影響力財報發布日曆與 EPS 預估事件。
 
-4. **💾 本地持久化與快取機制 (SQLite Storage)**
-   - 整合 SQLite 資料庫，採用參數化查詢（防 SQL 注入）與 Transaction 提升讀寫性能。
-   - 提供**分析快照機制**，將分析結果序列化為 JSON 儲存於 `analysis_results` 表中，以避免重複調用外部 API 產生的高昂成本與延遲。
+5. **🏛️ 數據分析中心與績效排行榜 (Analytics Hub & Leaderboard)**
+   - **Analytics Hub (`/hub`)**：整合自選股清單 (`WatchlistTable`) 與回測戰績排行榜 (`LeaderboardPanel`)。
+   - **籌碼與資金流向 (`/funds-flow`)**：追蹤三大法人與市場資金流向動態。
 
-5. **⚙️ 自定義儀表板排版與自選股 (Watchlist)**
-   - **自選股清單**：提供一鍵加入/移除自選股清單，以便追蹤感興趣的投資組合。
-   - **自定義排版**：支援首頁與個股詳情頁卡片的拖放控制（如隱藏技術面或基本面雷達），自定義偏好會自動寫入瀏覽器的 `localStorage`。
-   - **最近搜尋標的**：自動快取用戶瀏覽歷史，回首頁時動態更新實時股價。
+6. **💾 SQLite & Turso 雲端資料庫與快取機制**
+   - 支援本地 SQLite 及 **Turso Cloud (libSQL)** 雲端資料庫遷移與同步，採用參數化查詢與 Transaction 提升讀寫性能。
+   - 提供**分析快照與快取機制**，將分析與回測結果序列化儲存，避免重複調用外部 API 產生高昂成本與延遲。
 
-6. **📄 離線 HTML 報告導出**
+7. **⚙️ 自定義儀表板排版與 Google 身份驗證**
+   - **Google Auth 整合**：提供安全的 Google 帳號登入與個人化偏好同步。
+   - **自定義排版**：支援首頁與個股詳情頁卡片的拖放控制（如隱藏技術面或基本面雷達），自定義偏好自動寫入瀏覽器 `localStorage`。
+
+8. **📄 離線 HTML 報告導出**
    - 內建極致黑美學（Premium Dark Theme）HTML 報告模板，融合毛玻璃效果與響應式卡片設計，提供一鍵下載分析報告。
-
-7. **🛡️ 集中化日誌與除錯排障 (Logging & Diagnostics)**
-   - 建立集中式日誌公用程式 [logger.js](file:///D:/Programming/opencodeTest/src/lib/logger.js)，對後端 API 端點的調用與外部 API 抓取（發送路徑、回傳狀態與 parsed metadata）進行實時監控。
-   - 自動捕獲並記錄底層連線失敗原因（如 `ENOTFOUND`、`ECONNREFUSED` 等系統 Socket Error Cause），讓環境網路問題一目了然。
 
 ---
 
 ## 🛠️ 技術棧 (Tech Stack)
 
 - **前端與後端**: Next.js 14.2 (App Router), React 18
-- **AI 框架**: LangChain / LangGraph, ChatOpenAI (NVIDIA NIM 整合)
-- **圖表庫**: Recharts (Responsive SVG Charts)
+- **AI / LLM 引擎**: Google Gemini AI (GoogleGenAI), OpenRouter Fallback, LangChain
+- **圖表庫**: Recharts (Responsive SVG Charts), Lightweight Charts
 - **樣式庫**: Tailwind CSS v3 & Vanilla CSS
-- **資料庫**: SQLite3
-- **測試框架**: Jest (包含 Unit、UI 偏好及端到端 E2E 測試)
+- **資料庫**: SQLite3 / Turso Cloud (libSQL)
+- **測試框架**: Jest (包含 Unit, Service, API Routes, UI 偏好及 E2E 測試)
 - **容器化部署**: Docker, Docker Compose
 
 ---
@@ -66,6 +70,9 @@ docker compose up -d
 
 啟動成功後，即可透過瀏覽器造訪以下網址：
 - **平台主看板 (Dashboard)**: `http://localhost:3000` (支援搜尋代碼如 `AAPL`, `TSLA`, `2330.TW`)
+- **K 線 LLM 時點回測沙盒**: `http://localhost:3000/backtest`
+- **數據分析中心**: `http://localhost:3000/hub`
+- **資金流向分析**: `http://localhost:3000/funds-flow`
 - **動態分析頁面**: `http://localhost:3000/stock/AAPL`
 - **下載個股 HTML 分析報告**: `http://localhost:3000/api/report?symbol=AAPL`
 
@@ -85,7 +92,7 @@ docker compose up -d
 3. 造訪 `http://localhost:3000` 進行本地調試。
 
 ### 執行自動化測試套件
-專案擁有高測試覆蓋率（147 個 Unit、UI 與 E2E 測試），且已全數修正通過：
+專案擁有完整的單元、服務、API 與 UI 測試套件：
 ```bash
 npm run test
 ```
@@ -100,19 +107,23 @@ npm run test
 ├── Dockerfile                # 多階段構建 Dockerfile
 ├── package.json              # 專案套件及腳本配置
 ├── tailwind.config.js        # Tailwind CSS 內容對應設定
+├── docs                      # 設計規格書 (specs) 與實作計畫 (plans)
 ├── src
 │   ├── app                   # Next.js App Router 頁面與 API 路由
-│   │   ├── api               # 後端 API 路由端點 (/analyze, /prices, /chat, /report)
+│   │   ├── api               # 後端 API 路由 (/analyze, /prices, /chat, /report, /backtest/*)
+│   │   ├── backtest          # /backtest LLM 歷史時點回測沙盒頁面
+│   │   ├── hub               # /hub 數據分析與排行榜中心
+│   │   ├── funds-flow        # /funds-flow 資金流向頁面
 │   │   ├── stock             # /stock/[symbol] 動態個股詳情頁面
 │   │   ├── layout.js         # 全域佈局
 │   │   ├── page.js           # 平台首頁看板
 │   │   └── globals.css       # 全域 Tailwind CSS 樣式
-│   ├── components            # 視覺化圖表與佈局 React 組件 (如 ChatbotWidget)
-│   └── lib                   # 模組化分析引擎與資料庫查詢庫
-│       ├── chatbot           # AI 智能助理 State Graph 及 Tool 邏輯
-│       ├── data-fetcher      # 雙數據源即時/歷史線圖獲取機制
-│       ├── database          # SQLite 資料庫初始化、Schema 與查詢
-│       ├── logger.js         # 集中化日誌與錯誤排障追蹤公用程式
-│       └── integration.js    # 多因子整合分析調度器
-└── tests                     # Unit、UI 偏好與 E2E 測試目錄
+│   ├── components            # 視覺化圖表與 UI 組件
+│   │   ├── backtest          # 控制面板 (ControlPanel) 與結果卡片 (ResultCards)
+│   │   └── hub               # LeaderboardPanel, WatchlistTable 等
+│   ├── external              # 外部服務整合 (Yahoo Finance, SQLite/Turso, Gemini Client)
+│   ├── services              # 核心業務邏輯服務 (backtest.service.js, analysis.service.js)
+│   └── lib                   # 通用指標計算、新聞分析與 Logger 公用庫
+└── tests                     # Unit, Service, API Routes, UI 與 E2E 測試目錄
 ```
+
