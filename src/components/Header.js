@@ -140,6 +140,12 @@ export default function Header() {
                   市場看板
                 </Link>
                 <Link 
+                  href="/backtest" 
+                  className="px-3 py-2 rounded-md text-xs font-semibold text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30 transition-all border border-cyan-500/30 bg-cyan-950/20"
+                >
+                  ⏳ K線 LLM 回測沙盒
+                </Link>
+                <Link 
                   href="/hub" 
                   className="px-3 py-2 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 transition-all"
                 >
