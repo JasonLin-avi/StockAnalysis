@@ -11,9 +11,9 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ req, token }) => {
-        const path = req.nextUrl.pathname;
-        // Allow public access to backtest page and api endpoints
-        if (path.startsWith('/backtest') || path.startsWith('/api/backtest')) {
+        const path = req?.nextUrl?.pathname;
+        // Allow public access to backtest api endpoints
+        if (path && path.startsWith('/api/backtest')) {
           return true;
         }
         const allowedEmails = process.env.ALLOWED_EMAILS?.split(",") || [];

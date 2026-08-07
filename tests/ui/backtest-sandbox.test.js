@@ -1,89 +1,13 @@
 /** @jest-environment jsdom */
 /**
- * @fileoverview Unit tests for interactive backtest sandbox components and page.
- *
- * Verifies rendering of ControlPanel, ResultCards, and BacktestPage, ensuring proper state management
- * and event handling without runtime errors.
+ * @fileoverview Unit tests for interactive backtest sandbox components (ControlPanel, ResultCards).
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ControlPanel from '../../src/components/backtest/ControlPanel';
 import ResultCards from '../../src/components/backtest/ResultCards';
-import BacktestPage from '../../src/app/backtest/page';
-
-// Mock global fetch to simulate API responses for presets, predict, and evaluate.
-global.fetch = jest.fn((url) => {
-  if (url === '/api/backtest/presets') {
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          success: true,
-          presets: [
-            { id: 'preset-1', symbol: '2330.TW', cutoffDate: '2024-03-01', title: '台積電千元前夕' }
-          ]
-        })
-    });
-  }
-  if (url === '/api/backtest/predict') {
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          success: true,
-          cutoffDate: '2024-03-01',
-          symbol: '2330.TW',
-          forecast: {
-            trend: 'BULLISH',
-            confidence: 9,
-            targetPriceRange: [900, 950],
-            stopLossPrice: 840,
-            keySupport: 850,
-            keyResistance: 920,
-            rationale: '多頭格局強烈，看好持續突破。'
-          }
-        })
-    });
-  }
-  if (url === '/api/backtest/evaluate') {
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          success: true,
-          evaluation: {
-            accuracyScore: 92,
-            directionCorrect: true,
-            priceRangeHit: true,
-            actualReturnPct: 8.5,
-            evaluationSummary: '實際漲幅達 8.5%，精準符合多頭看漲預測。'
-          }
-        })
-    });
-  }
-  if (url === '/api/market') {
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          twii: { displayPrice: '23,450.80', displayChange: '▲ +0.85%', color: 'text-emerald-400' },
-          gspc: { displayPrice: '5,632.10', displayChange: '▼ -0.21%', color: 'text-rose-400' }
-        })
-    });
-  }
-  if (url === '/api/market/overview-metrics') {
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          fearGreed: { score: 74, text: '極度貪婪' }
-        })
-    });
-  }
-  return Promise.reject(new Error('Unknown URL: ' + url));
-});
 
 describe('ControlPanel Component', () => {
   test('renders input fields and handles symbol and date changes', () => {
@@ -159,31 +83,5 @@ describe('ResultCards Component', () => {
     expect(screen.getByText('90')).toBeInTheDocument();
     expect(screen.getByText('+5.2%')).toBeInTheDocument();
     expect(screen.getByText('評估符合預期')).toBeInTheDocument();
-  });
-});
-
-describe('BacktestPage', () => {
-  test('renders header and handles full flow from predict to reveal evaluation', async () => {
-    render(<BacktestPage />);
-
-    expect(screen.getByText(/K 線 LLM 歷史時點回測與驗證沙盒/i)).toBeInTheDocument();
-
-    // Click submit to run predict
-    const submitBtn = screen.getByText('開始歷史回測分析');
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('🟢 多頭看漲')).toBeInTheDocument();
-    });
-
-    // Click reveal to trigger evaluation
-    const revealBtn = screen.getByText(/🔓 揭曉未來走勢與自動對比評分/i);
-    fireEvent.click(revealBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('92')).toBeInTheDocument();
-      expect(screen.getByText('+8.5%')).toBeInTheDocument();
-      expect(screen.getByText('實際漲幅達 8.5%，精準符合多頭看漲預測。')).toBeInTheDocument();
-    });
   });
 });

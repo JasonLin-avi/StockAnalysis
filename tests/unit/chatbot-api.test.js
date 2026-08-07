@@ -23,6 +23,12 @@ jest.mock('../../src/lib/logger', () => ({
   }
 }));
 
+// Why: Mock next-auth to allow authorized test execution.
+jest.mock('next-auth', () => jest.fn());
+jest.mock('next-auth/next', () => ({
+  getServerSession: jest.fn(() => Promise.resolve({ user: { email: 'test@example.com' } }))
+}));
+
 import { POST } from '../../src/app/api/chat/route';
 
 // Why: Import the mocked service to control return values in each test case.
@@ -32,6 +38,7 @@ const mockHandleChatResponse = chatbotService.default?.handleChatResponse || cha
 describe('Chatbot API Route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.ALLOWED_EMAILS = 'test@example.com';
   });
 
   test('POST returns 400 when messages or ticker is missing', async () => {
