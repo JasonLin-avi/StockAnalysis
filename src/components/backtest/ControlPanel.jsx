@@ -9,7 +9,7 @@
 
 import React from 'react';
 
-export default function ControlPanel({ symbol, setSymbol, cutoffDate, setCutoffDate, presets, onSelectPreset, onSubmit, loading }) {
+export default function ControlPanel({ symbol, setSymbol, cutoffDate, setCutoffDate, presets, selectedPresetId, onSelectPreset, onSubmit, loading }) {
   return (
     <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 mb-6 shadow-lg backdrop-blur-sm">
       <div className="flex flex-wrap items-center gap-4">
@@ -41,21 +41,26 @@ export default function ControlPanel({ symbol, setSymbol, cutoffDate, setCutoffD
         {presets && presets.length > 0 && (
           <div className="flex-1 min-w-[220px]">
             <label htmlFor="preset-select" className="block text-xs font-medium text-slate-400 mb-1">
-              經典歷史案例 (Preset Cases)
+              快速載入經典範例 (選填)
             </label>
             <select
               id="preset-select"
+              value={selectedPresetId || ''}
               onChange={(e) => {
-                const preset = presets.find((p) => p.id === e.target.value);
-                if (preset) onSelectPreset(preset);
+                const presetId = e.target.value;
+                if (!presetId) {
+                  onSelectPreset(null);
+                } else {
+                  const preset = presets.find((p) => p.id === presetId);
+                  if (preset) onSelectPreset(preset);
+                }
               }}
-              defaultValue=""
-              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+              className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
             >
-              <option value="" disabled>-- 選擇範例案例 --</option>
+              <option value="">-- 自訂輸入標的與日期 --</option>
               {presets.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.title} ({p.symbol})
+                  📌 {p.title} ({p.symbol})
                 </option>
               ))}
             </select>

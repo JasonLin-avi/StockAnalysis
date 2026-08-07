@@ -36,10 +36,27 @@ export default function BacktestPage() {
       });
   }, []);
 
+  const [selectedPresetId, setSelectedPresetId] = useState('');
+
   const handleSelectPreset = (preset) => {
+    if (!preset) {
+      setSelectedPresetId('');
+      return;
+    }
+    setSelectedPresetId(preset.id);
     setSymbol(preset.symbol);
     setCutoffDate(preset.cutoffDate);
     setErrorMsg(null);
+  };
+
+  const handleSymbolChange = (val) => {
+    setSymbol(val);
+    setSelectedPresetId('');
+  };
+
+  const handleCutoffDateChange = (val) => {
+    setCutoffDate(val);
+    setSelectedPresetId('');
   };
 
   const handlePredict = async () => {
@@ -111,10 +128,11 @@ export default function BacktestPage() {
 
         <ControlPanel
           symbol={symbol}
-          setSymbol={setSymbol}
+          setSymbol={handleSymbolChange}
           cutoffDate={cutoffDate}
-          setCutoffDate={setCutoffDate}
+          setCutoffDate={handleCutoffDateChange}
           presets={presets}
+          selectedPresetId={selectedPresetId}
           onSelectPreset={handleSelectPreset}
           onSubmit={handlePredict}
           loading={loading}
