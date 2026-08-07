@@ -20,6 +20,8 @@ export default function EmbeddedBacktestPanel({ symbol }) {
   };
 
   const [cutoffDate, setCutoffDate] = useState(defaultCutoff);
+  const [lookbackOption, setLookbackOption] = useState('60');
+  const [customLookbackDays, setCustomLookbackDays] = useState(90);
   const [horizonOption, setHorizonOption] = useState('20');
   const [customDays, setCustomDays] = useState(45);
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,9 @@ export default function EmbeddedBacktestPanel({ symbol }) {
   const [forecast, setForecast] = useState(null);
   const [evaluation, setEvaluation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  const activeLookbackDays =
+    lookbackOption === 'custom' ? parseInt(customLookbackDays, 10) || 60 : parseInt(lookbackOption, 10);
 
   const activePredictionDays =
     horizonOption === 'custom' ? parseInt(customDays, 10) || 20 : parseInt(horizonOption, 10);
@@ -42,7 +47,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
       const res = await fetch('/api/backtest/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, cutoffDate, lookbackDays: 90 })
+        body: JSON.stringify({ symbol, cutoffDate, lookbackDays: activeLookbackDays })
       });
       const data = await res.json();
       if (data.success) {
@@ -113,6 +118,42 @@ export default function EmbeddedBacktestPanel({ symbol }) {
               className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
             />
           </div>
+
+          <div className="flex-1 min-w-[180px]">
+            {/* Allow users to select lookback window size for historical indicator table generation */}
+            <label htmlFor="embedded-lookback-select" className="block text-xs font-medium text-slate-400 mb-1">
+              歷史參考長度 (Lookback)
+            </label>
+            <select
+              id="embedded-lookback-select"
+              value={lookbackOption}
+              onChange={(e) => setLookbackOption(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+            >
+              <option value="5">1 週 (5 個交易日)</option>
+              <option value="20">1 個月 (20 個交易日)</option>
+              <option value="60">3 個月 (60 個交易日)</option>
+              <option value="custom">自訂天數 (Other)</option>
+            </select>
+          </div>
+
+          {lookbackOption === 'custom' && (
+            <div className="w-[120px]">
+              <label htmlFor="custom-lookback-input" className="block text-xs font-medium text-slate-400 mb-1">
+                自訂參考天數
+              </label>
+              <input
+                id="custom-lookback-input"
+                type="number"
+                min="1"
+                max="240"
+                value={customLookbackDays}
+                onChange={(e) => setCustomLookbackDays(e.target.value)}
+                placeholder="參考天數"
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+              />
+            </div>
+          )}
 
           <div className="flex-1 min-w-[180px]">
             <label htmlFor="horizon-option-select" className="block text-xs font-medium text-slate-400 mb-1">

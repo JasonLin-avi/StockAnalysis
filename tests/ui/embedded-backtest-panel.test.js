@@ -116,4 +116,37 @@ describe('EmbeddedBacktestPanel Component', () => {
       expect(screen.getByText('92')).toBeInTheDocument();
     });
   });
+
+  test('renders historical lookback dropdown and handles custom lookback days input', () => {
+    render(<EmbeddedBacktestPanel symbol="2330.TW" />);
+
+    expect(screen.getByLabelText(/歷史參考長度/i)).toBeInTheDocument();
+
+    const lookbackSelect = screen.getByLabelText(/歷史參考長度/i);
+    expect(lookbackSelect.value).toBe('60');
+
+    fireEvent.change(lookbackSelect, { target: { value: 'custom' } });
+
+    expect(screen.getByPlaceholderText(/參考天數/i)).toBeInTheDocument();
+  });
+
+  test('passes active lookbackDays in predict API request payload', async () => {
+    render(<EmbeddedBacktestPanel symbol="2330.TW" />);
+
+    const lookbackSelect = screen.getByLabelText(/歷史參考長度/i);
+    fireEvent.change(lookbackSelect, { target: { value: '20' } });
+
+    const submitBtn = screen.getByRole('button', { name: /開始歷史時點回測/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/backtest/predict',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"lookbackDays":20')
+        })
+      );
+    });
+  });
 });
