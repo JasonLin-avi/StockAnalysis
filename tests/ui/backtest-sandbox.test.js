@@ -63,7 +63,26 @@ global.fetch = jest.fn((url) => {
         })
     });
   }
-  return Promise.reject(new Error('Unknown URL'));
+  if (url === '/api/market') {
+    return Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          twii: { displayPrice: '23,450.80', displayChange: '▲ +0.85%', color: 'text-emerald-400' },
+          gspc: { displayPrice: '5,632.10', displayChange: '▼ -0.21%', color: 'text-rose-400' }
+        })
+    });
+  }
+  if (url === '/api/market/overview-metrics') {
+    return Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          fearGreed: { score: 74, text: '極度貪婪' }
+        })
+    });
+  }
+  return Promise.reject(new Error('Unknown URL: ' + url));
 });
 
 describe('ControlPanel Component', () => {
