@@ -1,8 +1,7 @@
 // Why: Evaluates LLM prediction accuracy by revealing actual future market data post-cutoff date.
 // Serves as the referee LLM service component in historical backtest validation.
 import { NextResponse } from 'next/server';
-import { fetchHistoricalData } from '@/external/data-fetcher';
-import { splitHistoricalKlines } from '@/services/backtest.service';
+import { splitHistoricalKlines, getOrSyncKlines } from '@/services/backtest.service';
 import { callGemini } from '@/external/gemini/client';
 
 export async function POST(req) {
@@ -16,9 +15,8 @@ export async function POST(req) {
       );
     }
 
-    // 1. Fetch real historical data for post-cutoff evaluation
-    const rawResult = await fetchHistoricalData(symbol, '2y');
-    const klines = rawResult.data || [];
+    // 1. Get K-lines from DB first (syncs incrementally if missing)
+    const klines = await getOrSyncKlines(symbol, cutoffDate);
 
     const { pastKlines, futureKlines } = splitHistoricalKlines(klines, cutoffDate, predictionDays);
 

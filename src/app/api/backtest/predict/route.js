@@ -1,8 +1,7 @@
 // Why: Handles historical LLM prediction requests at a designated point-in-time cutoff date.
 // Ensures strict data isolation by preventing future kline data from leaking into the predictor.
 import { NextResponse } from 'next/server';
-import { fetchHistoricalData } from '@/external/data-fetcher';
-import { splitHistoricalKlines } from '@/services/backtest.service';
+import { splitHistoricalKlines, getOrSyncKlines } from '@/services/backtest.service';
 import { callGemini } from '@/external/gemini/client';
 
 export async function POST(req) {
@@ -17,9 +16,8 @@ export async function POST(req) {
       );
     }
 
-    // 1. Fetch real historical data for the requested stock
-    const rawResult = await fetchHistoricalData(symbol, '2y');
-    const klines = rawResult.data || [];
+    // 1. Get K-lines from DB first (syncs incrementally if missing)
+    const klines = await getOrSyncKlines(symbol, cutoffDate);
 
     if (!Array.isArray(klines) || klines.length === 0) {
       return NextResponse.json(

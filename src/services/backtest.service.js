@@ -35,6 +35,49 @@ export function splitHistoricalKlines(klines, cutoffDate, predictionDays = 20) {
   return { pastKlines, futureKlines };
 }
 
+import { connectToDatabase, getActiveDatabase } from '../external/database/connection';
+import { saveStock, getStockData, insertStockDataBatch } from '../external/database/queries';
+import { fetchHistoricalData } from '../external/data-fetcher';
+
+/**
+ * Retrieves historical K-lines from SQLite database first.
+ * If database is empty or missing data around the cutoffDate, incrementally fetches from Yahoo Finance
+ * and saves into database to prevent hitting API repeatedly.
+ *
+ * @param {string} symbol - Stock ticker symbol
+ * @param {string} cutoffDate - Cutoff date string
+ * @returns {Promise<Array>} Array of clean historical K-lines
+ */
+export async function getOrSyncKlines(symbol, cutoffDate) {
+  const ticker = symbol.toUpperCase();
+  const activeDb = getActiveDatabase() || await connectToDatabase();
+  const stockId = await saveStock(activeDb, { symbol: ticker, market: ticker.includes('.') ? 'TW' : 'US' });
+
+  // 1. Read existing K-lines from local database
+  let dbKlines = await getStockData(activeDb, ticker);
+
+  // Check if we have data up to and past cutoffDate
+  const hasPastData = dbKlines.some(k => k.date <= cutoffDate);
+  const hasFutureData = dbKlines.some(k => k.date > cutoffDate);
+
+  if (dbKlines.length === 0 || !hasPastData || !hasFutureData) {
+    // 2. Database missing data around cutoffDate -> Fetch 2y from Yahoo Finance and persist
+    try {
+      const rawResult = await fetchHistoricalData(ticker, '2y');
+      const fetchedKlines = rawResult.data || [];
+
+      if (fetchedKlines.length > 0) {
+        await insertStockDataBatch(activeDb, stockId, fetchedKlines);
+        dbKlines = await getStockData(activeDb, ticker);
+      }
+    } catch (err) {
+      console.warn(`[Backtest DB Sync] Failed to fetch remote prices for ${ticker}:`, err.message);
+    }
+  }
+
+  return dbKlines;
+}
+
 /**
  * Preset historical backtest cases for easy demonstration and sandbox testing.
  *
