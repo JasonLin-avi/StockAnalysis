@@ -47,6 +47,30 @@ describe('Backtest API Routes', () => {
       expect(data.forecast).toHaveProperty('rationale');
     });
 
+    it('accepts custom lookbackDays and predictionDays parameters in payload', async () => {
+      // Why: Validates dynamic lookbackDays and predictionDays payload support for point-in-time prediction.
+      const req = new Request('http://localhost/api/backtest/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: '2330.TW',
+          cutoffDate: '2024-03-01',
+          lookbackDays: 60,
+          predictionDays: 20,
+        }),
+      });
+
+      const res = await predictPost(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.symbol).toBe('2330.TW');
+      expect(data.cutoffDate).toBe('2024-03-01');
+      expect(data.forecast).toBeDefined();
+      expect(data.forecast).toHaveProperty('trend');
+    });
+
     it('returns 400 error when symbol or cutoffDate is missing', async () => {
       // Why: Guard against invalid API calls with missing mandatory fields.
       const req = new Request('http://localhost/api/backtest/predict', {
