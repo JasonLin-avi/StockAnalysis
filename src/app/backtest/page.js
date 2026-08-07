@@ -131,12 +131,9 @@ export default function BacktestPage() {
 
           <ControlPanel
             symbol={symbol}
-            setSymbol={handleSymbolChange}
+            setSymbol={setSymbol}
             cutoffDate={cutoffDate}
-            setCutoffDate={handleCutoffDateChange}
-            presets={presets}
-            selectedPresetId={selectedPresetId}
-            onSelectPreset={handleSelectPreset}
+            setCutoffDate={setCutoffDate}
             onSubmit={handlePredict}
             loading={loading}
           />
