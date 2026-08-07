@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Header from '@/components/Header';
 import ControlPanel from '@/components/backtest/ControlPanel';
 import ResultCards from '@/components/backtest/ResultCards';
 
@@ -112,51 +113,57 @@ export default function BacktestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">📈</span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              K 線 LLM 歷史時點回測與驗證沙盒
-            </h1>
-          </div>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            設定過去的指定時間點 (Cutoff Date)，體驗 AI 在完全無未來資訊下進行 K 線技術分析，揭曉真實未來走勢並由裁判 LLM 進行回測精準度對比評分。
-          </p>
-        </header>
+    <div className="flex flex-col min-h-screen bg-[#070A10] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+      <Header />
+      <main className="flex-1 w-full p-4 sm:p-6 lg:p-8">
+        <div className="max-w-6xl mx-auto">
+          <header className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">⏳</span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                K 線 LLM 歷史時點回測與驗證沙盒
+              </h1>
+            </div>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              設定過去的指定時間點 (Cutoff Date)，體驗 AI 在完全無未來資訊下進行 K 線技術分析，揭曉真實未來走勢並由裁判 LLM 進行回測精準度對比評分。
+            </p>
+          </header>
 
-        <ControlPanel
-          symbol={symbol}
-          setSymbol={handleSymbolChange}
-          cutoffDate={cutoffDate}
-          setCutoffDate={handleCutoffDateChange}
-          presets={presets}
-          selectedPresetId={selectedPresetId}
-          onSelectPreset={handleSelectPreset}
-          onSubmit={handlePredict}
-          loading={loading}
-        />
+          <ControlPanel
+            symbol={symbol}
+            setSymbol={handleSymbolChange}
+            cutoffDate={cutoffDate}
+            setCutoffDate={handleCutoffDateChange}
+            presets={presets}
+            selectedPresetId={selectedPresetId}
+            onSelectPreset={handleSelectPreset}
+            onSubmit={handlePredict}
+            loading={loading}
+          />
 
-        {errorMsg && (
-          <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 mb-6 text-rose-400 text-sm flex items-center justify-between">
-            <span>⚠️ {errorMsg}</span>
-            <button
-              onClick={() => setErrorMsg(null)}
-              className="text-rose-400 hover:text-white font-bold text-xs px-2 py-1"
-            >
-              關閉
-            </button>
-          </div>
-        )}
+          {errorMsg && (
+            <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 mb-6 text-rose-400 text-sm flex items-center justify-between">
+              <span>⚠️ {errorMsg}</span>
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="text-rose-400 hover:text-white font-bold text-xs px-2 py-1"
+              >
+                關閉
+              </button>
+            </div>
+          )}
 
-        <ResultCards
-          forecast={forecast}
-          evaluation={evaluation}
-          onReveal={handleReveal}
-          evaluating={evaluating}
-        />
-      </div>
+          <ResultCards
+            forecast={forecast}
+            evaluation={evaluation}
+            onReveal={handleReveal}
+            evaluating={evaluating}
+          />
+        </div>
+      </main>
+      <footer className="w-full border-t border-slate-800/60 py-6 text-center text-xs font-mono text-slate-600">
+        Antigravity Analytics Platform &copy; 2026. All Quant Rights Reserved.
+      </footer>
     </div>
   );
 }
