@@ -2,7 +2,12 @@
 // Ensures strict data isolation by preventing future kline data from leaking into the predictor.
 import { NextResponse } from 'next/server';
 import { SMA, RSI, MACD } from 'technicalindicators';
-import { splitHistoricalKlines, getOrSyncKlines } from '@/services/backtest.service';
+import {
+  splitHistoricalKlines,
+  getOrSyncKlines,
+  getCachedBacktestRecord,
+  saveBacktestForecast,
+} from '@/services/backtest.service';
 import { callGemini } from '@/external/gemini/client';
 
 export async function POST(req) {
@@ -15,6 +20,26 @@ export async function POST(req) {
         { success: false, error: 'Missing required parameters' },
         { status: 400 }
       );
+    }
+
+    const activeLookbackDays = parseInt(lookbackDays, 10) || 60;
+
+    // Why: Check local database cache to prevent redundant Gemini LLM analysis.
+    const cachedRecord = await getCachedBacktestRecord({
+      symbol,
+      cutoffDate,
+      lookbackDays: activeLookbackDays,
+      predictionDays,
+    });
+
+    if (cachedRecord?.forecast) {
+      return NextResponse.json({
+        success: true,
+        cutoffDate,
+        symbol,
+        forecast: cachedRecord.forecast,
+        cached: true,
+      });
     }
 
     // 1. Get K-lines from DB first (syncs incrementally if missing)
@@ -73,7 +98,7 @@ export async function POST(req) {
     });
 
     // 5. Slice recent N lookbackDays bars leading up to cutoffDate
-    const numLookback = parseInt(lookbackDays, 10) || 60;
+    const numLookback = activeLookbackDays;
     const recentPast = enrichedKlines.slice(-numLookback);
     const latestBar = recentPast[recentPast.length - 1];
 
@@ -125,7 +150,7 @@ ${markdownTable}
   "stopLossPrice": 數字,
   "keySupport": 數字,
   "keyResistance": 數字,
-  "rationale": "詳細推理分析說明 (包含型態、均線、動能與價量關係)"
+  "rationale": "詳細推理分析說明 (請使用良好的 Markdown 格式排版，包含條列點、重點粗體、型態、均線、動能與價量關係)"
 }`;
 
     let forecast;
@@ -145,6 +170,15 @@ ${markdownTable}
         rationale: `站在 ${cutoffDate} 時間點分析 ${symbol}：最新收盤價為 $${lastClose}（${recentPast.length} 日區間均價 $${avgClose.toFixed(2)}）。身為 15 年資深量化交易員，依據該時刻完整 daily 時間序列與 MA/RSI/MACD 技術數據評估未來短中線走向。`
       };
     }
+
+    // Why: Save newly generated forecast into backtest_records for future cache hits.
+    await saveBacktestForecast({
+      symbol,
+      cutoffDate,
+      lookbackDays: activeLookbackDays,
+      predictionDays,
+      forecast,
+    });
 
     return NextResponse.json({
       success: true,

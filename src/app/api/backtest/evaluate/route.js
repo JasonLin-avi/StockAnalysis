@@ -1,7 +1,12 @@
 // Why: Evaluates LLM prediction accuracy by revealing actual future market data post-cutoff date.
 // Serves as the referee LLM service component in historical backtest validation.
 import { NextResponse } from 'next/server';
-import { splitHistoricalKlines, getOrSyncKlines } from '@/services/backtest.service';
+import {
+  splitHistoricalKlines,
+  getOrSyncKlines,
+  getCachedBacktestRecord,
+  updateBacktestEvaluation,
+} from '@/services/backtest.service';
 import { callGemini } from '@/external/gemini/client';
 
 export async function POST(req) {
@@ -13,6 +18,22 @@ export async function POST(req) {
         { success: false, error: 'Missing required parameters' },
         { status: 400 }
       );
+    }
+
+    // Why: Check local database cache to prevent re-evaluating completed backtest cases.
+    const cachedRecord = await getCachedBacktestRecord({
+      symbol,
+      cutoffDate,
+      lookbackDays: 60,
+      predictionDays,
+    });
+
+    if (cachedRecord?.evaluation) {
+      return NextResponse.json({
+        success: true,
+        evaluation: cachedRecord.evaluation,
+        cached: true,
+      });
     }
 
     // 1. Get K-lines from DB first (syncs incrementally if missing)
@@ -87,6 +108,15 @@ export async function POST(req) {
         evaluationSummary: `在 ${cutoffDate} 之後的 ${futureKlines.length} 個交易日內，${symbol} 實際變幅為 ${actualReturnPct}%。AI 預測方向為 ${predictionResult?.trend}，評估判定 ${directionCorrect ? '方向符合' : '方向偏差'}。`
       };
     }
+
+    // Why: Save evaluation into backtest_records for future cache hits.
+    await updateBacktestEvaluation({
+      symbol,
+      cutoffDate,
+      lookbackDays: 60,
+      predictionDays,
+      evaluation,
+    });
 
     return NextResponse.json({
       success: true,
