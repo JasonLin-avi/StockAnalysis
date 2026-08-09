@@ -40,7 +40,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
     expect(json.error).toBe('Symbol parameter is required');
   });
 
-  test('returns cached markdown when SQLite cache hits', async () => {
+  test('returns cached markdown and days when SQLite cache hits', async () => {
     getPromptAnalysis.mockResolvedValue('## Cached AI Analysis');
 
     const request = new Request('http://localhost/api/stock/AAPL/technical-ai');
@@ -49,10 +49,17 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
 
     expect(response.status).toBe(200);
     expect(json.markdown).toBe('## Cached AI Analysis');
+    expect(json.days).toBe(30);
+    expect(getPromptAnalysis).toHaveBeenCalledWith(
+      mockDb,
+      'AAPL_technical_ai_30',
+      'technical',
+      expect.any(String)
+    );
     expect(callGemini).not.toHaveBeenCalled();
   });
 
-  test('returns fallback message when historical prices < 60 days', async () => {
+  test('returns fallback message and days when historical prices < 60 days', async () => {
     getPromptAnalysis.mockResolvedValue(null);
     saveStock.mockResolvedValue(1);
     getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 30 }, (_, i) => ({
@@ -65,10 +72,11 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
 
     expect(response.status).toBe(200);
     expect(json.markdown).toContain('歷史交易數據不足（少於 60 個交易日），無法計算完整長短線指標與生成 AI 深度技術解讀。');
+    expect(json.days).toBe(30);
     expect(callGemini).not.toHaveBeenCalled();
   });
 
-  test('fetches price data, generates prompt, calls Gemini, and caches result on cache miss', async () => {
+  test('fetches price data, generates time-series prompt, calls Gemini, and caches result with per-range cache key on cache miss', async () => {
     getPromptAnalysis.mockResolvedValue(null);
     saveStock.mockResolvedValue(1);
     getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 70 }, (_, i) => ({
@@ -83,16 +91,54 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
 
     expect(response.status).toBe(200);
     expect(json.markdown).toBe('## Fresh Gemini AI Analysis');
+    expect(json.days).toBe(30);
     expect(callGemini).toHaveBeenCalledWith(
-      expect.stringContaining('你是一位擁有 15 年經驗的資深量化交易員與資產配置專家'),
+      expect.stringContaining('| 日期 | 收盤價 | 漲跌幅 | 成交量 | MA5 | MA20 | MA60 | RSI14 | MACD柱體 |'),
       expect.objectContaining({ tools: [{ googleSearch: {} }] })
     );
     expect(savePromptAnalysis).toHaveBeenCalledWith(
       mockDb,
-      'AAPL',
+      'AAPL_technical_ai_30',
       'technical',
       expect.any(String),
       '## Fresh Gemini AI Analysis'
     );
+  });
+
+  test('handles custom days query parameter and clamps value between 5 and 120', async () => {
+    getPromptAnalysis.mockResolvedValue(null);
+    saveStock.mockResolvedValue(1);
+    getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 130 }, (_, i) => ({
+      date: `2026-05-${String((i % 30) + 1).padStart(2, '0')}`, open: 100 + i, high: 105 + i, low: 95 + i, close: 102 + i, volume: 50000
+    })));
+
+    callGemini.mockResolvedValue('## 15-Day Analysis');
+
+    // Test ?days=15
+    const request15 = new Request('http://localhost/api/stock/AAPL/technical-ai?days=15');
+    const response15 = await GET(request15, { params: { symbol: 'AAPL' } });
+    const json15 = await response15.json();
+
+    expect(response15.status).toBe(200);
+    expect(json15.days).toBe(15);
+    expect(savePromptAnalysis).toHaveBeenCalledWith(
+      mockDb,
+      'AAPL_technical_ai_15',
+      'technical',
+      expect.any(String),
+      '## 15-Day Analysis'
+    );
+
+    // Test clamped upper bound ?days=200 -> 120
+    const request200 = new Request('http://localhost/api/stock/AAPL/technical-ai?days=200');
+    const response200 = await GET(request200, { params: { symbol: 'AAPL' } });
+    const json200 = await response200.json();
+    expect(json200.days).toBe(120);
+
+    // Test clamped lower bound ?days=2 -> 5
+    const request2 = new Request('http://localhost/api/stock/AAPL/technical-ai?days=2');
+    const response2 = await GET(request2, { params: { symbol: 'AAPL' } });
+    const json2 = await response2.json();
+    expect(json2.days).toBe(5);
   });
 });

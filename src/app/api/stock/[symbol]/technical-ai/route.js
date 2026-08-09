@@ -16,36 +16,36 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../../external/database/connection';
 import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis } from '../../../../../external/database/queries';
 import { syncStockPrices } from '../../../../../services/data-sync.service';
-import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
+import { generateLLMTimeSeriesSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 import { callGemini } from '../../../../../external/gemini/client';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Formats the prompt using senior quantitative trader persona.
+ * Formats the prompt using senior quantitative trader persona with time-series data table.
  * 
  * Why persona is injected into prompt:
  * Establishing a 15-year senior quantitative trader persona produces balanced, risk-controlled analysis
  * covering both long-term trend positioning and short-term entry/exit timing instead of basic summary text.
  * 
  * @param {string} symbol - Stock ticker symbol
- * @param {Object} summaryJson - Structured technical features calculated from price history
+ * @param {Object|string} timeSeriesSummary - Structured time-series output containing markdownTable
+ * @param {number} days - Selected reference days
  * @returns {string} Formatted prompt string for Gemini LLM
  */
-function getTechnicalAIPrompt(symbol, summaryJson) {
+function getTechnicalAIPrompt(symbol, timeSeriesSummary, days) {
+  const table = typeof timeSeriesSummary === 'string' ? timeSeriesSummary : timeSeriesSummary.markdownTable;
   return `# Role (角色設定)
 你是一位擁有 15 年經驗的資深量化交易員與資產配置專家。你的分析風格兼顧宏觀趨勢與微觀進出，既看重長線價值與波段結構，也重視短線的風險報酬比（Risk/Reward Ratio），絕不給予絕對且不負責任的保證。
 
 # Target Stock (分析標的)
-${symbol}
+${symbol} (近 ${days} 個交易日時間序列數據)
 
 # Task (任務說明)
-請根據下方提供的結構化技術特徵 JSON 數據（包含短中長線指標），進行全方位的技術面與趨勢解讀，並針對該標的提出**「長線波段佈局」**與**「短線操作節奏」**的綜合建議與風險控管方針。
+請根據下方提供的歷史 K 線時間序列技術數據表格（包含價格、成交量、MA5、MA20、MA60、RSI14 與 MACD 柱體），進行全方位的技術面與趨勢解讀，並針對該標的提出**「長線波段佈局」**與**「短線操作節奏」**的綜合建議與風險控管方針。
 
 # Input Data (輸入數據)
-\`\`\`json
-${JSON.stringify(summaryJson, null, 2)}
-\`\`\`
+${table}
 
 請以精簡、專業且排版美觀的 繁體中文 Markdown 格式輸出分析報告。
 要求包含：
@@ -63,14 +63,22 @@ export async function GET(request, context) {
       return NextResponse.json({ error: 'Symbol parameter is required' }, { status: 400 });
     }
 
+    // Parse URL query parameter `days` (clamp between 5 and 120, default 30)
+    const { searchParams } = new URL(request.url);
+    const daysParam = searchParams.get('days');
+    let days = daysParam ? parseInt(daysParam, 10) : 30;
+    if (isNaN(days)) days = 30;
+    days = Math.max(5, Math.min(120, days));
+
     const upperSymbol = symbol.toUpperCase();
+    const cacheKey = `${upperSymbol}_technical_ai_${days}`;
     const db = await connectToDatabase();
     const today = new Date().toISOString().split('T')[0];
 
     // Check DB cache first to avoid unnecessary database lookups and API calls
-    const cached = await getPromptAnalysis(db, upperSymbol, 'technical', today);
+    const cached = await getPromptAnalysis(db, cacheKey, 'technical', today);
     if (cached) {
-      return NextResponse.json({ markdown: cached }, { status: 200 });
+      return NextResponse.json({ markdown: cached, days }, { status: 200 });
     }
 
     // Ensure stock record exists and sync incremental price data
@@ -92,7 +100,7 @@ export async function GET(request, context) {
     // Minimum 60 trading days required to accurately compute MA60 and longer term trend metrics
     if (!prices || prices.length < 60) {
       const fallbackMarkdown = `### ⚠️ 數據不足提示\n\n歷史交易數據不足（少於 60 個交易日），無法計算完整長短線指標與生成 AI 深度技術解讀。`;
-      return NextResponse.json({ markdown: fallbackMarkdown }, { status: 200 });
+      return NextResponse.json({ markdown: fallbackMarkdown, days }, { status: 200 });
     }
 
     const rawData = {
@@ -104,16 +112,16 @@ export async function GET(request, context) {
       volumes: prices.map(p => p.volume)
     };
 
-    const summaryJson = generateLLMTechnicalSummary(rawData);
-    const prompt = getTechnicalAIPrompt(upperSymbol, summaryJson);
+    const timeSeriesSummary = generateLLMTimeSeriesSummary(rawData, days);
+    const prompt = getTechnicalAIPrompt(upperSymbol, timeSeriesSummary, days);
 
     const markdown = await callGemini(prompt, {
       tools: [{ googleSearch: {} }]
     });
 
-    await savePromptAnalysis(db, upperSymbol, 'technical', today, markdown);
+    await savePromptAnalysis(db, cacheKey, 'technical', today, markdown);
 
-    return NextResponse.json({ markdown }, { status: 200 });
+    return NextResponse.json({ markdown, days }, { status: 200 });
   } catch (error) {
     console.error('[API_TECHNICAL_AI] Exception in GET:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
