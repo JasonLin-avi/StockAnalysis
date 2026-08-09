@@ -223,17 +223,93 @@ describe('KlineTab Component', () => {
     expect(screen.getByText(/長線多頭結構/)).toBeInTheDocument();
   });
 
-  test('fetches /api/stock/[symbol]/technical-ai and renders full-width TechnicalAISummaryPanel with AI diagnosis markdown', async () => {
+  test('does not fetch technical AI on mount until trigger button is clicked with default 30 days', async () => {
     await act(async () => {
       render(<KlineTab symbol="AAPL" />);
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai');
+    // Verify technical-ai fetch was NOT called on mount
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/technical-ai'));
+
+    // Select dropdown should have default value 30
+    const select = screen.getByRole('combobox', { name: /參考天數/i });
+    expect(select).toHaveValue('30');
+
+    // Click trigger button
+    const triggerBtn = screen.getByRole('button', { name: /🤖 執行 15年專家 AI 診斷/i });
+    await act(async () => {
+      fireEvent.click(triggerBtn);
+    });
+
+    // Should fetch with ?days=30
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai?days=30');
 
     await waitFor(() => {
-      expect(screen.getAllByText(/15年資深量化專家 AI 深度診斷/)[0]).toBeInTheDocument();
       expect(screen.getByText(/長線波段佈局/)).toBeInTheDocument();
     });
+  });
+
+  test('supports preset dropdown selection (15 days) and triggers fetch with ?days=15', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    const select = screen.getByRole('combobox', { name: /參考天數/i });
+    await act(async () => {
+      fireEvent.change(select, { target: { value: '15' } });
+    });
+
+    const triggerBtn = screen.getByRole('button', { name: /🤖 執行 15年專家 AI 診斷/i });
+    await act(async () => {
+      fireEvent.click(triggerBtn);
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai?days=15');
+  });
+
+  test('supports custom days input with clamping (5-120)', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    const select = screen.getByRole('combobox', { name: /參考天數/i });
+    await act(async () => {
+      fireEvent.change(select, { target: { value: 'custom' } });
+    });
+
+    // Custom input should be visible
+    const input = screen.getByRole('spinbutton', { name: /自訂天數/i });
+    expect(input).toBeInTheDocument();
+
+    // Type 45 days
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '45' } });
+    });
+
+    const triggerBtn = screen.getByRole('button', { name: /🤖 執行 15年專家 AI 診斷/i });
+    await act(async () => {
+      fireEvent.click(triggerBtn);
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai?days=45');
+
+    // Test clamped value below 5 (e.g. 2 -> clamped to 5)
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '2' } });
+    });
+    await act(async () => {
+      fireEvent.click(triggerBtn);
+    });
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai?days=5');
+
+    // Test clamped value above 120 (e.g. 200 -> clamped to 120)
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '200' } });
+    });
+    await act(async () => {
+      fireEvent.click(triggerBtn);
+    });
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/technical-ai?days=120');
   });
 
   test('renders sub-tabs and switches between AI technical summary and embedded backtest sandbox panel', async () => {
@@ -248,9 +324,7 @@ describe('KlineTab Component', () => {
     expect(backtestSandboxTabBtn).toBeInTheDocument();
 
     // Default active tab should show TechnicalAISummaryPanel content
-    await waitFor(() => {
-      expect(screen.getAllByText(/15年資深量化專家 AI 深度診斷/i)[0]).toBeInTheDocument();
-    });
+    expect(screen.getAllByText(/15年資深量化專家 AI 深度診斷/i)[0]).toBeInTheDocument();
     expect(screen.queryByText(/歷史時點 AI 技術回測沙盒/i)).not.toBeInTheDocument();
 
     // Switch to backtest sandbox tab
