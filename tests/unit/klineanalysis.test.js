@@ -1,4 +1,4 @@
-import { generateLLMTechnicalSummary }  from '../../src/lib/technical-analysis/klineanalysis';
+import { generateLLMTechnicalSummary, generateLLMTimeSeriesSummary }  from '../../src/lib/technical-analysis/klineanalysis';
 
 describe('generateLLMTechnicalSummary (with Long-Term Analysis Support)', () => {
   const createMockData = (count = 80, trend = 'up') => ({
@@ -62,3 +62,42 @@ describe('generateLLMTechnicalSummary (with Long-Term Analysis Support)', () => 
     expect(summary.volume_analysis.volume_vs_5d_avg).toBe('爆量');
   });
 });
+
+describe('generateLLMTimeSeriesSummary', () => {
+  const createMockBars = (count = 70) => ({
+    dates: Array.from({ length: count }, (_, i) => `2026-01-${String(i + 1).padStart(2, '0')}`),
+    opens: Array.from({ length: count }, (_, i) => 100 + i),
+    highs: Array.from({ length: count }, (_, i) => 105 + i),
+    lows: Array.from({ length: count }, (_, i) => 95 + i),
+    closes: Array.from({ length: count }, (_, i) => 102 + i),
+    volumes: Array.from({ length: count }, (_, i) => 1000000 + i * 10000)
+  });
+
+  test('should throw error when rawData length is less than minimum required Math.max(60, days)', () => {
+    const shortData = createMockBars(45);
+    expect(() => generateLLMTimeSeriesSummary(shortData, 30)).toThrow();
+  });
+
+  test('should generate markdown table with correct column headers including MA60', () => {
+    const mockData = createMockBars(70);
+    const result = generateLLMTimeSeriesSummary(mockData, 15);
+
+    expect(result).toBeDefined();
+    expect(result.daysCalculated).toBe(15);
+    expect(result.markdownTable).toContain('| 日期 | 收盤價 | 漲跌幅 | 成交量 | MA5 | MA20 | MA60 | RSI14 | MACD柱體 |');
+    expect(result.summaryStats).toBeDefined();
+    expect(result.summaryStats).toHaveProperty('currentClose');
+    expect(result.summaryStats).toHaveProperty('highest');
+    expect(result.summaryStats).toHaveProperty('lowest');
+  });
+
+  test('should format time series summary correctly for default days (30)', () => {
+    const mockData = createMockBars(70);
+    const result = generateLLMTimeSeriesSummary(mockData);
+
+    expect(result.daysCalculated).toBe(30);
+    const tableLines = result.markdownTable.trim().split('\n');
+    expect(tableLines.length).toBe(32);
+  });
+});
+

@@ -137,7 +137,82 @@ function generateLLMTechnicalSummary(rawData) {
     };
 }
 
-export {generateLLMTechnicalSummary};
+/**
+ * 產生時間序列 K 線技術數據的 Markdown 表格與統計摘要，供 LLM 分析提示詞使用。
+ * 
+ * 選擇格式化為 Markdown 表格是因為 LLM 在解析結構化表格時能更準確地掌握時間序列前後的價格趨勢與指標演變。
+ *
+ * @param {Object} rawData - 包含 OHLCV 陣列的原始市場數據 (dates, opens, highs, lows, closes, volumes)
+ * @param {number} [days=30] - 需要輸出的歷史天數 (預設 30 天)
+ * @returns {Object} 包含 markdownTable (Markdown 表格字串)、daysCalculated (實際計算天數) 與 summaryStats (高低價與最新價)
+ */
+function generateLLMTimeSeriesSummary(rawData, days = 30) {
+    const { dates, opens, highs, lows, closes, volumes } = rawData;
+    
+    // 確保擁有足夠歷史數據計算長均線 MA60，避免過短陣列導致技術指標計算異常或失真
+    const minRequired = Math.max(60, days);
+    if (!closes || closes.length < minRequired) {
+        throw new Error(`數據量不足，至少需要 ${minRequired} 筆資料計算指標。`);
+    }
+
+    const closeArr = Array.from(closes);
+    
+    // 計算 full-series 的技術指標，保持指標對齊正確性
+    const sma5 = SMA.calculate({ period: 5, values: closeArr });
+    const sma20 = SMA.calculate({ period: 20, values: closeArr });
+    const sma60 = SMA.calculate({ period: 60, values: closeArr });
+    const rsi14 = RSI.calculate({ period: 14, values: closeArr });
+    const macdResult = MACD.calculate({
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        values: closeArr,
+        SimpleMAOscillator: false,
+        SimpleMASignal: false
+    });
+
+    const targetDays = Math.min(days, closes.length);
+    const startIndex = closes.length - targetDays;
+
+    const rows = [];
+    rows.push('| 日期 | 收盤價 | 漲跌幅 | 成交量 | MA5 | MA20 | MA60 | RSI14 | MACD柱體 |');
+    rows.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+
+    for (let i = startIndex; i < closes.length; i++) {
+        const d = dates[i];
+        const c = closes[i];
+        const prevC = i > 0 ? closes[i - 1] : c;
+        const changePctNum = ((c - prevC) / prevC) * 100;
+        const changePctStr = changePctNum.toFixed(2);
+        const changeStr = changePctNum >= 0 ? `+${changePctStr}%` : `${changePctStr}%`;
+        const volFormatted = (volumes[i] / 1000000).toFixed(1) + 'M';
+
+        // 根據 technicalindicators 計算結果的長度與偏移量提取對應索引值
+        const ma5Val = (i >= 4 && sma5[i - 4] !== undefined) ? sma5[i - 4].toFixed(2) : '-';
+        const ma20Val = (i >= 19 && sma20[i - 19] !== undefined) ? sma20[i - 19].toFixed(2) : '-';
+        const ma60Val = (i >= 59 && sma60[i - 59] !== undefined) ? sma60[i - 59].toFixed(2) : '-';
+        const rsiVal = (i >= 14 && rsi14[i - 14] !== undefined) ? rsi14[i - 14].toFixed(2) : '-';
+
+        const macdEntry = i >= 25 ? macdResult[i - 25] : null;
+        const macdVal = (macdEntry && macdEntry.histogram !== undefined && macdEntry.histogram !== null) 
+            ? macdEntry.histogram.toFixed(2) 
+            : '-';
+
+        rows.push(`| ${d} | ${c.toFixed(2)} | ${changeStr} | ${volFormatted} | ${ma5Val} | ${ma20Val} | ${ma60Val} | ${rsiVal} | ${macdVal} |`);
+    }
+
+    return {
+        markdownTable: rows.join('\n'),
+        daysCalculated: targetDays,
+        summaryStats: {
+            currentClose: closes[closes.length - 1],
+            highest: Math.max(...highs.slice(-targetDays)),
+            lowest: Math.min(...lows.slice(-targetDays))
+        }
+    };
+}
+
+export { generateLLMTechnicalSummary, generateLLMTimeSeriesSummary };
 
 // === 測試範例資料 ===
 if (require.main === module) {
