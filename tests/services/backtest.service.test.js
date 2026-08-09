@@ -1,4 +1,10 @@
-import { splitHistoricalKlines } from '../../src/services/backtest.service';
+import { 
+  splitHistoricalKlines,
+  getCachedBacktestRecord,
+  saveBacktestForecast,
+  updateBacktestEvaluation
+} from '../../src/services/backtest.service';
+import { connectToDatabase } from '../../src/external/database/connection';
 
 describe('splitHistoricalKlines', () => {
   const mockKlines = [
@@ -29,3 +35,69 @@ describe('splitHistoricalKlines', () => {
     expect(splitHistoricalKlines(null, '2024-01-03')).toEqual({ pastKlines: [], futureKlines: [] });
   });
 });
+
+describe('Backtest Database Cache Service Helpers', () => {
+  beforeAll(async () => {
+    await connectToDatabase(':memory:');
+  });
+
+  const queryParams = {
+    symbol: '2330.TW',
+    cutoffDate: '2024-03-01',
+    lookbackDays: 60,
+    predictionDays: 20
+  };
+
+  const sampleForecast = {
+    analysis: 'Strong momentum detected',
+    targetPrice: 800,
+    confidence: 'high'
+  };
+
+  const sampleEvaluation = {
+    actualReturn: 12.5,
+    isCorrect: true,
+    score: 85
+  };
+
+  test('getCachedBacktestRecord returns null when no record exists', async () => {
+    const record = await getCachedBacktestRecord(queryParams);
+    expect(record).toBeNull();
+  });
+
+  test('saveBacktestForecast inserts record and getCachedBacktestRecord retrieves forecast', async () => {
+    await saveBacktestForecast({
+      ...queryParams,
+      forecast: sampleForecast
+    });
+
+    const record = await getCachedBacktestRecord(queryParams);
+    expect(record).not.toBeNull();
+    expect(record.forecast).toEqual(sampleForecast);
+    expect(record.evaluation).toBeNull();
+  });
+
+  test('updateBacktestEvaluation updates existing record with evaluation data', async () => {
+    await updateBacktestEvaluation({
+      ...queryParams,
+      evaluation: sampleEvaluation
+    });
+
+    const record = await getCachedBacktestRecord(queryParams);
+    expect(record).not.toBeNull();
+    expect(record.forecast).toEqual(sampleForecast);
+    expect(record.evaluation).toEqual(sampleEvaluation);
+  });
+
+  test('saveBacktestForecast updates existing record when replaced (INSERT OR REPLACE)', async () => {
+    const updatedForecast = { ...sampleForecast, targetPrice: 850 };
+    await saveBacktestForecast({
+      ...queryParams,
+      forecast: updatedForecast
+    });
+
+    const record = await getCachedBacktestRecord(queryParams);
+    expect(record.forecast).toEqual(updatedForecast);
+  });
+});
+

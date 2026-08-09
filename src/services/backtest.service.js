@@ -99,3 +99,99 @@ export const PRESET_CASES = [
     description: '站在 2023 年 AI 狂潮爆發初期，讓 LLM 分析型態。'
   }
 ];
+
+/**
+ * Queries backtest_records for a cached record matching symbol, cutoffDate, lookbackDays, predictionDays.
+ * Parses forecast_json and evaluation_json if present.
+ *
+ * @param {Object} params
+ * @param {string} params.symbol
+ * @param {string} params.cutoffDate
+ * @param {number} [params.lookbackDays=60]
+ * @param {number} [params.predictionDays=20]
+ * @returns {Promise<{ forecast: Object, evaluation: Object|null }|null>}
+ */
+export async function getCachedBacktestRecord({ symbol, cutoffDate, lookbackDays = 60, predictionDays = 20 }) {
+  const activeDb = getActiveDatabase() || await connectToDatabase();
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT forecast_json, evaluation_json
+      FROM backtest_records
+      WHERE symbol = ? AND cutoff_date = ? AND lookback_days = ? AND prediction_days = ?
+    `;
+    activeDb.get(query, [symbol.toUpperCase(), cutoffDate, lookbackDays, predictionDays], (err, row) => {
+      if (err) {
+        return reject(new Error(`Failed to get cached backtest record: ${err.message}`));
+      }
+      if (!row) {
+        return resolve(null);
+      }
+      try {
+        const forecast = row.forecast_json ? JSON.parse(row.forecast_json) : null;
+        const evaluation = row.evaluation_json ? JSON.parse(row.evaluation_json) : null;
+        resolve({ forecast, evaluation });
+      } catch (parseErr) {
+        reject(new Error(`Failed to parse cached backtest record JSON: ${parseErr.message}`));
+      }
+    });
+  });
+}
+
+/**
+ * Inserts or updates (using INSERT OR REPLACE INTO backtest_records) the forecast record with stringified forecast_json.
+ *
+ * @param {Object} params
+ * @param {string} params.symbol
+ * @param {string} params.cutoffDate
+ * @param {number} [params.lookbackDays=60]
+ * @param {number} [params.predictionDays=20]
+ * @param {Object} params.forecast
+ * @returns {Promise<void>}
+ */
+export async function saveBacktestForecast({ symbol, cutoffDate, lookbackDays = 60, predictionDays = 20, forecast }) {
+  const activeDb = getActiveDatabase() || await connectToDatabase();
+  return new Promise((resolve, reject) => {
+    const query = `
+      INSERT OR REPLACE INTO backtest_records
+      (symbol, cutoff_date, lookback_days, prediction_days, forecast_json, updated_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `;
+    const forecastJson = typeof forecast === 'string' ? forecast : JSON.stringify(forecast);
+    activeDb.run(query, [symbol.toUpperCase(), cutoffDate, lookbackDays, predictionDays, forecastJson], function (err) {
+      if (err) {
+        return reject(new Error(`Failed to save backtest forecast: ${err.message}`));
+      }
+      resolve();
+    });
+  });
+}
+
+/**
+ * Updates evaluation_json for the specified matching backtest record.
+ *
+ * @param {Object} params
+ * @param {string} params.symbol
+ * @param {string} params.cutoffDate
+ * @param {number} [params.lookbackDays=60]
+ * @param {number} [params.predictionDays=20]
+ * @param {Object} params.evaluation
+ * @returns {Promise<void>}
+ */
+export async function updateBacktestEvaluation({ symbol, cutoffDate, lookbackDays = 60, predictionDays = 20, evaluation }) {
+  const activeDb = getActiveDatabase() || await connectToDatabase();
+  return new Promise((resolve, reject) => {
+    const query = `
+      UPDATE backtest_records
+      SET evaluation_json = ?, updated_at = datetime('now')
+      WHERE symbol = ? AND cutoff_date = ? AND lookback_days = ? AND prediction_days = ?
+    `;
+    const evaluationJson = typeof evaluation === 'string' ? evaluation : JSON.stringify(evaluation);
+    activeDb.run(query, [evaluationJson, symbol.toUpperCase(), cutoffDate, lookbackDays, predictionDays], function (err) {
+      if (err) {
+        return reject(new Error(`Failed to update backtest evaluation: ${err.message}`));
+      }
+      resolve();
+    });
+  });
+}
+

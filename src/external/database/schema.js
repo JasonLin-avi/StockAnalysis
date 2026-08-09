@@ -76,6 +76,18 @@ const schema = `
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS backtest_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    cutoff_date DATE NOT NULL,
+    lookback_days INTEGER NOT NULL DEFAULT 60,
+    prediction_days INTEGER NOT NULL DEFAULT 20,
+    forecast_json TEXT NOT NULL,
+    evaluation_json TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, cutoff_date, lookback_days, prediction_days)
+  );
 
 `;
 
