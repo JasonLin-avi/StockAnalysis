@@ -174,7 +174,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
 
           <div className="flex flex-col gap-1">
             <label htmlFor="embedded-lookback-select" className="text-[11px] text-slate-400 font-medium">
-              參考長度
+              歷史參考長度 (Lookback)
             </label>
             <select
               id="embedded-lookback-select"
@@ -182,17 +182,17 @@ export default function EmbeddedBacktestPanel({ symbol }) {
               onChange={(e) => setLookbackOption(e.target.value)}
               className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
             >
-              <option value="5">1 週 (5日)</option>
-              <option value="20">1 個月 (20日)</option>
-              <option value="60">3 個月 (60日)</option>
-              <option value="custom">自訂天數</option>
+              <option value="5">1 週 (5 個交易日)</option>
+              <option value="20">1 個月 (20 個交易日)</option>
+              <option value="60">3 個月 (60 個交易日)</option>
+              <option value="custom">自訂天數 (Other)</option>
             </select>
           </div>
 
           {lookbackOption === 'custom' && (
             <div className="flex flex-col gap-1">
               <label htmlFor="custom-lookback-input" className="text-[11px] text-slate-400 font-medium">
-                自訂參考日
+                自訂參考天數
               </label>
               <input
                 id="custom-lookback-input"
@@ -201,7 +201,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
                 max="240"
                 value={customLookbackDays}
                 onChange={(e) => setCustomLookbackDays(e.target.value)}
-                placeholder="天數"
+                placeholder="參考天數"
                 className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
             </div>
@@ -209,7 +209,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
 
           <div className="flex flex-col gap-1">
             <label htmlFor="horizon-option-select" className="text-[11px] text-slate-400 font-medium">
-              展望時間
+              預測展望時間
             </label>
             <select
               id="horizon-option-select"
@@ -217,17 +217,17 @@ export default function EmbeddedBacktestPanel({ symbol }) {
               onChange={(e) => setHorizonOption(e.target.value)}
               className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
             >
-              <option value="5">1 週 (5日)</option>
-              <option value="20">1 個月 (20日)</option>
-              <option value="60">3 個月 (60日)</option>
-              <option value="custom">自訂天數</option>
+              <option value="5">1 週 (5 個交易日)</option>
+              <option value="20">1 個月 (20 個交易日)</option>
+              <option value="60">3 個月 (60 個交易日)</option>
+              <option value="custom">自訂天數 (Other)</option>
             </select>
           </div>
 
           {horizonOption === 'custom' && (
             <div className="flex flex-col gap-1">
               <label htmlFor="custom-days-input" className="text-[11px] text-slate-400 font-medium">
-                自訂展望日
+                自訂交易日數
               </label>
               <input
                 id="custom-days-input"
@@ -236,7 +236,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
                 max="240"
                 value={customDays}
                 onChange={(e) => setCustomDays(e.target.value)}
-                placeholder="天數"
+                placeholder="輸入天數"
                 className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
             </div>
@@ -256,7 +256,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
                 <span>分析中...</span>
               </>
             ) : (
-              <span>🚀 執行歷史時點回測</span>
+              <span>🚀 開始歷史時點回測</span>
             )}
           </button>
         </div>
