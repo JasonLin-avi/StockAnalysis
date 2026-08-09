@@ -110,145 +110,143 @@ export default function EmbeddedBacktestPanel({ symbol }) {
           </div>
         </div>
 
-        {/* Row 2: Full-Width Stacked Control Bar */}
-        <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 w-full">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="embedded-cutoff-date" className="text-[11px] text-slate-400 font-medium">
-                歷史基準日 (Cutoff Date)
-              </label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  id="embedded-cutoff-date"
-                  type="date"
-                  value={cutoffDate}
-                  onChange={(e) => setCutoffDate(e.target.value)}
-                  className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 [color-scheme:dark]"
-                />
-                <div className="hidden sm:flex items-center gap-1 text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date();
-                      d.setMonth(d.getMonth() - 1);
-                      setCutoffDate(d.toISOString().split('T')[0]);
-                    }}
-                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
-                  >
-                    1M
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date();
-                      d.setMonth(d.getMonth() - 3);
-                      setCutoffDate(d.toISOString().split('T')[0]);
-                    }}
-                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
-                  >
-                    3M
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date();
-                      d.setMonth(d.getMonth() - 6);
-                      setCutoffDate(d.toISOString().split('T')[0]);
-                    }}
-                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
-                  >
-                    6M
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date();
-                      d.setFullYear(d.getFullYear() - 1);
-                      setCutoffDate(d.toISOString().split('T')[0]);
-                    }}
-                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
-                  >
-                    1Y
-                  </button>
-                </div>
+        {/* Row 2: Compact Stacked Control Bar */}
+        <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-4 flex flex-wrap items-end justify-start gap-4 sm:gap-6 w-full">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="embedded-cutoff-date" className="text-xs text-slate-400 font-medium">
+              歷史基準日 (Cutoff Date)
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input
+                id="embedded-cutoff-date"
+                type="date"
+                value={cutoffDate}
+                onChange={(e) => setCutoffDate(e.target.value)}
+                className="bg-slate-800 text-slate-200 text-xs rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 [color-scheme:dark]"
+              />
+              <div className="hidden sm:flex items-center gap-1 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 1);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-1.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
+                >
+                  1M
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 3);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-1.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
+                >
+                  3M
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 6);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-1.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
+                >
+                  6M
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setFullYear(d.getFullYear() - 1);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-1.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer border border-slate-700/60"
+                >
+                  1Y
+                </button>
               </div>
             </div>
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="embedded-lookback-select" className="text-[11px] text-slate-400 font-medium">
-                歷史參考長度 (Lookback)
-              </label>
-              <select
-                id="embedded-lookback-select"
-                value={lookbackOption}
-                onChange={(e) => setLookbackOption(e.target.value)}
-                className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
-              >
-                <option value="5">1 週 (5 個交易日)</option>
-                <option value="20">1 個月 (20 個交易日)</option>
-                <option value="60">3 個月 (60 個交易日)</option>
-                <option value="custom">自訂天數 (Other)</option>
-              </select>
-            </div>
-
-            {lookbackOption === 'custom' && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="custom-lookback-input" className="text-[11px] text-slate-400 font-medium">
-                  自訂參考天數
-                </label>
-                <input
-                  id="custom-lookback-input"
-                  type="number"
-                  min="1"
-                  max="240"
-                  value={customLookbackDays}
-                  onChange={(e) => setCustomLookbackDays(e.target.value)}
-                  placeholder="參考天數"
-                  className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                />
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="horizon-option-select" className="text-[11px] text-slate-400 font-medium">
-                預測展望時間
-              </label>
-              <select
-                id="horizon-option-select"
-                value={horizonOption}
-                onChange={(e) => setHorizonOption(e.target.value)}
-                className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
-              >
-                <option value="5">1 週 (5 個交易日)</option>
-                <option value="20">1 個月 (20 個交易日)</option>
-                <option value="60">3 個月 (60 個交易日)</option>
-                <option value="custom">自訂天數 (Other)</option>
-              </select>
-            </div>
-
-            {horizonOption === 'custom' && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="custom-days-input" className="text-[11px] text-slate-400 font-medium">
-                  自訂交易日數
-                </label>
-                <input
-                  id="custom-days-input"
-                  type="number"
-                  min="1"
-                  max="240"
-                  value={customDays}
-                  onChange={(e) => setCustomDays(e.target.value)}
-                  placeholder="輸入天數"
-                  className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                />
-              </div>
-            )}
           </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="embedded-lookback-select" className="text-xs text-slate-400 font-medium">
+              歷史參考長度 (Lookback)
+            </label>
+            <select
+              id="embedded-lookback-select"
+              value={lookbackOption}
+              onChange={(e) => setLookbackOption(e.target.value)}
+              className="bg-slate-800 text-slate-200 text-xs rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+            >
+              <option value="5">1 週 (5 個交易日)</option>
+              <option value="20">1 個月 (20 個交易日)</option>
+              <option value="60">3 個月 (60 個交易日)</option>
+              <option value="custom">自訂天數 (Other)</option>
+            </select>
+          </div>
+
+          {lookbackOption === 'custom' && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="custom-lookback-input" className="text-xs text-slate-400 font-medium">
+                自訂參考天數
+              </label>
+              <input
+                id="custom-lookback-input"
+                type="number"
+                min="1"
+                max="240"
+                value={customLookbackDays}
+                onChange={(e) => setCustomLookbackDays(e.target.value)}
+                placeholder="參考天數"
+                className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="horizon-option-select" className="text-xs text-slate-400 font-medium">
+              預測展望時間
+            </label>
+            <select
+              id="horizon-option-select"
+              value={horizonOption}
+              onChange={(e) => setHorizonOption(e.target.value)}
+              className="bg-slate-800 text-slate-200 text-xs rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+            >
+              <option value="5">1 週 (5 個交易日)</option>
+              <option value="20">1 個月 (20 個交易日)</option>
+              <option value="60">3 個月 (60 個交易日)</option>
+              <option value="custom">自訂天數 (Other)</option>
+            </select>
+          </div>
+
+          {horizonOption === 'custom' && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="custom-days-input" className="text-xs text-slate-400 font-medium">
+                自訂交易日數
+              </label>
+              <input
+                id="custom-days-input"
+                type="number"
+                min="1"
+                max="240"
+                value={customDays}
+                onChange={(e) => setCustomDays(e.target.value)}
+                placeholder="輸入天數"
+                className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              />
+            </div>
+          )}
 
           <button
             onClick={handlePredict}
             disabled={loading || !cutoffDate}
-            className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center gap-1.5 self-end sm:self-center"
+            className="px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
           >
             {loading ? (
               <>
