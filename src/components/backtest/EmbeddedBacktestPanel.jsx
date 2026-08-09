@@ -242,32 +242,62 @@ export default function EmbeddedBacktestPanel({ symbol }) {
             <button
               onClick={handlePredict}
               disabled={loading || !cutoffDate}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium px-5 py-2 rounded-lg text-sm transition-all shadow-md hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold px-5 py-2.5 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
             >
-              {loading ? '⏳ LLM 時點分析中...' : '🚀 開始歷史時點回測'}
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>⏳ LLM 時點分析中...</span>
+                </>
+              ) : (
+                <span>🚀 開始歷史時點回測</span>
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {errorMsg && (
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4 my-4">
+          <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span className="text-sm text-slate-400 font-medium animate-pulse">
+            AI 量化專家正在對 {symbol} (基準日 {cutoffDate}) 進行歷史時點數據與 K 線指標深度分析...
+          </span>
+        </div>
+      )}
+
+      {errorMsg && !loading && (
         <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 mb-6 text-rose-400 text-sm flex items-center justify-between">
           <span>⚠️ {errorMsg}</span>
           <button
             onClick={() => setErrorMsg(null)}
-            className="text-rose-400 hover:text-white font-bold text-xs px-2 py-1"
+            className="text-rose-400 hover:text-white font-bold text-xs px-2 py-1 cursor-pointer"
           >
             關閉
           </button>
         </div>
       )}
 
-      <ResultCards
-        forecast={forecast}
-        evaluation={evaluation}
-        onReveal={handleReveal}
-        evaluating={evaluating}
-      />
+      {!loading && forecast && (
+        <ResultCards
+          forecast={forecast}
+          evaluation={evaluation}
+          onReveal={handleReveal}
+          evaluating={evaluating}
+        />
+      )}
+
+      {!loading && !errorMsg && !forecast && (
+        <div className="text-center py-12 text-slate-500 text-sm font-medium border border-dashed border-slate-800 rounded-xl my-4">
+          請設定歷史基準日與預測展望時間，並點擊「🚀 開始歷史時點回測」開始生成分析報告
+        </div>
+      )}
     </div>
   );
 }
