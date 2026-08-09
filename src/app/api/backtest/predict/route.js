@@ -150,7 +150,7 @@ ${markdownTable}
   "stopLossPrice": 數字,
   "keySupport": 數字,
   "keyResistance": 數字,
-  "rationale": "詳細推理分析說明 (請使用良好的 Markdown 格式排版，包含條列點、重點粗體、型態、均線、動能與價量關係)"
+  "rationale": "詳細推理分析說明 (請使用良好的 Markdown 格式排版，包含條列點、重點粗體、型態、均線、動能與價量關係)，請使用繁體中文撰寫，並提供精簡、專業且排版美觀的分析報告，包含清晰的小標題、重點列表項目與關鍵字強調。"
 }`;
 
     let forecast;

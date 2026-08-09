@@ -9,6 +9,13 @@ import '@testing-library/jest-dom';
 import ControlPanel from '../../src/components/backtest/ControlPanel';
 import ResultCards from '../../src/components/backtest/ResultCards';
 
+jest.mock('react-markdown', () => {
+  const MockMarkdown = ({ children }) => <div>{children}</div>;
+  MockMarkdown.displayName = 'MockMarkdown';
+  return MockMarkdown;
+});
+jest.mock('remark-gfm', () => ({}));
+
 describe('ControlPanel Component', () => {
   test('renders input fields and handles symbol and date changes', () => {
     const setSymbol = jest.fn();

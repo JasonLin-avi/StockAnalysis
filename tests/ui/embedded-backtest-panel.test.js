@@ -11,6 +11,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import EmbeddedBacktestPanel from '../../src/components/backtest/EmbeddedBacktestPanel';
 
+jest.mock('react-markdown', () => {
+  const MockMarkdown = ({ children }) => <div>{children}</div>;
+  MockMarkdown.displayName = 'MockMarkdown';
+  return MockMarkdown;
+});
+jest.mock('remark-gfm', () => ({}));
+
 // Mock global fetch to simulate API responses for predict and evaluate
 global.fetch = jest.fn((url) => {
   if (url === '/api/backtest/predict') {

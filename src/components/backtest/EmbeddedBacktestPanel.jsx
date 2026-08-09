@@ -110,13 +110,61 @@ export default function EmbeddedBacktestPanel({ symbol }) {
             <label htmlFor="embedded-cutoff-date" className="block text-xs font-medium text-slate-400 mb-1">
               歷史基準日 (Cutoff Date)
             </label>
-            <input
-              id="embedded-cutoff-date"
-              type="date"
-              value={cutoffDate}
-              onChange={(e) => setCutoffDate(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
-            />
+            <div className="space-y-1.5">
+              <input
+                id="embedded-cutoff-date"
+                type="date"
+                value={cutoffDate}
+                onChange={(e) => setCutoffDate(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors [color-scheme:dark]"
+              />
+              <div className="flex flex-wrap gap-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 1);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-0.5 rounded bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  1個月前
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 3);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-0.5 rounded bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  3個月前
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 6);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-0.5 rounded bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  6個月前
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setFullYear(d.getFullYear() - 1);
+                    setCutoffDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-0.5 rounded bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  1年前
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex-1 min-w-[180px]">

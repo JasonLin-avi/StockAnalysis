@@ -9,6 +9,8 @@
  */
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ResultCards({ forecast, evaluation, onReveal, evaluating }) {
   if (!forecast) return null;
@@ -71,11 +73,15 @@ export default function ResultCards({ forecast, evaluation, onReveal, evaluating
               </div>
             )}
 
-            <div className="pt-2 border-t border-slate-700/60">
-              <span className="text-slate-400 block mb-1 text-xs font-medium">推理細節 (Rationale):</span>
-              <p className="bg-slate-900/60 p-3 rounded-lg text-slate-300 text-xs leading-relaxed border border-slate-800">
-                {forecast.rationale}
-              </p>
+            <div className="pt-3 border-t border-slate-700/60">
+              <span className="text-slate-400 block mb-2 text-xs font-medium flex items-center gap-1.5">
+                <span>📊</span> 15年資深量化專家推理細節 (Rationale):
+              </span>
+              <div className="bg-slate-900/80 p-3.5 rounded-lg text-slate-200 text-xs leading-relaxed border border-slate-800/80 shadow-inner prose prose-invert prose-xs max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-cyan-300">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {forecast.rationale}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>
