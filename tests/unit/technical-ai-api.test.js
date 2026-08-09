@@ -6,13 +6,12 @@
 
 import { GET } from '../../src/app/api/stock/[symbol]/technical-ai/route';
 import { connectToDatabase } from '../../src/external/database/connection';
-// Why: Import named exports to match how the route actually imports them.
-// The route uses `import { saveStock, getHistoricalPricesFromDB, ... } from '...'`.
 import {
   saveStock,
   getHistoricalPricesFromDB,
   getPromptAnalysis,
-  savePromptAnalysis
+  savePromptAnalysis,
+  getMaxPriceDate
 } from '../../src/external/database/queries';
 import { callGemini } from '../../src/external/gemini/client';
 
@@ -29,6 +28,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     connectToDatabase.mockResolvedValue(mockDb);
+    getMaxPriceDate.mockResolvedValue('2026-08-07');
   });
 
   test('returns 400 if symbol parameter is missing', async () => {
@@ -40,8 +40,9 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
     expect(json.error).toBe('Symbol parameter is required');
   });
 
-  test('returns cached markdown and days when SQLite cache hits', async () => {
+  test('returns cached markdown and days when SQLite cache hits using DB max_date', async () => {
     getPromptAnalysis.mockResolvedValue('## Cached AI Analysis');
+    saveStock.mockResolvedValue(1);
 
     const request = new Request('http://localhost/api/stock/AAPL/technical-ai');
     const response = await GET(request, { params: { symbol: 'AAPL' } });
@@ -54,7 +55,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
       mockDb,
       'AAPL_technical_ai_30',
       'technical',
-      expect.any(String)
+      '2026-08-07'
     );
     expect(callGemini).not.toHaveBeenCalled();
   });
@@ -76,7 +77,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
     expect(callGemini).not.toHaveBeenCalled();
   });
 
-  test('fetches price data, generates time-series prompt, calls Gemini, and caches result with per-range cache key on cache miss', async () => {
+  test('fetches price data, generates time-series prompt, calls Gemini, and caches result with per-range cache key on cache miss using max_date', async () => {
     getPromptAnalysis.mockResolvedValue(null);
     saveStock.mockResolvedValue(1);
     getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 70 }, (_, i) => ({
@@ -100,12 +101,12 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
       mockDb,
       'AAPL_technical_ai_30',
       'technical',
-      expect.any(String),
+      '2026-08-07',
       '## Fresh Gemini AI Analysis'
     );
   });
 
-  test('handles custom days query parameter and clamps value between 5 and 120', async () => {
+  test('handles custom days query parameter and clamps value between 5 and 120 using max_date', async () => {
     getPromptAnalysis.mockResolvedValue(null);
     saveStock.mockResolvedValue(1);
     getHistoricalPricesFromDB.mockResolvedValue(Array.from({ length: 130 }, (_, i) => ({
@@ -125,7 +126,7 @@ describe('GET /api/stock/[symbol]/technical-ai', () => {
       mockDb,
       'AAPL_technical_ai_15',
       'technical',
-      expect.any(String),
+      '2026-08-07',
       '## 15-Day Analysis'
     );
 

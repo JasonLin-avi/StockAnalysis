@@ -14,7 +14,7 @@
 
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../../external/database/connection';
-import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis } from '../../../../../external/database/queries';
+import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis, getMaxPriceDate } from '../../../../../external/database/queries';
 import { syncStockPrices } from '../../../../../services/data-sync.service';
 import { generateLLMTimeSeriesSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 import { callGemini } from '../../../../../external/gemini/client';
@@ -73,15 +73,8 @@ export async function GET(request, context) {
     const upperSymbol = symbol.toUpperCase();
     const cacheKey = `${upperSymbol}_technical_ai_${days}`;
     const db = await connectToDatabase();
-    const today = new Date().toISOString().split('T')[0];
 
-    // Check DB cache first to avoid unnecessary database lookups and API calls
-    const cached = await getPromptAnalysis(db, cacheKey, 'technical', today);
-    if (cached) {
-      return NextResponse.json({ markdown: cached, days }, { status: 200 });
-    }
-
-    // Ensure stock record exists and sync incremental price data
+    // Ensure stock record exists and sync incremental price data first
     const stockId = await saveStock(db, {
       symbol: upperSymbol,
       market: upperSymbol.includes('.') ? 'TW' : 'US'
@@ -93,6 +86,16 @@ export async function GET(request, context) {
       } catch (syncErr) {
         console.warn(`[API_TECHNICAL_AI] Incremental sync warning for ${upperSymbol}:`, syncErr.message);
       }
+    }
+
+    // Determine latest price date in DB (max_date) to use as cache date key
+    const maxDate = await getMaxPriceDate(db, stockId);
+    const cacheDate = maxDate || new Date().toISOString().split('T')[0];
+
+    // Check DB cache first to avoid unnecessary database lookups and API calls
+    const cached = await getPromptAnalysis(db, cacheKey, 'technical', cacheDate);
+    if (cached) {
+      return NextResponse.json({ markdown: cached, days }, { status: 200 });
     }
 
     const prices = await getHistoricalPricesFromDB(db, stockId);
@@ -119,7 +122,7 @@ export async function GET(request, context) {
       tools: [{ googleSearch: {} }]
     });
 
-    await savePromptAnalysis(db, cacheKey, 'technical', today, markdown);
+    await savePromptAnalysis(db, cacheKey, 'technical', cacheDate, markdown);
 
     return NextResponse.json({ markdown, days }, { status: 200 });
   } catch (error) {
