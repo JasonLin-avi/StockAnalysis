@@ -16,7 +16,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries, ColorType } from 'lightweight-charts';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import EmbeddedBacktestPanel from '@/components/backtest/EmbeddedBacktestPanel';
+import EmbeddedBacktestPanel from '../../../components/backtest/EmbeddedBacktestPanel';
 
 
 /**

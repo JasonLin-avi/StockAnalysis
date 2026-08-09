@@ -101,7 +101,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
           <span className="text-2xl mt-0.5">⏳</span>
           <div>
             <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              {symbol} 歷史時點 AI 技術回測沙盒
+              歷史時點 AI 技術回測沙盒 ({symbol})
             </h3>
             <p className="text-xs text-slate-500 mt-1">
               指定歷史基準日期，LLM 將在完全遮蔽未來價格與新聞的情況下進行技術面分析，並於揭曉後自動計算精準度評分
