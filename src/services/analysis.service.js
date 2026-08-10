@@ -12,6 +12,7 @@ import { calculateBacktest }  from '../lib/technical-analysis/backtest.js';
 import { connectToDatabase, getActiveDatabase }  from '../external/database/connection.js';
 import { saveStock, insertStockDataBatch, saveStockData, saveAnalysisResults, getLatestAnalysisResults } from '../external/database/queries.js';
 import logger  from '../lib/logger.js';
+import { getCompanyNameByCode } from '../lib/stock-map.js';
 
 /**
  * Performs a comprehensive multi-factor stock analysis.
@@ -228,6 +229,20 @@ async function getLatestPricesAndBacktest(symbols) {
   // Why: Fetch stock data and backtests in parallel to optimize latency.
   await Promise.all(symbols.map(async (symbol) => {
     try {
+      // Why: Retrieve stock company name and market classification via stock-map service
+      let companyName = symbol;
+      let marketType = symbol.endsWith('.TW') || symbol.endsWith('.TWO') ? '台股' : '美股';
+
+      try {
+        const nameInfo = await getCompanyNameByCode(symbol, { db });
+        if (nameInfo && nameInfo.success) {
+          companyName = nameInfo.name;
+          marketType = nameInfo.market;
+        }
+      } catch (e) {
+        logger.warn('ANALYSIS_SERVICE', `Could not resolve company name for ${symbol}`, e);
+      }
+
       const data = await fetchStockData(symbol);
       const horizons = [5, 10, 20, 40, 60, 120, 240];
       const backtestMetrics = {};
@@ -266,6 +281,8 @@ async function getLatestPricesAndBacktest(symbols) {
       if (!data) {
         logger.warn('ANALYSIS_SERVICE', `No data returned for symbol: ${symbol}`);
         results[symbol] = {
+          name: companyName,
+          market: marketType,
           price: '$0.00',
           change: '+0.00%',
           color: 'text-emerald-400',
@@ -284,6 +301,8 @@ async function getLatestPricesAndBacktest(symbols) {
       const color = changePercentVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
       const sign = changePercentVal >= 0 ? '+' : '';
       results[symbol] = {
+        name: companyName,
+        market: marketType,
         price: `$${priceVal.toFixed(2)}`,
         change: `${sign}${changePercentVal.toFixed(2)}%`,
         color,
