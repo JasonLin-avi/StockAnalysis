@@ -23,6 +23,43 @@ export default function StockDetail({ params }) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('technical'); // 'technical' | 'fundamental'
   const [errorMsg, setErrorMsg] = useState(null);
+  // Why: resolvedName is pre-fetched via the faster /api/prices call so the page title shows the
+  // Chinese company name immediately, without waiting for the slower /api/analyze to complete.
+  const [resolvedName, setResolvedName] = useState(symbol);
+
+  // Fast name resolution: /api/prices is much faster than /api/analyze because it skips the full AI pipeline.
+  // We fire this first so the h1 renders with the Chinese name as early as possible.
+  useEffect(() => {
+    // Also try localStorage recent searches as an instant source (zero network cost)
+    try {
+      const stored = localStorage.getItem('antigravity_recent_stocks');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const match = Array.isArray(parsed) && parsed.find(s => s.symbol === symbol);
+        const isTW = symbol.endsWith('.TW') || symbol.endsWith('.TWO');
+        const isChineseName = match?.name && !/^[A-Za-z0-9 .,&()'-]+$/.test(match.name);
+        if (match && (!isTW || isChineseName)) {
+          setResolvedName(match.name);
+        }
+      }
+    } catch (_) {}
+
+    // Network fetch for the name via the lightweight prices endpoint
+    fetch(`/api/prices?symbols=${encodeURIComponent(symbol)}`)
+      .then(r => r.json())
+      .then(data => {
+        const priceData = data[symbol] || data[symbol.toUpperCase()];
+        if (priceData?.name) {
+          const isTW = symbol.endsWith('.TW') || symbol.endsWith('.TWO');
+          const isChineseName = !/^[A-Za-z0-9 .,&()'-]+$/.test(priceData.name);
+          // For TW stocks only accept Chinese names; for US stocks accept any name
+          if (!isTW || isChineseName) {
+            setResolvedName(priceData.name);
+          }
+        }
+      })
+      .catch(() => {}); // Fail silently — the full analysis will fill in the name later
+  }, [symbol]);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -37,6 +74,14 @@ export default function StockDetail({ params }) {
         }
         
         setData(json);
+        // Why: Update resolvedName from analysis data (most authoritative source)
+        if (json.name && json.name !== symbol) {
+          const isTW = symbol.endsWith('.TW') || symbol.endsWith('.TWO');
+          const isChineseName = !/^[A-Za-z0-9 .,&()'-]+$/.test(json.name);
+          if (!isTW || isChineseName) {
+            setResolvedName(json.name);
+          }
+        }
       } catch (err) {
         console.error(`Error loading analysis for ${symbol}:`, err);
         setErrorMsg(err.message);
@@ -96,7 +141,9 @@ export default function StockDetail({ params }) {
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">個股智能分析看板</div>
             <div className="flex items-baseline gap-3 mt-1.5">
-              <h1 className="text-3xl font-extrabold tracking-tight text-white">{data?.name && data.name !== symbol ? `${data.name} (${symbol})` : symbol}</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white">
+                {resolvedName !== symbol ? `${resolvedName} (${symbol})` : symbol}
+              </h1>
               <WatchButton symbol={symbol} />
               {data && <span className="text-sm text-slate-400">系統分析時間: {data.date}</span>}
             </div>
