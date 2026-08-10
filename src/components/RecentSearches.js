@@ -79,14 +79,28 @@ export default function RecentSearches() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {stocks.map((stock) => {
           const priceInfo = prices[stock.symbol];
-          const rawFetchedName = priceInfo?.name;
-          const isGenericFetched = !rawFetchedName || rawFetchedName === stock.symbol || rawFetchedName.endsWith('.TW') || rawFetchedName.endsWith('.TWO');
-          const isGenericStored = !stock.name || stock.name === stock.symbol || stock.name.endsWith('.TW') || stock.name.endsWith('.TWO');
-          
-          let companyName = stock.name;
-          if (!isGenericFetched) {
-            companyName = rawFetchedName;
-          } else if (isGenericStored) {
+          const isTW = stock.symbol.endsWith('.TW') || stock.symbol.endsWith('.TWO');
+
+          // Why: Priority order for company name:
+          // 1. API-returned name (priceInfo.name) — most up-to-date, resolved from stock-map/DB
+          // 2. Stored name from localStorage (stock.name)
+          // 3. Fallback to symbol itself
+          // For TW stocks, reject any name that looks like an English-only or generic name (e.g. still contains '.TW')
+          const isValidName = (n) => {
+            if (!n) return false;
+            if (n === stock.symbol) return false;
+            if (n.endsWith('.TW') || n.endsWith('.TWO')) return false;
+            // For TW stocks, reject if name is all ASCII (likely English/not yet resolved to Chinese)
+            if (isTW && /^[A-Za-z0-9 .,&()'-]+$/.test(n)) return false;
+            return true;
+          };
+
+          let companyName;
+          if (isValidName(priceInfo?.name)) {
+            companyName = priceInfo.name;
+          } else if (isValidName(stock.name)) {
+            companyName = stock.name;
+          } else {
             companyName = stock.symbol;
           }
 

@@ -385,10 +385,11 @@ function getHistoricalPricesFromDB(db, stockId) {
 function getLatestBacktestResults(db) {
   return new Promise((resolve, reject) => {
     const query = `
-      SELECT symbol, backtest, date
+      SELECT symbol, name, backtest, date
       FROM (
         SELECT 
           s.symbol, 
+          s.name,
           ar.backtest, 
           ar.date,
           ROW_NUMBER() OVER (PARTITION BY ar.stock_id ORDER BY ar.date DESC) as rank
@@ -410,6 +411,7 @@ function getLatestBacktestResults(db) {
           if (backtestData && typeof backtestData.winRate5d === 'number') {
             results.push({
               symbol: row.symbol,
+              name: row.name || null,
               rate: backtestData.winRate5d,
               ret: backtestData.avgReturn5d || 0,
               date: row.date

@@ -62,7 +62,11 @@ export default async function ReportsPage() {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h2 className="text-xl font-bold text-white">{report.symbol}</h2>
+                      <h2 className="text-xl font-bold text-white">
+                        {report.name && report.name !== report.symbol && !/^[A-Za-z0-9 .,&()'-]+$/.test(report.name)
+                          ? `${report.name} (${report.symbol})`
+                          : report.symbol}
+                      </h2>
                       <p className="text-xs text-slate-500 font-mono mt-1">分析日期: {report.date}</p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badgeColors[action] || badgeColors.Hold}`}>
