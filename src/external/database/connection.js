@@ -64,6 +64,16 @@ function connectToDatabase(dbPath = 'data/stock.db') {
               return reject(new Error(`Failed to apply schema DDL: ${execErr.message}`));
             }
             
+            // Why: Run dynamic schema check to add 'created_at' column to stocks if it does not exist in an existing database file.
+            db.all("PRAGMA table_info(stocks);", (stocksErr, stocksCols) => {
+              if (!stocksErr && stocksCols) {
+                const hasCreatedAt = stocksCols.some(col => col.name === 'created_at');
+                if (!hasCreatedAt) {
+                  db.run("ALTER TABLE stocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;");
+                }
+              }
+            });
+
             // Why: Run dynamic schema check to add 'backtest' column if it does not exist in an already created physical database file.
             db.all("PRAGMA table_info(analysis_results);", (infoErr, columns) => {
               if (infoErr) {

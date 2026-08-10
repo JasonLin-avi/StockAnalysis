@@ -653,7 +653,96 @@ function removeWatchlist(db, symbol) {
 
 
 
-export { saveStock, saveStockData, saveAnalysisResults, getStock, getStockData, getLatestAnalysisResults, getAllAnalyzedStocks, getLatestBacktestResults, getMarketFundsFlow, saveMarketFundsFlow, getPromptAnalysis, savePromptAnalysis, getRecentPromptAnalysis, getMarketOverviewMetrics, saveMarketOverviewMetrics, getWatchlist, saveWatchlist, removeWatchlist, getMaxPriceDate, getHistoricalPricesFromDB, insertStockDataBatch };
+/**
+ * 依據個股代碼查詢股票名稱與市場標籤
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string|number} code - Stock code symbol, e.g., '2330'
+ * @returns {Promise<{ symbol: string, name: string, market: string, created_at: string } | null>}
+ */
+function getCompanyNameFromDB(db, code) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT symbol, name, market, created_at FROM stocks WHERE symbol = ?;`,
+      [String(code).toUpperCase().trim()],
+      (err, row) => {
+        if (err) return reject(new Error(`Failed to query stock by code: ${err.message}`));
+        resolve(row || null);
+      }
+    );
+  });
+}
+
+/**
+ * 依據公司名稱查詢股票代碼與市場標籤
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @param {string} name - Company name, e.g., '台積電'
+ * @returns {Promise<{ symbol: string, name: string, market: string, created_at: string } | null>}
+ */
+function getCodeFromDB(db, name) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT symbol, name, market, created_at FROM stocks WHERE name = ?;`,
+      [String(name).trim()],
+      (err, row) => {
+        if (err) return reject(new Error(`Failed to query stock by name: ${err.message}`));
+        resolve(row || null);
+      }
+    );
+  });
+}
+
+/**
+ * 批次寫入或更新股票對照資料至 stocks 資料表
+ * 
+ * @param {sqlite3.Database} db - Database connection
+ * @param {Array<{ symbol: string, name: string, market: string }>} stocksList - List of stock mapping objects
+ * @returns {Promise<void>}
+ */
+function batchUpsertStocks(db, stocksList) {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION;');
+
+      // Why: 使用 INSERT INTO stocks ... ON CONFLICT(symbol) DO UPDATE 可以保護已有數據（如 ID 與外鍵關聯），
+      // 同時覆蓋更新最新名稱、市場類型與更新時間戳記 (created_at = CURRENT_TIMESTAMP)，不會清空或破壞舊有記錄。
+      const stmt = db.prepare(`
+        INSERT INTO stocks (symbol, name, market, created_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(symbol) DO UPDATE SET
+          name = excluded.name,
+          market = excluded.market,
+          created_at = CURRENT_TIMESTAMP;
+      `);
+
+      let errOccurred = null;
+
+      stocksList.forEach((stock) => {
+        if (errOccurred) return;
+        stmt.run([stock.symbol, stock.name, stock.market], (err) => {
+          if (err) errOccurred = err;
+        });
+      });
+
+      stmt.finalize((finalizeErr) => {
+        if (errOccurred || finalizeErr) {
+          db.run('ROLLBACK;');
+          return reject(errOccurred || finalizeErr);
+        }
+        db.run('COMMIT;', (commitErr) => {
+          if (commitErr) {
+            db.run('ROLLBACK;');
+            return reject(commitErr);
+          }
+          resolve();
+        });
+      });
+    });
+  });
+}
+
+export { saveStock, saveStockData, saveAnalysisResults, getStock, getStockData, getLatestAnalysisResults, getAllAnalyzedStocks, getLatestBacktestResults, getMarketFundsFlow, saveMarketFundsFlow, getPromptAnalysis, savePromptAnalysis, getRecentPromptAnalysis, getMarketOverviewMetrics, saveMarketOverviewMetrics, getWatchlist, saveWatchlist, removeWatchlist, getMaxPriceDate, getHistoricalPricesFromDB, insertStockDataBatch, getCompanyNameFromDB, getCodeFromDB, batchUpsertStocks };
 
 export default {
   saveStock,
@@ -676,7 +765,10 @@ export default {
   removeWatchlist,
   getMaxPriceDate,
   getHistoricalPricesFromDB,
-  insertStockDataBatch
+  insertStockDataBatch,
+  getCompanyNameFromDB,
+  getCodeFromDB,
+  batchUpsertStocks
 };
 
 

@@ -18,7 +18,8 @@ const schema = `
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT UNIQUE NOT NULL,
     name TEXT,
-    market TEXT NOT NULL
+    market TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
   
   CREATE TABLE IF NOT EXISTS stock_data (
