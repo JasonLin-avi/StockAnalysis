@@ -348,3 +348,23 @@ export async function getCodeByCompanyName(name, options = {}) {
     market: foundInfo.market
   };
 }
+
+/**
+ * 格式化股票名稱與代碼標籤 (Format Stock Name with Symbol)
+ * 
+ * Why:
+ * 當股票名稱存在且不同於代碼時，格式化顯示為 "公司名稱 (代碼)" (例如 "台積電 (2330.TW)")；
+ * 否則僅顯示代碼本身 (例如 "AAPL")。
+ * 
+ * @param {string} [name] - 公司名稱
+ * @param {string} symbol - 股票代碼
+ * @returns {string} 格式化後的顯示字串
+ */
+export function formatStockName(name, symbol) {
+  if (!symbol) return name || '';
+  if (name && name !== symbol) {
+    return `${name} (${symbol})`;
+  }
+  return symbol;
+}
+

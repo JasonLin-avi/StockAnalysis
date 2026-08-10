@@ -182,7 +182,7 @@ export default function WatchlistTable() {
 
                 return (
                   <tr key={symbol} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="px-5 py-4 font-bold text-slate-100 font-display">{symbol}</td>
+                    <td className="px-5 py-4 font-bold text-slate-100 font-display">{quote.name && quote.name !== symbol ? `${quote.name} (${symbol})` : symbol}</td>
                     <td className="px-5 py-4 font-bold text-slate-200">{quote.price || '--'}</td>
                     <td className={`px-5 py-4 font-bold ${quote.color || 'text-slate-400'}`}>{quote.change || '--'}</td>
                     

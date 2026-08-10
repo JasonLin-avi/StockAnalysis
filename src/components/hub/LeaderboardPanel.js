@@ -31,7 +31,7 @@ export default function LeaderboardPanel() {
           <div className="flex items-center gap-4">
             <span className="text-2xl font-black text-slate-700">#{index + 1}</span>
             <div>
-              <div className="font-bold text-lg text-slate-200">{leader.symbol}</div>
+              <div className="font-bold text-lg text-slate-200">{leader.name ? `${leader.name} (${leader.symbol})` : leader.symbol}</div>
               <div className="text-xs text-slate-400">Top 5-Day Setup</div>
             </div>
           </div>

@@ -96,7 +96,7 @@ export default function StockDetail({ params }) {
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">個股智能分析看板</div>
             <div className="flex items-baseline gap-3 mt-1.5">
-              <h1 className="text-3xl font-extrabold tracking-tight text-white">{symbol}</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white">{data?.name && data.name !== symbol ? `${data.name} (${symbol})` : symbol}</h1>
               <WatchButton symbol={symbol} />
               {data && <span className="text-sm text-slate-400">系統分析時間: {data.date}</span>}
             </div>

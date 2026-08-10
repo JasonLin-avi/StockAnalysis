@@ -65,6 +65,8 @@ export default function PopularStocks() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {popularStocks.map((stock) => {
           const priceInfo = prices[stock.symbol];
+          const companyName = priceInfo?.name || stock.name;
+          const marketType = priceInfo?.market || stock.market;
           const isPositive = priceInfo?.change?.includes('+');
           const strokeColor = isPositive ? '#10B981' : (priceInfo?.change?.includes('-') ? '#F43F5E' : '#06B6D4');
 
@@ -77,15 +79,15 @@ export default function PopularStocks() {
               {/* Subtle card header */}
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[11px] font-mono text-slate-500 group-hover:text-slate-400 transition-colors block truncate max-w-[110px]">
-                    {stock.name}
+                  <span className="text-[11px] font-mono text-slate-400 group-hover:text-slate-300 transition-colors block truncate max-w-[140px]">
+                    {companyName}
                   </span>
                   <div className="text-base font-display font-extrabold text-slate-100 group-hover:text-cyan-400 transition-colors mt-0.5">
                     {stock.symbol}
                   </div>
                 </div>
                 <span className="text-[10px] font-mono font-medium text-slate-400 bg-slate-800/60 border border-slate-700/60 px-1.5 py-0.5 rounded">
-                  {stock.market}
+                  {marketType}
                 </span>
               </div>
 
