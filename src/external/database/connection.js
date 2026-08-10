@@ -15,8 +15,8 @@
 import fs from 'fs';
 import path from 'path';
 // Why: Replace native sqlite3 driver with libsql-adapter to support local file and Turso cloud database across environments.
-import { Database as sqlite3 } from './libsql-adapter';
-import { schema } from './schema';
+import { Database as sqlite3 } from './libsql-adapter.js';
+import { schema } from './schema.js';
 
 /**
  * Establishes a connection to the SQLite database and runs initial DDL schema scripts.
@@ -66,85 +66,85 @@ function connectToDatabase(dbPath = 'data/stock.db') {
             
             // Why: Run dynamic schema check to add 'created_at' column to stocks if it does not exist in an existing database file.
             db.all("PRAGMA table_info(stocks);", (stocksErr, stocksCols) => {
+              const checkAnalysisResults = () => {
+                db.all("PRAGMA table_info(analysis_results);", (infoErr, columns) => {
+                  if (infoErr) {
+                    return reject(new Error(`Failed to read table info: ${infoErr.message}`));
+                  }
+                  const hasBacktest = columns.some(col => col.name === 'backtest');
+                  const onDone = () => {
+                    db.exec(`
+                      CREATE TABLE IF NOT EXISTS market_funds_flow (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        market TEXT NOT NULL,
+                        date DATE NOT NULL,
+                        prompt TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(market, date)
+                      );
+                      CREATE TABLE IF NOT EXISTS stock_prompt_analysis (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        symbol TEXT NOT NULL,
+                        analysis_type TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        created_at TEXT DEFAULT (datetime('now')),
+                        UNIQUE(symbol, analysis_type, date)
+                      );
+                      CREATE TABLE IF NOT EXISTS market_overview_metrics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        fear_greed_score REAL,
+                        fear_greed_text TEXT,
+                        vix_value REAL,
+                        vix_text TEXT,
+                        win_rate REAL,
+                        updated_at TEXT DEFAULT (datetime('now'))
+                      );
+                      CREATE TABLE IF NOT EXISTS watchlist (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        symbol TEXT UNIQUE NOT NULL,
+                        added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                      );
+                      CREATE TABLE IF NOT EXISTS backtest_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        symbol TEXT NOT NULL,
+                        cutoff_date DATE NOT NULL,
+                        lookback_days INTEGER NOT NULL DEFAULT 60,
+                        prediction_days INTEGER NOT NULL DEFAULT 20,
+                        UNIQUE(symbol, cutoff_date, lookback_days, prediction_days)
+                      );
+                    `, (execErr) => {
+                      if (execErr) {
+                        return reject(new Error(`Failed to apply dynamic tables DDL: ${execErr.message}`));
+                      }
+                      activeDbInstance = db;
+                      resolve(db);
+                    });
+                  };
+                  if (!hasBacktest) {
+                    db.run("ALTER TABLE analysis_results ADD COLUMN backtest TEXT;", (alterErr) => {
+                      if (alterErr) {
+                        return reject(new Error(`Failed to alter table: ${alterErr.message}`));
+                      }
+                      onDone();
+                    });
+                  } else {
+                    onDone();
+                  }
+                });
+              };
+
               if (!stocksErr && stocksCols) {
                 const hasCreatedAt = stocksCols.some(col => col.name === 'created_at');
                 if (!hasCreatedAt) {
-                  db.run("ALTER TABLE stocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;");
+                  return db.run("ALTER TABLE stocks ADD COLUMN created_at DATETIME DEFAULT '1970-01-01 00:00:00';", (alterErr) => {
+                    checkAnalysisResults();
+                  });
                 }
               }
-            });
+              checkAnalysisResults();
 
-            // Why: Run dynamic schema check to add 'backtest' column if it does not exist in an already created physical database file.
-            db.all("PRAGMA table_info(analysis_results);", (infoErr, columns) => {
-              if (infoErr) {
-                return reject(new Error(`Failed to read table info: ${infoErr.message}`));
-              }
-              const hasBacktest = columns.some(col => col.name === 'backtest');
-              const onDone = () => {
-                  db.exec(`
-                    CREATE TABLE IF NOT EXISTS market_funds_flow (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      market TEXT NOT NULL,
-                      date DATE NOT NULL,
-                      prompt TEXT NOT NULL,
-                      content TEXT NOT NULL,
-                      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                      UNIQUE(market, date)
-                    );
-                    CREATE TABLE IF NOT EXISTS stock_prompt_analysis (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      symbol TEXT NOT NULL,
-                      analysis_type TEXT NOT NULL,
-                      date TEXT NOT NULL,
-                      content TEXT NOT NULL,
-                      created_at TEXT DEFAULT (datetime('now')),
-                      UNIQUE(symbol, analysis_type, date)
-                    );
-                    CREATE TABLE IF NOT EXISTS market_overview_metrics (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      fear_greed_score REAL,
-                      fear_greed_text TEXT,
-                      vix_value REAL,
-                      vix_text TEXT,
-                      win_rate REAL,
-                      updated_at TEXT DEFAULT (datetime('now'))
-                    );
-                    CREATE TABLE IF NOT EXISTS watchlist (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      symbol TEXT UNIQUE NOT NULL,
-                      added_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE TABLE IF NOT EXISTS backtest_records (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      symbol TEXT NOT NULL,
-                      cutoff_date DATE NOT NULL,
-                      lookback_days INTEGER NOT NULL DEFAULT 60,
-                      prediction_days INTEGER NOT NULL DEFAULT 20,
-                      forecast_json TEXT NOT NULL,
-                      evaluation_json TEXT,
-                      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                      UNIQUE(symbol, cutoff_date, lookback_days, prediction_days)
-                    );
-
-                  `, (execErr) => {
-                    if (execErr) {
-                      return reject(new Error(`Failed to apply dynamic tables DDL: ${execErr.message}`));
-                    }
-                    activeDbInstance = db;
-                    resolve(db);
-                  });
-              };
-              if (!hasBacktest) {
-                db.run("ALTER TABLE analysis_results ADD COLUMN backtest TEXT;", (alterErr) => {
-                  if (alterErr) {
-                    return reject(new Error(`Failed to alter table: ${alterErr.message}`));
-                  }
-                  onDone();
-                });
-              } else {
-                onDone();
-              }
             });
           });
         });

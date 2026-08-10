@@ -1,4 +1,4 @@
-import { syncStockPricesIncremental }  from '../external/data-fetcher';
+import { syncStockPricesIncremental }  from '../external/data-fetcher/index.js';
 
 /**
  * Coordinates stock price synchronization from external fetchers to the local database.

@@ -2,7 +2,7 @@
 // separating API delivery concerns from business logic workflow.
 // Following Google Engineering Standards, we define performFullAnalysis as the service's primary export.
 
-import { fetchStockData, fetchHistoricalData, fetchFundamentalData, getLocal3YearPrices } from '../external/data-fetcher';
+import { fetchStockData, fetchHistoricalData, fetchFundamentalData, getLocal3YearPrices } from '../external/data-fetcher/index.js';
 import { syncStockPrices }  from './data-sync.service.js';
 import { performTechnicalAnalysis }  from '../lib/technical-analysis/index.js';
 import { performFundamentalAnalysis }  from '../lib/fundamental-analysis/index.js';
@@ -27,7 +27,21 @@ async function performFullAnalysis(symbol, db = null) {
 
   const ticker = symbol.toUpperCase();
   const activeDb = db || getActiveDatabase() || await connectToDatabase();
-  const stockId = await saveStock(activeDb, { symbol: ticker, market: ticker.includes('.') ? 'TW' : 'US' });
+  
+  // Resolve Chinese stock name from stock-map before saving stock metadata
+  let stockName = null;
+  let stockMarket = ticker.includes('.') ? 'TW' : 'US';
+  try {
+    const nameInfo = await getCompanyNameByCode(ticker, { db: activeDb });
+    if (nameInfo && nameInfo.success && nameInfo.name) {
+      stockName = nameInfo.name;
+      if (nameInfo.market) stockMarket = nameInfo.market;
+    }
+  } catch (e) {
+    logger.warn('ANALYSIS_SERVICE', `Could not pre-resolve stock name for ${ticker}`, e);
+  }
+
+  const stockId = await saveStock(activeDb, { symbol: ticker, name: stockName, market: stockMarket });
   const today = new Date().toISOString().split('T')[0];
 
   // Check cache for today's analysis
@@ -56,6 +70,17 @@ async function performFullAnalysis(symbol, db = null) {
   const stockInfo = fetchResults[0];
   const historical = fetchResults[1];
   const rawFundamentals = fetchResults[2]; // undefined if cached
+
+  // Resolve Chinese stock name from stock-map service if applicable
+  let resolvedName = stockInfo.name || ticker;
+  try {
+    const nameInfo = await getCompanyNameByCode(ticker, { db: activeDb });
+    if (nameInfo && nameInfo.success && nameInfo.name) {
+      resolvedName = nameInfo.name;
+    }
+  } catch (e) {
+    logger.warn('ANALYSIS_SERVICE', `Could not resolve Chinese stock name for ${ticker}`, e);
+  }
 
   // Sync recent price data
   await syncStockPrices(activeDb, stockId, ticker);
@@ -167,7 +192,7 @@ async function performFullAnalysis(symbol, db = null) {
 
   const finalResult = {
     symbol: ticker,
-    name: stockInfo.name || ticker,
+    name: resolvedName,
     price: stockInfo.price,
     changePercent: stockInfo.changePercent,
     date: today,

@@ -1,4 +1,4 @@
-import * as yahoo from './yahoo-finance';
+import * as yahoo from './yahoo-finance.js';
 
 /**
  * Fetches current stock data using Yahoo Finance.
@@ -50,7 +50,7 @@ async function fetchFundamentalData(symbol) {
   }
 }
 
-import { getMaxPriceDate, insertStockDataBatch, getHistoricalPricesFromDB }  from '../database/queries';
+import { getMaxPriceDate, insertStockDataBatch, getHistoricalPricesFromDB }  from '../database/queries.js';
 
 /**
  * Incrementally syncs prices from Yahoo/Google Finance to SQLite local db.

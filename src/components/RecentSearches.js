@@ -67,44 +67,89 @@ export default function RecentSearches() {
   }
 
   return (
-    <div className="w-full max-w-4xl relative z-10 mt-12 pt-12 border-t border-slate-900">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 text-center mb-6">
-        最近搜尋標的
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="w-full max-w-4xl relative z-10 mt-10 pt-10 border-t border-slate-900/80">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+          最近搜尋標的 (Recent Searches)
+        </h2>
+        <span className="text-[11px] font-mono text-slate-500">歷史紀錄・即時連線</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {stocks.map((stock) => {
           const priceInfo = prices[stock.symbol];
+          const rawFetchedName = priceInfo?.name;
+          const isGenericFetched = !rawFetchedName || rawFetchedName === stock.symbol || rawFetchedName.endsWith('.TW') || rawFetchedName.endsWith('.TWO');
+          const isGenericStored = !stock.name || stock.name === stock.symbol || stock.name.endsWith('.TW') || stock.name.endsWith('.TWO');
+          
+          let companyName = stock.name;
+          if (!isGenericFetched) {
+            companyName = rawFetchedName;
+          } else if (isGenericStored) {
+            companyName = stock.symbol;
+          }
+
+          const marketType = priceInfo?.market || stock.market || (stock.symbol.endsWith('.TW') || stock.symbol.endsWith('.TWO') ? '台股' : '美股');
+          const isPositive = priceInfo?.change?.includes('+');
+          const strokeColor = isPositive ? '#10B981' : (priceInfo?.change?.includes('-') ? '#F43F5E' : '#06B6D4');
+          const defaultSparkline = 'M0,16 L15,12 L30,14 L45,8 L60,10 L75,4 L90,2';
+
           return (
             <a
               key={stock.symbol}
               href={`/stock/${stock.symbol}`}
-              className="group border border-slate-900 bg-slate-900/30 hover:bg-slate-900/60 rounded-2xl p-5 hover:border-slate-800 transition-all flex flex-col justify-between"
+              className="group relative border border-slate-800/80 bg-[#0B0F19]/80 hover:bg-[#0E1424] hover:border-cyan-500/40 rounded-xl p-4 transition-all duration-200 shadow-lg hover:shadow-cyan-500/5 flex flex-col justify-between overflow-hidden"
             >
-              <div>
-                <span className="text-xs text-slate-500 font-mono group-hover:text-slate-400 transition-colors">
-                  {stock.name}
-                </span>
-                <div className="text-lg font-bold text-slate-200 mt-1">
-                  {stock.symbol}
+              {/* Subtle card header */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[11px] font-mono text-slate-400 group-hover:text-slate-300 transition-colors block truncate max-w-[140px]">
+                    {companyName}
+                  </span>
+                  <div className="text-base font-display font-extrabold text-slate-100 group-hover:text-cyan-400 transition-colors mt-0.5">
+                    {stock.symbol}
+                  </div>
                 </div>
+                <span className="text-[10px] font-mono font-medium text-slate-400 bg-slate-800/60 border border-slate-700/60 px-1.5 py-0.5 rounded">
+                  {marketType}
+                </span>
               </div>
-              <div className="flex items-baseline justify-between mt-4">
-                {/* We render a pulse loader while fetching so the user is aware data is loading */}
-                {loading ? (
-                  <>
-                    <span className="h-4 w-12 bg-slate-800 rounded animate-pulse" />
-                    <span className="h-3 w-10 bg-slate-800 rounded animate-pulse" />
-                  </>
-                ) : (
-                  <>
-                    <span className="text-sm font-semibold text-slate-300">
-                      {priceInfo?.price || 'N/A'}
-                    </span>
-                    <span className={`text-xs font-semibold ${priceInfo?.color || 'text-slate-500'}`}>
-                      {priceInfo?.change || 'N/A'}
-                    </span>
-                  </>
-                )}
+
+              {/* Sparkline & Price container */}
+              <div className="mt-6 flex items-end justify-between">
+                <div>
+                  {loading ? (
+                    <div className="space-y-1">
+                      <div className="h-4 w-14 bg-slate-800/80 rounded animate-pulse" />
+                      <div className="h-3 w-10 bg-slate-800/80 rounded animate-pulse" />
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-sm font-mono font-bold text-slate-200">
+                        {priceInfo?.price || 'N/A'}
+                      </div>
+                      <div className={`text-xs font-mono font-semibold ${priceInfo?.color || 'text-slate-500'}`}>
+                        {priceInfo?.change || 'N/A'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* SVG Micro Sparkline */}
+                <div className="w-16 h-8 flex items-center justify-end">
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 90 24">
+                    <path
+                      d={defaultSparkline}
+                      fill="none"
+                      stroke={strokeColor}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="opacity-75 group-hover:opacity-100 transition-opacity"
+                    />
+                  </svg>
+                </div>
               </div>
             </a>
           );
@@ -113,3 +158,4 @@ export default function RecentSearches() {
     </div>
   );
 }
+

@@ -25,30 +25,31 @@
  */
 function saveStock(db, stock) {
   return new Promise((resolve, reject) => {
-    const query = `INSERT OR IGNORE INTO stocks (symbol, name, market) VALUES (?, ?, ?);`;
-    db.run(query, [stock.symbol.toUpperCase(), stock.name || null, stock.market], function(err) {
+    const symbolUpper = stock.symbol.toUpperCase();
+    const query = `
+      INSERT INTO stocks (symbol, name, market) VALUES (?, ?, ?)
+      ON CONFLICT(symbol) DO UPDATE SET
+        name = COALESCE(excluded.name, stocks.name),
+        market = COALESCE(excluded.market, stocks.market);
+    `;
+    db.run(query, [symbolUpper, stock.name || null, stock.market], function(err) {
       if (err) {
         return reject(new Error(`Failed to save stock metadata: ${err.message}`));
       }
 
-      // If the row was inserted, this.lastID contains the new ID.
-      // If it already existed and was ignored, we select the existing ID.
-      if (this.changes > 0) {
-        resolve(this.lastID);
-      } else {
-        db.get(`SELECT id FROM stocks WHERE symbol = ?;`, [stock.symbol.toUpperCase()], (selErr, row) => {
-          if (selErr) {
-            return reject(new Error(`Failed to retrieve existing stock ID: ${selErr.message}`));
-          }
-          if (!row) {
-            return reject(new Error(`Stock not found after IGNORE insert for symbol: ${stock.symbol}`));
-          }
-          resolve(row.id);
-        });
-      }
+      db.get(`SELECT id FROM stocks WHERE symbol = ?;`, [symbolUpper], (selErr, row) => {
+        if (selErr) {
+          return reject(new Error(`Failed to retrieve existing stock ID: ${selErr.message}`));
+        }
+        if (!row) {
+          return reject(new Error(`Stock not found after upsert for symbol: ${stock.symbol}`));
+        }
+        resolve(row.id);
+      });
     });
   });
 }
+
 
 /**
  * Saves historical daily price data points for a specific stock.
@@ -663,7 +664,7 @@ function removeWatchlist(db, symbol) {
 function getCompanyNameFromDB(db, code) {
   return new Promise((resolve, reject) => {
     db.get(
-      `SELECT symbol, name, market, created_at FROM stocks WHERE symbol = ?;`,
+      `SELECT symbol, name, market FROM stocks WHERE symbol = ?;`,
       [String(code).toUpperCase().trim()],
       (err, row) => {
         if (err) return reject(new Error(`Failed to query stock by code: ${err.message}`));
@@ -672,6 +673,7 @@ function getCompanyNameFromDB(db, code) {
     );
   });
 }
+
 
 /**
  * 依據公司名稱查詢股票代碼與市場標籤

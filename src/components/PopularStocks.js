@@ -65,7 +65,9 @@ export default function PopularStocks() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {popularStocks.map((stock) => {
           const priceInfo = prices[stock.symbol];
-          const companyName = priceInfo?.name || stock.name;
+          const rawFetchedName = priceInfo?.name;
+          const isGenericFetched = !rawFetchedName || rawFetchedName === stock.symbol || rawFetchedName.endsWith('.TW') || rawFetchedName.endsWith('.TWO');
+          const companyName = !isGenericFetched ? rawFetchedName : stock.name;
           const marketType = priceInfo?.market || stock.market;
           const isPositive = priceInfo?.change?.includes('+');
           const strokeColor = isPositive ? '#10B981' : (priceInfo?.change?.includes('-') ? '#F43F5E' : '#06B6D4');

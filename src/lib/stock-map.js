@@ -5,11 +5,9 @@
  * - Provides efficient lookup (O(1)) for TWSE (上市) and TPEx (上櫃) stock symbols and names.
  * - Caches fetching results in-memory to prevent repeated network overhead.
  * - Supports custom OpenAPI endpoints or fallback data fetchers for robust operation.
- * - Integrates SQLite database storage using a Read-through cache-aside pattern for persistent lookups.
  */
-
-import { connectToDatabase } from '../external/database/connection';
-import { getCompanyNameFromDB, getCodeFromDB, batchUpsertStocks } from '../external/database/queries';
+import { connectToDatabase } from '../external/database/connection.js';
+import { getCompanyNameFromDB, getCodeFromDB, batchUpsertStocks } from '../external/database/queries.js';
 
 // 官方及開放資料 API 端點
 const DEFAULT_TWSE_URL = 'https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL';
