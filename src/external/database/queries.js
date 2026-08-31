@@ -484,7 +484,7 @@ function saveMarketFundsFlow(db, data) {
 function getPromptAnalysis(db, symbol, analysis_type, date) {
   return new Promise((resolve, reject) => {
     db.get(
-      `SELECT content FROM stock_prompt_analysis WHERE symbol = ? AND analysis_type = ? AND date = ?;`,
+      `SELECT content FROM stock_prompt_analysis WHERE symbol = ? AND analysis_type = ? AND date = ? AND content IS NOT NULL AND content != '';`,
       [symbol.toUpperCase(), analysis_type, date],
       (err, row) => {
         if (err) return reject(new Error(`Failed to fetch prompt analysis: ${err.message}`));
@@ -536,7 +536,7 @@ function getRecentPromptAnalysis(db, symbol, analysis_type, days) {
     // Why: Query for matches where symbol/type match and date is greater than or equal to cutoff.
     db.get(
       `SELECT content FROM stock_prompt_analysis 
-       WHERE symbol = ? AND analysis_type = ? AND date >= ? 
+       WHERE symbol = ? AND analysis_type = ? AND date >= ? AND content IS NOT NULL AND content != ''
        ORDER BY date DESC LIMIT 1;`,
       [symbol.toUpperCase(), analysis_type, cutoffStr],
       (err, row) => {

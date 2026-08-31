@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { callGemini } from '../../../external/gemini/client';
 import { connectToDatabase } from '../../../external/database/connection.js';
 import { getRecentPromptAnalysis, savePromptAnalysis } from '../../../external/database/queries.js';
+import { getCompanyNameByCode, formatStockName } from '../../../lib/stock-map.js';
 
 export const dynamic = 'force-dynamic';
 
-function getFinancialTrendPrompt(symbol) {
-  return `分析股票 ${symbol} 過去 5 年的財務數據。
+function getFinancialTrendPrompt(displayName) {
+  return `分析股票 ${displayName} 過去 5 年的財務數據。
 請拆解：
 • 營收成長
 • 淨利趨勢
@@ -36,11 +37,26 @@ export async function GET(request) {
       return NextResponse.json({ markdown: cached }, { status: 200 });
     }
 
+    // Resolve stock Chinese company name for Taiwan stocks or DB stocks to prevent LLM hallucinations
+    let displayName = symbol;
+    try {
+      const nameInfo = await getCompanyNameByCode(symbol, { db });
+      if (nameInfo && nameInfo.success && nameInfo.name) {
+        displayName = formatStockName(nameInfo.name, symbol);
+      }
+    } catch (e) {
+      // Fallback to original symbol if name lookup fails
+    }
+
     // Generate prompt & call Gemini with Google Search tool grounding
-    const prompt = getFinancialTrendPrompt(symbol);
+    const prompt = getFinancialTrendPrompt(displayName);
     const markdown = await callGemini(prompt, {
       tools: [{ googleSearch: {} }]
     });
+
+    if (!markdown || !markdown.trim()) {
+      throw new Error('AI 財務趨勢分析生成內容為空');
+    }
 
     // Save to cache
     await savePromptAnalysis(db, symbol, 'financial_trend', today, markdown);

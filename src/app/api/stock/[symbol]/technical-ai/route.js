@@ -18,6 +18,7 @@ import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnal
 import { syncStockPrices } from '../../../../../services/data-sync.service';
 import { generateLLMTimeSeriesSummary } from '../../../../../lib/technical-analysis/klineanalysis';
 import { callGemini } from '../../../../../external/gemini/client';
+import { getCompanyNameByCode, formatStockName } from '../../../../../lib/stock-map';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,18 +29,18 @@ export const dynamic = 'force-dynamic';
  * Establishing a 15-year senior quantitative trader persona produces balanced, risk-controlled analysis
  * covering both long-term trend positioning and short-term entry/exit timing instead of basic summary text.
  * 
- * @param {string} symbol - Stock ticker symbol
+ * @param {string} displayName - Formatted stock name and ticker (e.g. "台中銀 (2812.TW)")
  * @param {Object|string} timeSeriesSummary - Structured time-series output containing markdownTable
  * @param {number} days - Selected reference days
  * @returns {string} Formatted prompt string for Gemini LLM
  */
-function getTechnicalAIPrompt(symbol, timeSeriesSummary, days) {
+function getTechnicalAIPrompt(displayName, timeSeriesSummary, days) {
   const table = typeof timeSeriesSummary === 'string' ? timeSeriesSummary : timeSeriesSummary.markdownTable;
   return `# Role (角色設定)
 你是一位擁有 15 年經驗的資深量化交易員與資產配置專家。你的分析風格兼顧宏觀趨勢與微觀進出，既看重長線價值與波段結構，也重視短線的風險報酬比（Risk/Reward Ratio），絕不給予絕對且不負責任的保證。
 
 # Target Stock (分析標的)
-${symbol} (近 ${days} 個交易日時間序列數據)
+${displayName} (近 ${days} 個交易日時間序列數據)
 
 # Task (任務說明)
 請根據下方提供的歷史 K 線時間序列技術數據表格（包含價格、成交量、MA5、MA20、MA60、RSI14 與 MACD 柱體），進行全方位的技術面與趨勢解讀，並針對該標的提出**「長線波段佈局」**與**「短線操作節奏」**的綜合建議與風險控管方針。
@@ -115,12 +116,26 @@ export async function GET(request, context) {
       volumes: prices.map(p => p.volume)
     };
 
+    let displayName = upperSymbol;
+    try {
+      const nameInfo = await getCompanyNameByCode(upperSymbol, { db });
+      if (nameInfo && nameInfo.success && nameInfo.name) {
+        displayName = formatStockName(nameInfo.name, upperSymbol);
+      }
+    } catch (e) {
+      // Fallback
+    }
+
     const timeSeriesSummary = generateLLMTimeSeriesSummary(rawData, days);
-    const prompt = getTechnicalAIPrompt(upperSymbol, timeSeriesSummary, days);
+    const prompt = getTechnicalAIPrompt(displayName, timeSeriesSummary, days);
 
     const markdown = await callGemini(prompt, {
       tools: [{ googleSearch: {} }]
     });
+
+    if (!markdown || !markdown.trim()) {
+      throw new Error('AI 技術面分析生成內容為空');
+    }
 
     await savePromptAnalysis(db, cacheKey, 'technical', cacheDate, markdown);
 

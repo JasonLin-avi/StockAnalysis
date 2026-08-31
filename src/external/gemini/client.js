@@ -14,48 +14,68 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
  * @returns {Promise<string>} Generative text output.
  */
 async function callOpenRouter(prompt, options = {}) {
-  if (options.tools && Array.isArray(options.tools) && options.tools.some(tool => tool && tool.googleSearch !== undefined)) {
-    console.warn('[Gemini Client] Google Search tool grounding is not supported on OpenRouter and will be skipped.');
+  let hasWebSearch = false;
+  const toolsOption = options.tools !== undefined ? options.tools : [{ googleSearch: {} }];
+
+  if (Array.isArray(toolsOption) && toolsOption.length > 0) {
+    hasWebSearch = toolsOption.some(tool => tool && (tool.googleSearch !== undefined || tool.type === 'openrouter:web_search'));
   }
 
-  const apiUrl = process.env.OPENROUTER_API_URL;
-  const apiKey = process.env.OPENROUTER_GEMINI_API_KEY;
-  const modelName = process.env.OPENROUTER_GEMINI_MODEL_NAME;
+  const apiUrl = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_GEMINI_API_KEY;
+  const modelName = process.env.OPENROUTER_MODEL_NAME || process.env.OPENROUTER_GEMINI_MODEL_NAME || 'google/gemini-2.5-flash';
 
-  // Why: Guard to prevent calls with missing configuration.
-  if (!apiUrl) {
-    throw new Error('OPENROUTER_API_URL is not set in environment variables');
-  }
+  // Why: Guard to provide clear actionable message if fallback API key is missing.
   if (!apiKey) {
-    throw new Error('OPENROUTER_GEMINI_API_KEY is not set in environment variables');
-  }
-  if (!modelName) {
-    throw new Error('OPENROUTER_GEMINI_MODEL_NAME is not set in environment variables');
+    throw new Error('Google Gemini API 服務暫時無法使用，且未在環境變數中設定 OpenRouter 備用 API 金鑰（請在 .env.local 中設定 OPENROUTER_API_KEY）。');
   }
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://github.com/google/antigravity',
-      'X-Title': 'Stock Analysis Platform'
-    },
-    body: JSON.stringify({
+  const sendRequest = async (useWebSearch = true) => {
+    const payload = {
       model: modelName,
       messages: [
         { role: 'user', content: prompt }
-      ]
-    })
-  });
+      ],
+      ...(useWebSearch && hasWebSearch && { plugins: [{ id: 'web' }] })
+    };
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`OpenRouter API error (${response.status}): ${errText}`);
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://github.com/google/antigravity',
+        'X-Title': 'Stock Analysis Platform'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  };
+
+  // Why: First try with web search tools if requested
+  let content = '';
+  try {
+    content = await sendRequest(true);
+  } catch (err) {
+    // If request with web search fails, fallback to no-tools mode below
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  // Why: Defense-in-depth fallback to pure LLM mode without tools if web search produced empty text or error
+  if (!content || !content.trim()) {
+    content = await sendRequest(false);
+  }
+
+  if (!content || !content.trim()) {
+    throw new Error('OpenRouter API 回傳空的文字內容。');
+  }
+  return content;
 }
 
 /**
@@ -66,30 +86,38 @@ async function callOpenRouter(prompt, options = {}) {
  * @returns {Promise<string>} Generative text output.
  */
 export async function callGemini(prompt, options = {}) {
-  // Model priority: options.model -> process.env.GEMINI_MODEL_NAME -> fallback 'gemini-1.5-flash'
+  // Model priority: options.model -> process.env.GEMINI_MODEL_NAME -> process.env.GEMINI_MODEL -> fallback 'gemini-1.5-flash'
   const modelName =
     options.model ||
     process.env.GEMINI_MODEL_NAME ||
+    process.env.GEMINI_MODEL ||
     'gemini-1.5-flash';
     
   // Why: Enable Google Search tool grounding by default, allowing customization or disabling via options.
   const tools = options.tools !== undefined ? options.tools : [{ googleSearch: {} }];
 
   try {
+    // Why: Dynamically instantiate GoogleGenerativeAI per request to guarantee fresh GEMINI_API_KEY from process.env
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     const model = genAI.getGenerativeModel({
       model: modelName,
       ...(tools.length > 0 && { tools })
     });
 
     const result = await model.generateContent(prompt);
-    return result.response.text();
+    const text = result.response.text();
+    if (!text || !text.trim()) {
+      throw new Error('Google Gemini API 回傳空的文字內容。');
+    }
+    return text;
   } catch (error) {
     const errorMsg = error?.message || '';
-    // Why: Dynamically intercept Quota exceeded errors (case-insensitive) and switch to OpenRouter.
-    if (/quota exceeded/i.test(errorMsg)) {
-      console.warn('[Gemini Client] Google Gemini API Quota exceeded. Falling back to OpenRouter API...');
+    console.warn(`[Gemini Client] Google Gemini API error (${errorMsg}). Falling back to OpenRouter API...`);
+    try {
       return await callOpenRouter(prompt, options);
+    } catch (openRouterErr) {
+      // If OpenRouter also fails or isn't configured, throw composite error message
+      throw new Error(`[Gemini Client] 官方 API 與 OpenRouter 均存取失敗。原始錯誤: ${errorMsg} | 備用 API 錯誤: ${openRouterErr.message}`);
     }
-    throw error;
   }
 }
