@@ -9,8 +9,8 @@ import {
 } from './tools.js';
 import logger  from '../../lib/logger.js';
 
-// Why: Initialize primary model from configuration (defaults to google/gemma-4-31b-it).
-const primaryModelName = process.env.NV_MODEL_NAME || 'google/gemma-4-31b-it';
+// Why: Initialize primary model from configuration (defaults to nvidia/nemotron-3.5-lightning-30b-a3b for fast tool-calling).
+const primaryModelName = process.env.NV_MODEL_NAME || 'nvidia/nemotron-3.5-lightning-30b-a3b';
 // Why: Fallback model ensures seamless continuity if the primary model encounters rate-limits or downtime.
 const fallbackModelName = process.env.NV_FALLBACK_MODEL_NAME || 'z-ai/glm-5.3-flash';
 
@@ -22,6 +22,7 @@ const primaryModel = new ChatOpenAI({
   modelName: primaryModelName,
   temperature: 0.2,
   maxRetries: 1,
+  timeout: 30000,
 });
 
 const fallbackModel = new ChatOpenAI({
@@ -32,6 +33,7 @@ const fallbackModel = new ChatOpenAI({
   modelName: fallbackModelName,
   temperature: 0.2,
   maxRetries: 1,
+  timeout: 30000,
 });
 
 const agentTools = [
@@ -43,7 +45,7 @@ const agentTools = [
 
 const systemPrompt = `你是一位專業的 AI 投資顧問助理。
 你的任務是利用工具庫中的工具，查詢股票的技術指標、財報指標、新聞輿情與投資評級，為用戶解答疑問並提供精闢的解釋。
-請優先使用工具查詢數據，切勿憑空捏造不存在的股票數值或建議。請以繁體中文回答。`;
+請優先使用工具查詢數據，切勿憑空捏造不存在的股票數值或建議。請以繁體中文直接回答，切勿輸出內部思考過程。`;
 
 // Why: deepagents internally expects model to directly implement .bindTools(tools).
 // Therefore, we compile two independent agents and orchestrate failover at the agent execution level.
