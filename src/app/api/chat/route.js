@@ -25,7 +25,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { messages, ticker } = await request.json();
+    let { messages, ticker } = await request.json();
+    // Why: Normalize Taiwan stock ticker (e.g., 2330 -> 2330.TW) so downstream data fetchers (Yahoo Finance, TWSE) query accurately.
+    if (typeof ticker === 'string' && /^\d{4,6}$/.test(ticker.trim())) {
+      ticker = `${ticker.trim().toUpperCase()}.TW`;
+    }
     tickerContext = ticker || 'N/A';
     
     logger.info('API_CHAT', `Received chat request for ticker: ${tickerContext}`, { messagesCount: messages ? messages.length : 0 });

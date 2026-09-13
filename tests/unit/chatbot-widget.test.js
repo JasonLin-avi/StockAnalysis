@@ -6,7 +6,7 @@ import ChatbotWidget from '../../src/components/ChatbotWidget';
 
 // Mock react-markdown because it uses ESM format which breaks in Jest
 jest.mock('react-markdown', () => {
-  const MockMarkdown = ({ children }) => <span>{children}</span>;
+  const MockMarkdown = ({ children }) => <div data-testid="markdown-content">{children}</div>;
   MockMarkdown.displayName = 'MockMarkdown';
   return MockMarkdown;
 });
@@ -23,6 +23,8 @@ jest.mock('next/navigation', () => ({
 describe('ChatbotWidget Component', () => {
   beforeEach(() => {
     mockPathname = '/stock/AAPL';
+    // Why: jsdom does not implement scrollIntoView by default, so we mock it to prevent uncaught runtime exceptions during test renders.
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   test('renders floating bubble icon initially with stock badge', () => {
@@ -113,5 +115,41 @@ describe('ChatbotWidget Component', () => {
     
     const closedBubble = screen.getByRole('button', { name: /開啟 AI 投資助理對話框/i });
     expect(document.activeElement).toBe(closedBubble);
+  });
+
+  test('renders assistant messages via markdown parser while user messages remain plain text', async () => {
+    // Why: Mock fetch response simulating successful chatbot API interaction with assistant markdown response.
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        messages: [
+          { role: 'user', content: '請問 AAPL 的財務狀況？' },
+          { role: 'assistant', content: '### 財務指標分析\n- **營收**: 120B\n- **毛利率**: 45%' }
+        ]
+      })
+    });
+
+    render(<ChatbotWidget />);
+    const bubble = screen.getByRole('button', { name: /開啟 AI 投資助理對話框/i });
+    fireEvent.click(bubble);
+
+    const inputField = screen.getByRole('textbox', { name: '訊息輸入欄位' });
+    const submitBtn = screen.getByRole('button', { name: '送出訊息' });
+
+    fireEvent.change(inputField, { target: { value: '請問 AAPL 的財務狀況？' } });
+    fireEvent.click(submitBtn);
+
+    // Why: Verify the assistant response was passed into the markdown parser component.
+    await waitFor(() => {
+      const markdownElement = screen.getByTestId('markdown-content');
+      expect(markdownElement).toBeInTheDocument();
+      expect(markdownElement).toHaveTextContent('### 財務指標分析');
+    });
+
+    // Why: Verify user message is rendered as regular text in the conversation container.
+    expect(screen.getByText('請問 AAPL 的財務狀況？')).toBeInTheDocument();
+
+    global.fetch = originalFetch;
   });
 });

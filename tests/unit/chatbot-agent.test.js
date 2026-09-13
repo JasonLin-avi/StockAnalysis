@@ -86,6 +86,28 @@ describe('Chatbot Agent & Tools', () => {
     expect(result.advice.score).toBe(85);
   });
 
+  test('tools automatically normalize numeric Taiwan stock symbols by appending .TW (e.g., 2330 -> 2330.TW)', async () => {
+    integration.performFullAnalysis.mockResolvedValue({
+      symbol: '2330.TW',
+      price: 950.0,
+      technical: { rsi: 60.0 }
+    });
+
+    const resultStr = await getTechnicalIndicatorsTool.invoke({ symbol: '2330' });
+    const result = JSON.parse(resultStr);
+
+    expect(integration.performFullAnalysis).toHaveBeenCalledWith('2330.TW');
+    expect(result.symbol).toBe('2330.TW');
+  });
+
+  test('tools guard against template placeholders like {currentTicker}', async () => {
+    const resultStr = await getFundamentalMetricsTool.invoke({ symbol: '{currentTicker}' });
+    const result = JSON.parse(resultStr);
+
+    expect(result.error).toContain('無效的股票代碼');
+    expect(integration.performFullAnalysis).not.toHaveBeenCalled();
+  });
+
   test('financialAdvisorAgent compiles successfully and has invoke method', () => {
     expect(financialAdvisorAgent).toBeDefined();
     expect(typeof financialAdvisorAgent.invoke).toBe('function');

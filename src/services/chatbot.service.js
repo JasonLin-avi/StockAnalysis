@@ -20,6 +20,12 @@ async function handleChatResponse(messages, ticker) {
     throw new Error('Messages must be an array');
   }
 
+  // Why: Normalize Taiwan stock ticker (e.g. 2330 -> 2330.TW) so the LLM and analytical tools query with the complete ticker symbol.
+  let normalizedTicker = ticker;
+  if (typeof normalizedTicker === 'string' && /^\d{4,6}$/.test(normalizedTicker.trim())) {
+    normalizedTicker = `${normalizedTicker.trim().toUpperCase()}.TW`;
+  }
+
   // Why: Map the custom JSON message objects to LangChain message classes required by the state graph.
   const formattedMessages = messages.map(msg => {
     if (msg.role === 'user') return new HumanMessage(msg.content);
@@ -27,12 +33,12 @@ async function handleChatResponse(messages, ticker) {
     return new AIMessage(msg.content);
   });
 
-  logger.info('CHATBOT_SERVICE', `Invoking financial advisor agent for ticker ${ticker}...`);
+  logger.info('CHATBOT_SERVICE', `Invoking financial advisor agent for ticker ${normalizedTicker}...`);
   
   // Why: Invoke the financial advisor state graph using the formatted messages and supply the ticker context.
   const response = await financialAdvisorAgent.invoke(
     { messages: formattedMessages },
-    { configurable: { currentTicker: ticker } }
+    { configurable: { currentTicker: normalizedTicker } }
   );
 
   // Why: Serialize the resulting LangChain Message instances back to a simple role/content JSON structure.

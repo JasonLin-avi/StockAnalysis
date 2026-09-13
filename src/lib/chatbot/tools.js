@@ -8,7 +8,17 @@ let cacheTimestamp = {};
 // Why: Cache analysis results for 10 seconds to avoid redundant API fetches when the agent calls multiple tools in a single turn.
 // Cache the Promise itself to prevent concurrent duplicate calls.
 function getCachedAnalysis(symbol) {
-  const ticker = symbol.toUpperCase();
+  const cleanSymbol = (symbol || '').trim();
+  // Why: Guard against un-interpolated template placeholders passed by LLMs
+  if (/^\{.*\}$/.test(cleanSymbol)) {
+    throw new Error(`無效的股票代碼: "${cleanSymbol}"。請使用實際股票代碼（如 2330.TW 或 AAPL），切勿傳入佔位符。`);
+  }
+  let ticker = cleanSymbol.toUpperCase();
+  // Why: Automatically append .TW suffix for numeric Taiwan stock tickers (e.g., 2330 -> 2330.TW) if omitted by LLM.
+  if (/^\d{4,6}$/.test(ticker)) {
+    ticker = `${ticker}.TW`;
+  }
+
   const now = Date.now();
   if (analysisCache[ticker] && (now - cacheTimestamp[ticker] < 10000)) {
     return analysisCache[ticker];
@@ -31,9 +41,9 @@ function clearCache() {
 
 const getTechnicalIndicatorsTool = new DynamicStructuredTool({
   name: 'get_technical_indicators',
-  description: 'Get technical analysis indicators (RSI, MACD, MA) and closing prices for a given stock symbol.',
+  description: 'Get technical analysis indicators (RSI, MACD, MA) and closing prices for a given stock symbol (e.g., 2330.TW or AAPL).',
   schema: z.object({
-    symbol: z.string().describe('The stock symbol, e.g., AAPL'),
+    symbol: z.string().describe('The stock symbol, e.g., 2330.TW or AAPL'),
   }),
   func: async ({ symbol }) => {
     try {
@@ -51,9 +61,9 @@ const getTechnicalIndicatorsTool = new DynamicStructuredTool({
 
 const getFundamentalMetricsTool = new DynamicStructuredTool({
   name: 'get_fundamental_metrics',
-  description: 'Get fundamental analysis metrics (valuation, growth, PE ratio) for a given stock symbol.',
+  description: 'Get fundamental analysis metrics (valuation, growth, PE ratio) for a given stock symbol (e.g., 2330.TW or AAPL).',
   schema: z.object({
-    symbol: z.string().describe('The stock symbol, e.g., AAPL'),
+    symbol: z.string().describe('The stock symbol, e.g., 2330.TW or AAPL'),
   }),
   func: async ({ symbol }) => {
     try {
@@ -71,9 +81,9 @@ const getFundamentalMetricsTool = new DynamicStructuredTool({
 
 const getNewsSentimentTool = new DynamicStructuredTool({
   name: 'get_news_sentiment',
-  description: 'Get recent news headlines and sentiment scores for a given stock symbol.',
+  description: 'Get recent news headlines and sentiment scores for a given stock symbol (e.g., 2330.TW or AAPL).',
   schema: z.object({
-    symbol: z.string().describe('The stock symbol, e.g., AAPL'),
+    symbol: z.string().describe('The stock symbol, e.g., 2330.TW or AAPL'),
   }),
   func: async ({ symbol }) => {
     try {
@@ -90,9 +100,9 @@ const getNewsSentimentTool = new DynamicStructuredTool({
 
 const getInvestmentAdviceTool = new DynamicStructuredTool({
   name: 'get_investment_advice',
-  description: 'Get compiled investment rating (Buy/Sell/Hold) and score breakdowns for a given stock symbol.',
+  description: 'Get compiled investment rating (Buy/Sell/Hold) and score breakdowns for a given stock symbol (e.g., 2330.TW or AAPL).',
   schema: z.object({
-    symbol: z.string().describe('The stock symbol, e.g., AAPL'),
+    symbol: z.string().describe('The stock symbol, e.g., 2330.TW or AAPL'),
   }),
   func: async ({ symbol }) => {
     try {

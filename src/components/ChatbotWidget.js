@@ -2,6 +2,58 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Why: Define custom component renderers for ReactMarkdown within the chatbot UI.
+// Preserves compact sizing, handles dark-theme contrast, and provides responsive horizontal scrolling for tables and code blocks.
+const markdownComponents = {
+  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+  h1: ({ children }) => <h1 className="text-base font-bold text-slate-100 my-2 pb-1 border-b border-slate-700">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-sm font-bold text-slate-100 my-2">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-xs font-semibold text-cyan-400 my-1.5">{children}</h3>,
+  ul: ({ children }) => <ul className="list-disc pl-4 my-1.5 space-y-1">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-4 my-1.5 space-y-1">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-cyan-200">{children}</strong>,
+  em: ({ children }) => <em className="italic text-slate-200">{children}</em>,
+  pre: ({ children }) => (
+    <div className="my-2 rounded bg-slate-950 p-2 border border-slate-700/80 overflow-x-auto text-xs font-mono text-cyan-300 [&>code]:bg-transparent [&>code]:p-0 [&>code]:border-0">
+      <pre>{children}</pre>
+    </div>
+  ),
+  code: ({ children, ...props }) => (
+    <code className="bg-slate-900 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-xs border border-slate-700/60" {...props}>
+      {children}
+    </code>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-cyan-500 pl-2.5 my-2 text-slate-300 italic text-xs">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-2 rounded border border-slate-700">
+      <table className="min-w-full text-xs border-collapse divide-y divide-slate-700">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-slate-900 text-slate-200 font-semibold">{children}</thead>,
+  tbody: ({ children }) => <tbody className="divide-y divide-slate-700/50 bg-slate-800/50">{children}</tbody>,
+  tr: ({ children }) => <tr className="hover:bg-slate-700/30">{children}</tr>,
+  th: ({ children }) => <th className="px-2 py-1 text-left font-medium border-b border-slate-700">{children}</th>,
+  td: ({ children }) => <td className="px-2 py-1 border-b border-slate-700/50">{children}</td>,
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 break-all"
+    >
+      {children}
+    </a>
+  ),
+  hr: () => <hr className="my-2 border-slate-700" />,
+};
 
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,10 +67,15 @@ export default function ChatbotWidget() {
   const inputRef = useRef(null);
 
   // Why: Extract stock ticker automatically from routing pathname, fallback to 'Stock' if not on a stock page.
+  // Normalize numeric Taiwan stocks (e.g., 2330) by appending .TW to ensure downstream API and LLM consistency.
   useEffect(() => {
-    const match = pathname.match(/\/stock\/([A-Za-z0-9]+)/);
+    const match = pathname.match(/\/stock\/([A-Za-z0-9.]+)/);
     if (match && match[1]) {
-      setTicker(match[1].toUpperCase());
+      let extracted = match[1].toUpperCase();
+      if (/^\d{4,6}$/.test(extracted)) {
+        extracted = `${extracted}.TW`;
+      }
+      setTicker(extracted);
     } else {
       setTicker('Stock');
     }
@@ -156,13 +213,25 @@ export default function ChatbotWidget() {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 leading-relaxed ${
+                  className={`max-w-[85%] rounded-lg px-3 py-2 leading-relaxed break-words ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-none'
+                      ? 'bg-blue-600 text-white rounded-br-none whitespace-pre-wrap'
                       : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
                   }`}
                 >
-                  {msg.content}
+                  {/* Why: Assistant messages often contain rich markdown (headers, bullets, tables, bold text) produced by LLMs, while user messages are plain text */}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <div className="text-slate-100 text-sm leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                      >
+                        {msg.content || ''}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
