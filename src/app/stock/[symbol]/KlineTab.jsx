@@ -134,9 +134,9 @@ function SummaryPanel({ summary, isLoading, kdLatest, kdParams }) {
   const kdK = (isCustomized ? kdLatest?.k : (techIndicators.KD_K ?? kdLatest?.k)) ?? summary.kd_k;
   const kdD = (isCustomized ? kdLatest?.d : (techIndicators.KD_D ?? kdLatest?.d)) ?? summary.kd_d;
   const kdStatus = (isCustomized ? kdLatest?.status : (techIndicators.KD_status ?? kdLatest?.status)) ?? summary.kd_status;
-  const kdPeriod = kdParams?.period ?? 9;
-  const kdSmoothK = kdParams?.smoothK ?? 3;
-  const kdSmoothD = kdParams?.smoothD ?? 3;
+  const kdPeriod = kdParams?.period || 9;
+  const kdSmoothK = kdParams?.smoothK || 3;
+  const kdSmoothD = kdParams?.smoothD || 3;
 
   const currentVolume = volumeAnalysis.current_volume ?? summary.current_volume;
   const volumeVs5dAvg = volumeAnalysis.volume_vs_5d_avg ?? summary.volume_vs_5d_avg;
@@ -566,19 +566,25 @@ export default function KlineTab({ symbol }) {
     const syncMainToKd = (logicalRange) => {
       if (isSyncingRef.current || !logicalRange) return;
       isSyncingRef.current = true;
-      if (typeof kdTimeScale.setVisibleLogicalRange === 'function') {
-        kdTimeScale.setVisibleLogicalRange(logicalRange);
+      try {
+        if (typeof kdTimeScale.setVisibleLogicalRange === 'function') {
+          kdTimeScale.setVisibleLogicalRange(logicalRange);
+        }
+      } finally {
+        isSyncingRef.current = false;
       }
-      isSyncingRef.current = false;
     };
 
     const syncKdToMain = (logicalRange) => {
       if (isSyncingRef.current || !logicalRange) return;
       isSyncingRef.current = true;
-      if (typeof mainTimeScale.setVisibleLogicalRange === 'function') {
-        mainTimeScale.setVisibleLogicalRange(logicalRange);
+      try {
+        if (typeof mainTimeScale.setVisibleLogicalRange === 'function') {
+          mainTimeScale.setVisibleLogicalRange(logicalRange);
+        }
+      } finally {
+        isSyncingRef.current = false;
       }
-      isSyncingRef.current = false;
     };
 
     if (typeof mainTimeScale.subscribeVisibleLogicalRangeChange === 'function') {
