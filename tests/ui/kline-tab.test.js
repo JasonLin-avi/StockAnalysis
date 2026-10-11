@@ -35,9 +35,14 @@ jest.mock('lightweight-charts', () => {
 
 describe('KlineTab Component', () => {
   let mockChart;
+  let mockMainChart;
+  let mockKdChart;
   let mockCandlestickSeries;
   let mockMaSeries;
   let mockVolumeSeries;
+  let mockKSeries;
+  let mockDSeries;
+  let mockTimeScale;
 
   const sampleKlineResponse = {
     candles: [
@@ -50,17 +55,30 @@ describe('KlineTab Component', () => {
     ],
     ma5: [{ time: '2026-01-01', value: 151 }],
     ma20: [{ time: '2026-01-01', value: 148 }],
-    ma60: [{ time: '2026-01-01', value: 140 }]
+    ma60: [{ time: '2026-01-01', value: 140 }],
+    kd: {
+      k: [{ time: '2026-01-01', value: 50 }, { time: '2026-01-02', value: 65.4 }],
+      d: [{ time: '2026-01-01', value: 50 }, { time: '2026-01-02', value: 70.2 }]
+    }
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockCandlestickSeries = { setData: jest.fn() };
-    mockMaSeries = { setData: jest.fn() };
-    mockVolumeSeries = { setData: jest.fn() };
+    mockCandlestickSeries = { setData: jest.fn(), createPriceLine: jest.fn() };
+    mockMaSeries = { setData: jest.fn(), createPriceLine: jest.fn() };
+    mockVolumeSeries = { setData: jest.fn(), createPriceLine: jest.fn() };
+    mockKSeries = { setData: jest.fn(), createPriceLine: jest.fn() };
+    mockDSeries = { setData: jest.fn(), createPriceLine: jest.fn() };
 
-    mockChart = {
+    mockTimeScale = {
+      fitContent: jest.fn(),
+      subscribeVisibleLogicalRangeChange: jest.fn(),
+      unsubscribeVisibleLogicalRangeChange: jest.fn(),
+      setVisibleLogicalRange: jest.fn()
+    };
+
+    mockMainChart = {
       addSeries: jest.fn((type, options) => {
         if (options?.upColor === '#22C55E') return mockCandlestickSeries;
         if (options?.priceFormat?.type === 'volume') return mockVolumeSeries;
@@ -70,12 +88,40 @@ describe('KlineTab Component', () => {
       addLineSeries: jest.fn(() => mockMaSeries),
       addHistogramSeries: jest.fn(() => mockVolumeSeries),
       priceScale: jest.fn().mockReturnValue({ applyOptions: jest.fn() }),
-      timeScale: jest.fn().mockReturnValue({ fitContent: jest.fn() }),
+      timeScale: jest.fn().mockReturnValue(mockTimeScale),
       applyOptions: jest.fn(),
+      subscribeCrosshairMove: jest.fn(),
+      unsubscribeCrosshairMove: jest.fn(),
       remove: jest.fn()
     };
 
-    lightweightCharts.createChart.mockReturnValue(mockChart);
+    mockKdChart = {
+      addSeries: jest.fn((type, options) => {
+        if (options?.title === 'K' || options?.color === '#F59E0B') return mockKSeries;
+        if (options?.title === 'D' || options?.color === '#818CF8') return mockDSeries;
+        return mockKSeries;
+      }),
+      addLineSeries: jest.fn((options) => {
+        if (options?.title === 'K' || options?.color === '#F59E0B') return mockKSeries;
+        if (options?.title === 'D' || options?.color === '#818CF8') return mockDSeries;
+        return mockKSeries;
+      }),
+      priceScale: jest.fn().mockReturnValue({ applyOptions: jest.fn() }),
+      timeScale: jest.fn().mockReturnValue(mockTimeScale),
+      applyOptions: jest.fn(),
+      subscribeCrosshairMove: jest.fn(),
+      unsubscribeCrosshairMove: jest.fn(),
+      remove: jest.fn()
+    };
+
+    mockChart = mockMainChart;
+
+    lightweightCharts.createChart.mockImplementation((container, options) => {
+      if (options?.height === 140) {
+        return mockKdChart;
+      }
+      return mockMainChart;
+    });
 
     global.fetch = jest.fn((url) => {
       if (typeof url === 'string' && url.includes('/technical-ai')) {
@@ -117,7 +163,7 @@ describe('KlineTab Component', () => {
       render(<KlineTab symbol="AAPL" />);
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/kline?range=1Y');
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/kline?range=1Y&interval=1d');
 
     await waitFor(() => {
       expect(lightweightCharts.createChart).toHaveBeenCalledWith(
@@ -150,7 +196,101 @@ describe('KlineTab Component', () => {
       fireEvent.click(button3M);
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/kline?range=3M');
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/kline?range=3M&interval=1d');
+  });
+
+  test('renders timeframe interval buttons (日K, 週K, 月K) and switching interval triggers fetch with &interval=1w', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    expect(screen.getByRole('button', { name: '日K' })).toBeInTheDocument();
+    const weekButton = screen.getByRole('button', { name: '週K' });
+    expect(weekButton).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '月K' })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(weekButton);
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/stock/AAPL/kline?range=1Y&interval=1w');
+  });
+
+  test('renders KD subchart title, legend, and creates KD series with price lines', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/KD\(9, 3, 3\)/i)).toBeInTheDocument();
+    });
+
+    // Check KD legends
+    expect(screen.getByText('K')).toBeInTheDocument();
+    expect(screen.getByText('D')).toBeInTheDocument();
+
+    // Verify KD sub-chart was initialized with height 140
+    expect(lightweightCharts.createChart).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        height: 140
+      })
+    );
+
+    // Verify KD series received data
+    expect(mockKSeries.setData).toHaveBeenCalled();
+    expect(mockDSeries.setData).toHaveBeenCalled();
+
+    // Verify overbought (80) and oversold (20) price lines were configured
+    expect(mockKSeries.createPriceLine).toHaveBeenCalledWith(
+      expect.objectContaining({ price: 80 })
+    );
+    expect(mockKSeries.createPriceLine).toHaveBeenCalledWith(
+      expect.objectContaining({ price: 20 })
+    );
+  });
+
+  test('opens ⚙️ settings popover and updates KD parameters on client side', async () => {
+    await act(async () => {
+      render(<KlineTab symbol="AAPL" />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /⚙️|設定/i })).toBeInTheDocument();
+    });
+
+    const settingsBtn = screen.getByRole('button', { name: /⚙️|設定/i });
+    await act(async () => {
+      fireEvent.click(settingsBtn);
+    });
+
+    // Popover elements should now be visible
+    const periodInput = screen.getByLabelText(/RSV 週期/i);
+    const smoothKInput = screen.getByLabelText(/K 平滑/i);
+    const smoothDInput = screen.getByLabelText(/D 平滑/i);
+    const resetBtn = screen.getByRole('button', { name: /重設 \(9, 3, 3\)/i });
+
+    expect(periodInput).toHaveValue(9);
+    expect(smoothKInput).toHaveValue(3);
+    expect(smoothDInput).toHaveValue(3);
+
+    // Change RSV period to 14
+    mockKSeries.setData.mockClear();
+    await act(async () => {
+      fireEvent.change(periodInput, { target: { value: '14' } });
+    });
+
+    // Should immediately call setData on series without server refetch
+    expect(mockKSeries.setData).toHaveBeenCalled();
+
+    // Click reset button
+    await act(async () => {
+      fireEvent.click(resetBtn);
+    });
+
+    expect(periodInput).toHaveValue(9);
+    expect(smoothKInput).toHaveValue(3);
+    expect(smoothDInput).toHaveValue(3);
   });
 
   test('cleans up chart instance on unmount', async () => {
@@ -192,6 +332,9 @@ describe('KlineTab Component', () => {
           trend_short_term: '多頭排列 (短均高於長均)',
           trend_long_term: '長線多頭結構 (價格在季線上方且季線走揚)',
           RSI_14: 62.4,
+          KD_K: 68.5,
+          KD_D: 72.1,
+          KD_status: '多方控盤 (K > D)',
           MACD_status: 'DIF在訊號線上方，柱狀體擴張 (多方動能增強)'
         },
         volume_analysis: {
@@ -219,6 +362,9 @@ describe('KlineTab Component', () => {
     expect(screen.getByText(/150.1/)).toBeInTheDocument();
     expect(screen.getByText(/142.5/)).toBeInTheDocument();
     expect(screen.getByText(/62.4/)).toBeInTheDocument();
+    expect(screen.getAllByText(/68.5/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/72.1/)[0]).toBeInTheDocument();
+    expect(screen.getByText(/多方控盤/)).toBeInTheDocument();
     expect(screen.getByText(/多頭排列/)).toBeInTheDocument();
     expect(screen.getByText(/長線多頭結構/)).toBeInTheDocument();
   });

@@ -17,6 +17,7 @@ import { createChart, CandlestickSeries, LineSeries, HistogramSeries, ColorType 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import EmbeddedBacktestPanel from '../../../components/backtest/EmbeddedBacktestPanel';
+import { calculateKD } from '../../../lib/technical-analysis/kd';
 
 
 /**
@@ -28,8 +29,10 @@ import EmbeddedBacktestPanel from '../../../components/backtest/EmbeddedBacktest
  * @param {Object} props
  * @param {Object|null} props.summary - The summary data object from the API
  * @param {boolean} props.isLoading - Whether K-Line data is still being fetched
+ * @param {Object|null} props.kdLatest - Latest KD indicator metrics { k, d, status }
+ * @param {Object|null} props.kdParams - Active KD parameters { period, smoothK, smoothD }
  */
-function SummaryPanel({ summary, isLoading }) {
+function SummaryPanel({ summary, isLoading, kdLatest, kdParams }) {
   // Why: Show a pulse skeleton while the parent data fetch is in progress.
   if (isLoading) {
     return (
@@ -65,6 +68,24 @@ function SummaryPanel({ summary, isLoading }) {
     if (rsi > 70) return 'text-red-400';
     if (rsi < 30) return 'text-green-400';
     return 'text-slate-300';
+  };
+
+  // Why: Color-code KD status badge based on momentum signals.
+  const kdStatusBadgeColor = (status) => {
+    if (!status) return 'text-slate-400 bg-slate-800/60 border-slate-700';
+    if (status.includes('黃金交叉') || status.includes('多方')) {
+      return 'text-green-400 bg-green-400/10 border-green-400/20';
+    }
+    if (status.includes('死亡交叉') || status.includes('空方')) {
+      return 'text-red-400 bg-red-400/10 border-red-400/20';
+    }
+    if (status.includes('超買')) {
+      return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
+    }
+    if (status.includes('超賣')) {
+      return 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20';
+    }
+    return 'text-slate-400 bg-slate-800/60 border-slate-700';
   };
 
   // Why: Volume comparison badge to highlight abnormal trading volume (supports both number ratios and status strings).
@@ -108,6 +129,14 @@ function SummaryPanel({ summary, isLoading }) {
   const longTermTrend = techIndicators.trend_long_term ?? summary.long_term_trend;
   const rsi14 = techIndicators.RSI_14 ?? summary.rsi_14;
   const macdStatus = techIndicators.MACD_status ?? summary.macd_status;
+
+  const isCustomized = Boolean(kdParams?.isCustomized);
+  const kdK = (isCustomized ? kdLatest?.k : (techIndicators.KD_K ?? kdLatest?.k)) ?? summary.kd_k;
+  const kdD = (isCustomized ? kdLatest?.d : (techIndicators.KD_D ?? kdLatest?.d)) ?? summary.kd_d;
+  const kdStatus = (isCustomized ? kdLatest?.status : (techIndicators.KD_status ?? kdLatest?.status)) ?? summary.kd_status;
+  const kdPeriod = kdParams?.period ?? 9;
+  const kdSmoothK = kdParams?.smoothK ?? 3;
+  const kdSmoothD = kdParams?.smoothD ?? 3;
 
   const currentVolume = volumeAnalysis.current_volume ?? summary.current_volume;
   const volumeVs5dAvg = volumeAnalysis.volume_vs_5d_avg ?? summary.volume_vs_5d_avg;
@@ -191,14 +220,33 @@ function SummaryPanel({ summary, isLoading }) {
       {/* Section C: 動能指標 */}
       <div className="space-y-2">
         <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">動能指標</div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <div>
             <span className="text-slate-500 text-xs mr-1">RSI(14):</span>
             <span className={`font-bold ${rsiColor(rsi14)}`}>
               {rsi14 != null ? rsi14.toFixed(1) : '—'}
             </span>
           </div>
+          {(kdK != null || techIndicators.KD_K != null) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-slate-500 text-xs">KD({kdPeriod}, {kdSmoothK}, {kdSmoothD}):</span>
+              <span className="font-bold text-[#F59E0B]">
+                K {Number(kdK ?? techIndicators.KD_K).toFixed(1)}
+              </span>
+              <span className="text-slate-500">/</span>
+              <span className="font-bold text-[#818CF8]">
+                D {Number(kdD ?? techIndicators.KD_D).toFixed(1)}
+              </span>
+            </div>
+          )}
         </div>
+        {kdStatus && (
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${kdStatusBadgeColor(kdStatus)}`}>
+              {kdStatus}
+            </span>
+          </div>
+        )}
         {macdStatus && (
           <div className="text-xs text-slate-400">
             <span className="text-slate-500 mr-1">MACD:</span>
@@ -229,15 +277,30 @@ function SummaryPanel({ summary, isLoading }) {
  */
 export default function KlineTab({ symbol }) {
   const [range, setRange] = useState('1Y');
+  const [interval, setInterval] = useState('1d'); // '1d' | '1w' | '1mo'
   const [middleTab, setMiddleTab] = useState('ai_summary'); // 'ai_summary' | 'backtest_sandbox'
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const chartContainerRef = useRef(null);
-  const chartInstanceRef = useRef(null);
+  // KD parameters & interactive states
+  const [kdPeriod, setKdPeriod] = useState(9);
+  const [kdSmoothK, setKdSmoothK] = useState(3);
+  const [kdSmoothD, setKdSmoothD] = useState(3);
+  const [showKdSettings, setShowKdSettings] = useState(false);
+  const [hoverKd, setHoverKd] = useState(null);
+  const [kdLatest, setKdLatest] = useState(null);
 
-  // Why: Fetch K-Line data whenever symbol or range selection changes.
+  const mainChartContainerRef = useRef(null);
+  const kdChartContainerRef = useRef(null);
+  const mainChartInstanceRef = useRef(null);
+  const kdChartInstanceRef = useRef(null);
+  const kSeriesRef = useRef(null);
+  const dSeriesRef = useRef(null);
+  const isSyncingRef = useRef(false);
+  const kdMapRef = useRef(new Map());
+
+  // Why: Fetch K-Line data whenever symbol, range, or interval selection changes.
   useEffect(() => {
     let isMounted = true;
     const fetchKlineData = async () => {
@@ -246,7 +309,7 @@ export default function KlineTab({ symbol }) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/stock/${symbol}/kline?range=${range}`);
+        const response = await fetch(`/api/stock/${symbol}/kline?range=${range}&interval=${interval}`);
         if (!response.ok) {
           const errJson = await response.json().catch(() => ({}));
           throw new Error(errJson.error || `HTTP ${response.status}: Failed to fetch K-Line data`);
@@ -273,26 +336,37 @@ export default function KlineTab({ symbol }) {
     return () => {
       isMounted = false;
     };
-  }, [symbol, range]);
+  }, [symbol, range, interval]);
 
-  // Why: Render and manage lightweight-charts instance when data or container changes.
+  // Why: Render and synchronize Main Chart (Height 380px) and KD Sub-Chart (Height 140px).
   useEffect(() => {
-    if (!chartContainerRef.current || !data || !data.candles || data.candles.length === 0) {
+    if (
+      !mainChartContainerRef.current ||
+      !kdChartContainerRef.current ||
+      !data ||
+      !data.candles ||
+      data.candles.length === 0
+    ) {
       return;
     }
 
-    // Why: Clean up previous chart instance before rendering new data series.
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.remove();
-      chartInstanceRef.current = null;
+    // Why: Clean up previous chart instances before rendering new data series.
+    if (mainChartInstanceRef.current) {
+      mainChartInstanceRef.current.remove();
+      mainChartInstanceRef.current = null;
+    }
+    if (kdChartInstanceRef.current) {
+      kdChartInstanceRef.current.remove();
+      kdChartInstanceRef.current = null;
     }
 
-    const container = chartContainerRef.current;
+    const mainContainer = mainChartContainerRef.current;
+    const kdContainer = kdChartContainerRef.current;
 
     // Why: Dark theme styling options matching requirements (#0B0F19 background, #94A3B8 text, #1E293B grid).
-    const chart = createChart(container, {
-      width: container.clientWidth,
-      height: 480,
+    const mainChart = createChart(mainContainer, {
+      width: mainContainer.clientWidth,
+      height: 380,
       layout: {
         background: { type: ColorType.Solid, color: '#0B0F19' },
         textColor: '#94A3B8',
@@ -313,11 +387,39 @@ export default function KlineTab({ symbol }) {
         secondsVisible: false,
       },
     });
+    mainChartInstanceRef.current = mainChart;
 
-    chartInstanceRef.current = chart;
+    const kdChart = createChart(kdContainer, {
+      width: kdContainer.clientWidth,
+      height: 140,
+      layout: {
+        background: { type: ColorType.Solid, color: '#0B0F19' },
+        textColor: '#94A3B8',
+      },
+      grid: {
+        vertLines: { color: '#1E293B' },
+        horzLines: { color: '#1E293B' },
+      },
+      crosshair: {
+        mode: 1,
+      },
+      rightPriceScale: {
+        borderColor: '#1E293B',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      },
+      timeScale: {
+        borderColor: '#1E293B',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
+    kdChartInstanceRef.current = kdChart;
 
-    // Why: Support lightweight-charts v4/v5 API gracefully.
-    const addSeriesHelper = (seriesType, options) => {
+    // Why: Support lightweight-charts v4/v5 API gracefully across both chart panes.
+    const addSeriesHelper = (chart, seriesType, options) => {
       if (typeof chart.addSeries === 'function') {
         return chart.addSeries(seriesType, options);
       }
@@ -333,8 +435,8 @@ export default function KlineTab({ symbol }) {
       return null;
     };
 
-    // Why: Add Candlestick Series with specified upColor (#22C55E) and downColor (#EF4444).
-    const candlestickSeries = addSeriesHelper(CandlestickSeries, {
+    // --- Main Chart Series ---
+    const candlestickSeries = addSeriesHelper(mainChart, CandlestickSeries, {
       upColor: '#22C55E',
       downColor: '#EF4444',
       borderUpColor: '#22C55E',
@@ -347,9 +449,8 @@ export default function KlineTab({ symbol }) {
       candlestickSeries.setData(data.candles);
     }
 
-    // Why: Add MA5, MA20, MA60 line series to display moving average overlays.
     if (data.ma5 && data.ma5.length > 0) {
-      const ma5Series = addSeriesHelper(LineSeries, {
+      const ma5Series = addSeriesHelper(mainChart, LineSeries, {
         color: '#EAB308',
         lineWidth: 1.5,
         title: 'MA5',
@@ -358,7 +459,7 @@ export default function KlineTab({ symbol }) {
     }
 
     if (data.ma20 && data.ma20.length > 0) {
-      const ma20Series = addSeriesHelper(LineSeries, {
+      const ma20Series = addSeriesHelper(mainChart, LineSeries, {
         color: '#3B82F6',
         lineWidth: 1.5,
         title: 'MA20',
@@ -367,7 +468,7 @@ export default function KlineTab({ symbol }) {
     }
 
     if (data.ma60 && data.ma60.length > 0) {
-      const ma60Series = addSeriesHelper(LineSeries, {
+      const ma60Series = addSeriesHelper(mainChart, LineSeries, {
         color: '#A855F7',
         lineWidth: 1.5,
         title: 'MA60',
@@ -375,54 +476,256 @@ export default function KlineTab({ symbol }) {
       if (ma60Series) ma60Series.setData(data.ma60);
     }
 
-    // Why: Add Volume Histogram series mapped to a sub-pane at the bottom 20% of the chart.
     if (data.volume && data.volume.length > 0) {
-      const volumeSeries = addSeriesHelper(HistogramSeries, {
+      const volumeSeries = addSeriesHelper(mainChart, HistogramSeries, {
         color: '#26a69a',
         priceFormat: { type: 'volume' },
         priceScaleId: '', // Overlay scale
       });
 
       if (volumeSeries) {
-        chart.priceScale('').applyOptions({
-          scaleMargins: {
-            top: 0.8, // Position volume at the bottom 20%
-            bottom: 0,
-          },
-        });
+        if (typeof mainChart.priceScale === 'function') {
+          mainChart.priceScale('').applyOptions({
+            scaleMargins: {
+              top: 0.8, // Position volume at the bottom 20%
+              bottom: 0,
+            },
+          });
+        }
         volumeSeries.setData(data.volume);
       }
     }
 
-    // Why: Fit chart content horizontally to fill visible area.
-    chart.timeScale().fitContent();
+    // --- KD Sub-Chart Series ---
+    const kSeries = addSeriesHelper(kdChart, LineSeries, {
+      color: '#F59E0B',
+      lineWidth: 1.5,
+      title: 'K',
+    });
 
-    // Why: Add responsive window resize listener to maintain correct canvas width.
+    const dSeries = addSeriesHelper(kdChart, LineSeries, {
+      color: '#818CF8',
+      lineWidth: 1.5,
+      title: 'D',
+    });
+
+    kSeriesRef.current = kSeries;
+    dSeriesRef.current = dSeries;
+
+    // Why: Add overbought (80) and oversold (20) horizontal reference lines.
+    if (kSeries && typeof kSeries.createPriceLine === 'function') {
+      kSeries.createPriceLine({
+        price: 80,
+        color: '#EF4444',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: '80',
+      });
+      kSeries.createPriceLine({
+        price: 20,
+        color: '#22C55E',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: '20',
+      });
+    }
+
+    // Why: Calculate KD series over candles using active parameters.
+    const p = Math.max(2, Math.min(60, Number(kdPeriod) || 9));
+    const sk = Math.max(1, Math.min(20, Number(kdSmoothK) || 3));
+    const sd = Math.max(1, Math.min(20, Number(kdSmoothD) || 3));
+    const kdResult = calculateKD(data.candles, p, sk, sd);
+
+    if (kSeries && typeof kSeries.setData === 'function') {
+      kSeries.setData(kdResult.k);
+    }
+    if (dSeries && typeof dSeries.setData === 'function') {
+      dSeries.setData(kdResult.d);
+    }
+    setKdLatest(kdResult.latest);
+
+    // Why: Cache time -> KD values in ref Map for O(1) hover lookup.
+    const map = new Map();
+    for (let i = 0; i < kdResult.k.length; i++) {
+      map.set(kdResult.k[i].time, {
+        k: kdResult.k[i].value,
+        d: kdResult.d[i]?.value ?? kdResult.k[i].value,
+      });
+    }
+    kdMapRef.current = map;
+
+    mainChart.timeScale().fitContent();
+    kdChart.timeScale().fitContent();
+
+    // Why: TimeScale bidirectional synchronization with isSyncingRef guard to prevent recursion.
+    const mainTimeScale = mainChart.timeScale();
+    const kdTimeScale = kdChart.timeScale();
+
+    const syncMainToKd = (logicalRange) => {
+      if (isSyncingRef.current || !logicalRange) return;
+      isSyncingRef.current = true;
+      if (typeof kdTimeScale.setVisibleLogicalRange === 'function') {
+        kdTimeScale.setVisibleLogicalRange(logicalRange);
+      }
+      isSyncingRef.current = false;
+    };
+
+    const syncKdToMain = (logicalRange) => {
+      if (isSyncingRef.current || !logicalRange) return;
+      isSyncingRef.current = true;
+      if (typeof mainTimeScale.setVisibleLogicalRange === 'function') {
+        mainTimeScale.setVisibleLogicalRange(logicalRange);
+      }
+      isSyncingRef.current = false;
+    };
+
+    if (typeof mainTimeScale.subscribeVisibleLogicalRangeChange === 'function') {
+      mainTimeScale.subscribeVisibleLogicalRangeChange(syncMainToKd);
+    }
+    if (typeof kdTimeScale.subscribeVisibleLogicalRangeChange === 'function') {
+      kdTimeScale.subscribeVisibleLogicalRangeChange(syncKdToMain);
+    }
+
+    // Why: Synchronize crosshair hover display for real-time K/D value readout.
+    const handleCrosshairMove = (param) => {
+      if (!param || !param.time) {
+        setHoverKd(null);
+        return;
+      }
+      const timeStr = typeof param.time === 'string'
+        ? param.time
+        : (param.time.year ? `${param.time.year}-${String(param.time.month).padStart(2, '0')}-${String(param.time.day).padStart(2, '0')}` : String(param.time));
+      const point = kdMapRef.current.get(timeStr);
+      setHoverKd(point || null);
+    };
+
+    if (typeof mainChart.subscribeCrosshairMove === 'function') {
+      mainChart.subscribeCrosshairMove(handleCrosshairMove);
+    }
+    if (typeof kdChart.subscribeCrosshairMove === 'function') {
+      kdChart.subscribeCrosshairMove(handleCrosshairMove);
+    }
+
+    // Why: Add responsive window resize listener to maintain correct canvas width for both panes.
     const handleResize = () => {
-      if (chartContainerRef.current && chartInstanceRef.current) {
-        chartInstanceRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
+      if (mainChartContainerRef.current && mainChartInstanceRef.current) {
+        mainChartInstanceRef.current.applyOptions({
+          width: mainChartContainerRef.current.clientWidth,
+        });
+      }
+      if (kdChartContainerRef.current && kdChartInstanceRef.current) {
+        kdChartInstanceRef.current.applyOptions({
+          width: kdChartContainerRef.current.clientWidth,
         });
       }
     };
 
     window.addEventListener('resize', handleResize);
 
-    // Why: Ensure complete cleanup of chart instance and window resize listener on unmount or re-render.
+    // Why: Ensure complete cleanup of chart instances, event listeners, and timeScale subscriptions.
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.remove();
-        chartInstanceRef.current = null;
+      if (typeof mainTimeScale.unsubscribeVisibleLogicalRangeChange === 'function') {
+        mainTimeScale.unsubscribeVisibleLogicalRangeChange(syncMainToKd);
+      }
+      if (typeof kdTimeScale.unsubscribeVisibleLogicalRangeChange === 'function') {
+        kdTimeScale.unsubscribeVisibleLogicalRangeChange(syncKdToMain);
+      }
+      if (typeof mainChart.unsubscribeCrosshairMove === 'function') {
+        mainChart.unsubscribeCrosshairMove(handleCrosshairMove);
+      }
+      if (typeof kdChart.unsubscribeCrosshairMove === 'function') {
+        kdChart.unsubscribeCrosshairMove(handleCrosshairMove);
+      }
+      if (mainChartInstanceRef.current) {
+        mainChartInstanceRef.current.remove();
+        mainChartInstanceRef.current = null;
+      }
+      if (kdChartInstanceRef.current) {
+        kdChartInstanceRef.current.remove();
+        kdChartInstanceRef.current = null;
       }
     };
   }, [data]);
 
+  // Why: Instant client-side recalculation of KD series when parameters change (0ms latency).
+  const updateKDData = (period, smoothK, smoothD) => {
+    if (!data?.candles || data.candles.length === 0) return;
+    const p = Math.max(2, Math.min(60, Number(period) || 9));
+    const sk = Math.max(1, Math.min(20, Number(smoothK) || 3));
+    const sd = Math.max(1, Math.min(20, Number(smoothD) || 3));
+
+    const kdResult = calculateKD(data.candles, p, sk, sd);
+    if (kSeriesRef.current && typeof kSeriesRef.current.setData === 'function') {
+      kSeriesRef.current.setData(kdResult.k);
+    }
+    if (dSeriesRef.current && typeof dSeriesRef.current.setData === 'function') {
+      dSeriesRef.current.setData(kdResult.d);
+    }
+    setKdLatest(kdResult.latest);
+
+    const map = new Map();
+    for (let i = 0; i < kdResult.k.length; i++) {
+      map.set(kdResult.k[i].time, {
+        k: kdResult.k[i].value,
+        d: kdResult.d[i]?.value ?? kdResult.k[i].value,
+      });
+    }
+    kdMapRef.current = map;
+  };
+
+  const handlePeriodChange = (e) => {
+    const val = e.target.value;
+    setKdPeriod(val);
+    const num = parseInt(val, 10);
+    if (!isNaN(num)) {
+      updateKDData(num, kdSmoothK, kdSmoothD);
+    }
+  };
+
+  const handleSmoothKChange = (e) => {
+    const val = e.target.value;
+    setKdSmoothK(val);
+    const num = parseInt(val, 10);
+    if (!isNaN(num)) {
+      updateKDData(kdPeriod, num, kdSmoothD);
+    }
+  };
+
+  const handleSmoothDChange = (e) => {
+    const val = e.target.value;
+    setKdSmoothD(val);
+    const num = parseInt(val, 10);
+    if (!isNaN(num)) {
+      updateKDData(kdPeriod, kdSmoothK, num);
+    }
+  };
+
+  const handleResetKD = () => {
+    setKdPeriod(9);
+    setKdSmoothK(3);
+    setKdSmoothD(3);
+    updateKDData(9, 3, 3);
+  };
+
+  const intervals = [
+    { label: '日K', value: '1d' },
+    { label: '週K', value: '1w' },
+    { label: '月K', value: '1mo' },
+  ];
   const ranges = ['1M', '3M', '6M', '1Y', '3Y'];
+
+  const isKdCustomized = Number(kdPeriod) !== 9 || Number(kdSmoothK) !== 3 || Number(kdSmoothD) !== 3;
+  const defaultHeaderK = data?.summary?.technical_indicators?.KD_K ?? kdLatest?.k ?? 50;
+  const defaultHeaderD = data?.summary?.technical_indicators?.KD_D ?? kdLatest?.d ?? 50;
+  const displayK = hoverKd ? hoverKd.k : (isKdCustomized ? (kdLatest?.k ?? 50) : defaultHeaderK);
+  const displayD = hoverKd ? hoverKd.d : (isKdCustomized ? (kdLatest?.d ?? 50) : defaultHeaderD);
 
   return (
     <div className="w-full space-y-4">
-      {/* Full-width Header Card with Title, Legend & Range Selector */}
+      {/* Full-width Header Card with Title, Legend & Interval/Range Selectors */}
       <div className="w-full bg-[#0B0F19] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -455,22 +758,43 @@ export default function KlineTab({ symbol }) {
             </div>
           </div>
 
-          {/* Range Selector Buttons */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 border border-slate-800 rounded-xl self-start sm:self-center">
-            {ranges.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRange(r)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                  range === r
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+          {/* Timeframe Interval & Range Selector Buttons */}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+            {/* Interval Selector: 日K / 週K / 月K */}
+            <div className="flex items-center gap-1 bg-slate-900/90 p-1 border border-slate-800 rounded-xl">
+              {intervals.map((it) => (
+                <button
+                  key={it.value}
+                  type="button"
+                  onClick={() => setInterval(it.value)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                    interval === it.value
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  {it.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Range Selector: 1M / 3M / 6M / 1Y / 3Y */}
+            <div className="flex items-center gap-1 bg-slate-900/90 p-1 border border-slate-800 rounded-xl">
+              {ranges.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRange(r)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                    range === r
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -479,7 +803,7 @@ export default function KlineTab({ symbol }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left: Chart Container (2/3 width on lg) */}
         <div className="lg:col-span-2">
-          <div className="relative w-full min-h-[480px] bg-[#0B0F19] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="relative w-full bg-[#0B0F19] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0B0F19]/80 backdrop-blur-sm space-y-3">
                 <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -503,14 +827,121 @@ export default function KlineTab({ symbol }) {
               </div>
             )}
 
-            {/* TradingView lightweight-charts container target */}
-            <div ref={chartContainerRef} className="w-full h-[480px]" />
+            {/* Main TradingView lightweight-charts container target (Height 380px) */}
+            <div ref={mainChartContainerRef} className="w-full h-[380px]" />
+
+            {/* KD Sub-Chart Header with Title, Legends, Hover Display, and Settings Popover */}
+            <div className="relative flex flex-wrap items-center justify-between px-3 py-1.5 bg-slate-900/80 border-t border-b border-slate-800 text-xs text-slate-300 gap-2">
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-slate-200">
+                  KD({kdPeriod}, {kdSmoothK}, {kdSmoothD})
+                </span>
+                <span className="flex items-center gap-1 font-semibold text-[#F59E0B]">
+                  <span className="w-2.5 h-0.5 bg-[#F59E0B]"></span> K
+                </span>
+                <span className="flex items-center gap-1 font-semibold text-[#818CF8]">
+                  <span className="w-2.5 h-0.5 bg-[#818CF8]"></span> D
+                </span>
+                <span className="font-mono text-slate-400">
+                  K: <span className="text-[#F59E0B] font-bold">{Number(displayK).toFixed(1)}</span>
+                  {' | '}
+                  D: <span className="text-[#818CF8] font-bold">{Number(displayD).toFixed(1)}</span>
+                </span>
+              </div>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowKdSettings(!showKdSettings)}
+                  aria-label="KD 設定"
+                  title="KD 指標設定"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs"
+                >
+                  <span>⚙️</span> 設定
+                </button>
+
+                {showKdSettings && (
+                  <div className="absolute right-0 top-7 z-30 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl text-xs space-y-2.5 min-w-[200px]">
+                    <div className="font-semibold text-slate-200 border-b border-slate-800 pb-1 flex justify-between items-center">
+                      <span>KD 參數設定</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowKdSettings(false)}
+                        className="text-slate-400 hover:text-slate-200"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor="kd-period-input" className="text-slate-400">
+                        RSV 週期
+                      </label>
+                      <input
+                        id="kd-period-input"
+                        type="number"
+                        min={2}
+                        max={60}
+                        value={kdPeriod}
+                        onChange={handlePeriodChange}
+                        aria-label="RSV 週期"
+                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor="kd-smoothk-input" className="text-slate-400">
+                        K 平滑
+                      </label>
+                      <input
+                        id="kd-smoothk-input"
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={kdSmoothK}
+                        onChange={handleSmoothKChange}
+                        aria-label="K 平滑"
+                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor="kd-smoothd-input" className="text-slate-400">
+                        D 平滑
+                      </label>
+                      <input
+                        id="kd-smoothd-input"
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={kdSmoothD}
+                        onChange={handleSmoothDChange}
+                        aria-label="D 平滑"
+                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetKD}
+                      className="w-full mt-1 px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors cursor-pointer"
+                    >
+                      重設 (9, 3, 3)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Aligned KD Sub-Chart target (Height 140px) */}
+            <div ref={kdChartContainerRef} className="w-full h-[140px]" />
           </div>
         </div>
 
         {/* Right: Quant AI Summary Panel (1/3 width on lg) */}
         <div className="lg:col-span-1">
-          <SummaryPanel summary={data?.summary} isLoading={isLoading} />
+          <SummaryPanel
+            summary={data?.summary}
+            isLoading={isLoading}
+            kdLatest={kdLatest}
+            kdParams={{ period: kdPeriod, smoothK: kdSmoothK, smoothD: kdSmoothD, isCustomized: isKdCustomized }}
+          />
         </div>
       </div>
 
