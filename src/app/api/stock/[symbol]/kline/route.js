@@ -17,6 +17,8 @@ import { connectToDatabase } from '../../../../../external/database/connection';
 import { saveStock, getHistoricalPricesFromDB } from '../../../../../external/database/queries';
 import { syncStockPrices } from '../../../../../services/data-sync.service';
 import { generateLLMTechnicalSummary } from '../../../../../lib/technical-analysis/klineanalysis';
+import { calculateKD } from '../../../../../lib/technical-analysis/kd';
+import { aggregateBars } from '../../../../../lib/technical-analysis/aggregation';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +101,8 @@ export async function GET(request, context) {
 
     const { searchParams } = new URL(request.url);
     const range = (searchParams.get('range') || '1Y').toUpperCase();
+    const rawInterval = (searchParams.get('interval') || '1d').toLowerCase();
+    const interval = ['1d', '1w', '1mo'].includes(rawInterval) ? rawInterval : '1d';
 
     const upperSymbol = symbol.toUpperCase();
     const db = await connectToDatabase();
@@ -113,7 +117,23 @@ export async function GET(request, context) {
     await syncStockPrices(db, stockId, upperSymbol);
 
     // Why: Fetch full historical price dataset from database sorted ASC by date.
-    const prices = await getHistoricalPricesFromDB(db, stockId);
+    const rawPrices = await getHistoricalPricesFromDB(db, stockId);
+
+    if (!rawPrices || rawPrices.length === 0) {
+      return NextResponse.json({
+        candles: [],
+        volume: [],
+        ma5: [],
+        ma20: [],
+        ma60: [],
+        kd: { k: [], d: [] },
+        summary: null,
+        interval
+      });
+    }
+
+    // Why: 在計算技術指標（MA5/20/60、KD）前依據指定週期聚合，確保不同時間維度指標基於聚合後的 K 棒週期精確運算。
+    const prices = aggregateBars(rawPrices, interval);
 
     if (!prices || prices.length === 0) {
       return NextResponse.json({
@@ -122,7 +142,9 @@ export async function GET(request, context) {
         ma5: [],
         ma20: [],
         ma60: [],
-        summary: null
+        kd: { k: [], d: [] },
+        summary: null,
+        interval
       });
     }
 
@@ -131,6 +153,9 @@ export async function GET(request, context) {
     const fullMa5 = calculateMA(prices, 5);
     const fullMa20 = calculateMA(prices, 20);
     const fullMa60 = calculateMA(prices, 60);
+
+    // Why: 全歷史週期計算 KD 指標，以維持初期 9 天基準及遞迴平滑加權數值的連續性。
+    const fullKd = calculateKD(prices);
 
     let summary = null;
     if (prices.length >= 60) {
@@ -144,6 +169,12 @@ export async function GET(request, context) {
       };
       try {
         summary = generateLLMTechnicalSummary(rawData);
+        // Why: 將最新 KD 指標數據整合至技術摘要中，以利 LLM 解讀動能與高低檔交叉狀態。
+        if (summary && summary.technical_indicators && fullKd?.latest) {
+          summary.technical_indicators.KD_K = fullKd.latest.k;
+          summary.technical_indicators.KD_D = fullKd.latest.d;
+          summary.technical_indicators.KD_status = fullKd.latest.status;
+        }
       } catch (err) {
         console.warn('[API_KLINE] Summary calculation failed:', err.message);
       }
@@ -180,6 +211,10 @@ export async function GET(request, context) {
     const ma5 = fullMa5.filter(item => item.time >= cutoffDateStr);
     const ma20 = fullMa20.filter(item => item.time >= cutoffDateStr);
     const ma60 = fullMa60.filter(item => item.time >= cutoffDateStr);
+    const kd = {
+      k: (fullKd.k || []).filter(item => item.time >= cutoffDateStr),
+      d: (fullKd.d || []).filter(item => item.time >= cutoffDateStr)
+    };
 
     return NextResponse.json({
       candles,
@@ -187,7 +222,9 @@ export async function GET(request, context) {
       ma5,
       ma20,
       ma60,
-      summary
+      kd,
+      summary,
+      interval
     });
   } catch (error) {
     console.error(`[API_KLINE] Exception in GET for symbol:`, error);

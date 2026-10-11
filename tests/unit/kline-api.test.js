@@ -86,6 +86,87 @@ describe('GET /api/stock/[symbol]/kline', () => {
     expect(body.ma5.length).toBe(66); // 70 - 4
     expect(body.ma20.length).toBe(51); // 70 - 19
     expect(body.ma60.length).toBe(11); // 70 - 59
+
+    // Interval and KD checks
+    expect(body.interval).toBe('1d');
+    expect(body.kd).toBeDefined();
+    expect(body.kd.k.length).toBe(70);
+    expect(body.kd.d.length).toBe(70);
+    expect(body.kd.k[0]).toHaveProperty('time');
+    expect(body.kd.k[0]).toHaveProperty('value');
+    expect(body.kd.d[0]).toHaveProperty('time');
+    expect(body.kd.d[0]).toHaveProperty('value');
+
+    // Technical indicator KD checks in summary
+    expect(body.summary.technical_indicators).toHaveProperty('KD_K');
+    expect(body.summary.technical_indicators).toHaveProperty('KD_D');
+    expect(body.summary.technical_indicators).toHaveProperty('KD_status');
+  });
+
+  test('aggregates candles by weekly interval (?interval=1w)', async () => {
+    const mockPrices = generatePrices(70);
+    mockGetHistoricalPricesFromDB.mockResolvedValue(mockPrices);
+
+    const req = {
+      url: 'http://localhost/api/stock/AAPL/kline?range=3Y&interval=1w'
+    };
+    const context = { params: Promise.resolve({ symbol: 'AAPL' }) };
+
+    const response = await GET(req, context);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.interval).toBe('1w');
+    // 70 consecutive calendar days span ~10-11 weeks
+    expect(body.candles.length).toBeLessThan(15);
+    expect(body.candles.length).toBeGreaterThan(5);
+    expect(body.kd.k.length).toBe(body.candles.length);
+    expect(body.kd.d.length).toBe(body.candles.length);
+  });
+
+  test('handles case-insensitive interval and falls back to 1d for invalid interval', async () => {
+    const mockPrices = generatePrices(70);
+    mockGetHistoricalPricesFromDB.mockResolvedValue(mockPrices);
+
+    // Case-insensitive test
+    const reqUpper = {
+      url: 'http://localhost/api/stock/AAPL/kline?range=3Y&interval=1W'
+    };
+    const context = { params: Promise.resolve({ symbol: 'AAPL' }) };
+    const resUpper = await GET(reqUpper, context);
+    const bodyUpper = await resUpper.json();
+    expect(bodyUpper.interval).toBe('1w');
+
+    // Fallback test
+    const reqInvalid = {
+      url: 'http://localhost/api/stock/AAPL/kline?range=3Y&interval=invalid'
+    };
+    const resInvalid = await GET(reqInvalid, context);
+    const bodyInvalid = await resInvalid.json();
+    expect(bodyInvalid.interval).toBe('1d');
+    expect(bodyInvalid.candles.length).toBe(70);
+  });
+
+  test('returns empty kd structure and interval when price data is empty', async () => {
+    mockGetHistoricalPricesFromDB.mockResolvedValue([]);
+
+    const req = {
+      url: 'http://localhost/api/stock/AAPL/kline?range=1Y&interval=1mo'
+    };
+    const context = { params: Promise.resolve({ symbol: 'AAPL' }) };
+
+    const response = await GET(req, context);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.candles).toEqual([]);
+    expect(body.volume).toEqual([]);
+    expect(body.ma5).toEqual([]);
+    expect(body.ma20).toEqual([]);
+    expect(body.ma60).toEqual([]);
+    expect(body.kd).toEqual({ k: [], d: [] });
+    expect(body.summary).toBeNull();
+    expect(body.interval).toBe('1mo');
   });
 
   test('filters dataset according to range parameter', async () => {
