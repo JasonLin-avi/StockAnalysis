@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import PopularStocks from '../components/PopularStocks';
 import RecentSearches from '../components/RecentSearches';
+import { TrendUpIcon, ShieldIcon, ZapIcon } from '../components/ui/Icons';
 
 export default function Home() {
   const [metrics, setMetrics] = useState({
@@ -67,39 +68,39 @@ export default function Home() {
           <div className="border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between transition-all hover:border-slate-700">
             <div>
               <div className="text-slate-500 text-[10px] uppercase">市場情緒 (Fear & Greed)</div>
-              <div className="text-slate-200 font-bold text-sm mt-0.5">
+              <div className="text-slate-200 font-bold text-sm mt-0.5 tabular-nums">
                 {loading ? '---' : `${metrics.fearGreed.score} / 100`}{' '}
                 <span className="text-emerald-400 font-normal text-xs">({metrics.fearGreed.text})</span>
               </div>
             </div>
-            <div className="h-8 w-8 rounded-lg bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 text-sm">
-              📈
+            <div className="h-8 w-8 rounded-lg bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 shadow-sm">
+              <TrendUpIcon className="w-4 h-4" />
             </div>
           </div>
 
           <div className="border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between transition-all hover:border-slate-700">
             <div>
               <div className="text-slate-500 text-[10px] uppercase">恐慌指數 (VIX Volatility)</div>
-              <div className="text-slate-200 font-bold text-sm mt-0.5">
+              <div className="text-slate-200 font-bold text-sm mt-0.5 tabular-nums">
                 {loading ? '---' : metrics.vix.value}{' '}
                 <span className="text-cyan-400 font-normal text-xs">({metrics.vix.text})</span>
               </div>
             </div>
-            <div className="h-8 w-8 rounded-lg bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400 text-sm">
-              🛡️
+            <div className="h-8 w-8 rounded-lg bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400 shadow-sm">
+              <ShieldIcon className="w-4 h-4" />
             </div>
           </div>
 
           <div className="col-span-2 sm:col-span-1 border border-slate-800/60 bg-[#0B0F19]/60 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between transition-all hover:border-slate-700">
             <div>
               <div className="text-slate-500 text-[10px] uppercase">量化策略回測勝率</div>
-              <div className="text-slate-200 font-bold text-sm mt-0.5">
+              <div className="text-slate-200 font-bold text-sm mt-0.5 tabular-nums">
                 {loading ? '---' : `${metrics.winRate}%`}{' '}
                 <span className="text-slate-400 font-normal text-xs">(近30日評估)</span>
               </div>
             </div>
-            <div className="h-8 w-8 rounded-lg bg-blue-950/60 border border-blue-800/40 flex items-center justify-center text-blue-400 text-sm">
-              ⚡
+            <div className="h-8 w-8 rounded-lg bg-blue-950/60 border border-blue-800/40 flex items-center justify-center text-blue-400 shadow-sm">
+              <ZapIcon className="w-4 h-4" />
             </div>
           </div>
         </div>

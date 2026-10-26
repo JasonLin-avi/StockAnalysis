@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { BankIcon } from '../../../components/ui/Icons';
 
 export default function FundamentalTab({ symbol }) {
   const [markdown, setMarkdown] = useState('');
@@ -30,8 +31,8 @@ export default function FundamentalTab({ symbol }) {
 
   if (loading) {
     return (
-      <div className="border border-slate-900 bg-slate-900/30 rounded-2xl p-12 flex flex-col items-center justify-center space-y-4 backdrop-blur-sm">
-        <svg className="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <div className="border border-slate-900 bg-[#0B0F19]/60 rounded-2xl p-12 flex flex-col items-center justify-center space-y-4 backdrop-blur-sm">
+        <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
@@ -52,16 +53,18 @@ export default function FundamentalTab({ symbol }) {
   }
 
   return (
-    <div className="border border-slate-900 bg-slate-900/30 rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl">
+    <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🏛️</span>
+          <div className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 shadow-sm">
+            <BankIcon className="w-5 h-5" />
+          </div>
           <div>
             <h2 className="text-lg font-bold text-slate-100">{symbol} 華爾街資深基本面報告</h2>
-            <p className="text-xs text-slate-500">由 Google Gemini 結合即時網路檢索分析生成</p>
+            <p className="text-xs text-slate-400">由 Google Gemini 結合即時網路檢索分析生成</p>
           </div>
         </div>
-        <span className="px-3 py-1 text-xs font-medium rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
           AI 深度報告
         </span>
       </div>

@@ -27,17 +27,17 @@ export default function LeaderboardPanel() {
   return (
     <div className="space-y-4">
       {leaders.map((leader, index) => (
-        <Link key={leader.symbol} href={`/stock/${leader.symbol}`} className="block border border-slate-800 bg-slate-900/30 rounded-2xl p-5 hover:border-indigo-500/50 hover:bg-slate-800/50 transition-all flex items-center justify-between">
+        <Link key={leader.symbol} href={`/stock/${leader.symbol}`} className="block border border-slate-800/80 bg-[#0B0F19]/60 rounded-2xl p-5 hover:border-cyan-500/50 hover:bg-[#0E1524] transition-all flex items-center justify-between group">
           <div className="flex items-center gap-4">
-            <span className="text-2xl font-black text-slate-700">#{index + 1}</span>
+            <span className="text-2xl font-black text-slate-700 font-mono">#{index + 1}</span>
             <div>
-              <div className="font-bold text-lg text-slate-200">{leader.name ? `${leader.name} (${leader.symbol})` : leader.symbol}</div>
+              <div className="font-bold text-lg text-slate-200 group-hover:text-cyan-400 transition-colors">{leader.name ? `${leader.name} (${leader.symbol})` : leader.symbol}</div>
               <div className="text-xs text-slate-400">Top 5-Day Setup</div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-emerald-400 font-bold">{(leader.rate * 100).toFixed(0)}% Win Rate</div>
-            <div className="text-xs text-slate-400">Avg Ret: +{leader.ret}%</div>
+            <div className="text-emerald-400 font-bold font-mono tabular-nums">{(leader.rate * 100).toFixed(0)}% Win Rate</div>
+            <div className="text-xs text-slate-400 font-mono tabular-nums">Avg Ret: +{leader.ret}%</div>
           </div>
         </Link>
       ))}
