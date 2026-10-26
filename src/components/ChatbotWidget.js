@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ChatBubbleIcon, MinusIcon, XMarkIcon } from './ui/Icons';
 
 // Why: Define custom component renderers for ReactMarkdown within the chatbot UI.
 // Preserves compact sizing, handles dark-theme contrast, and provides responsive horizontal scrolling for tables and code blocks.
@@ -159,10 +160,10 @@ export default function ChatbotWidget() {
         <button
           ref={buttonRef}
           onClick={() => setIsOpen(true)}
-          className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform duration-200 text-white text-2xl relative"
+          className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-full shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-transform duration-200 text-white relative"
           aria-label="開啟 AI 投資助理對話框"
         >
-          💬
+          <ChatBubbleIcon className="w-6 h-6 text-white" />
           {ticker !== 'Stock' && (
             <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-slate-900">
               {ticker}
@@ -174,7 +175,7 @@ export default function ChatbotWidget() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700">
             <div className="flex items-center gap-2">
-              <span className="text-lg">💬</span>
+              <ChatBubbleIcon className="w-4 h-4 text-cyan-400" />
               <span className="font-semibold text-sm">AI 投資助理</span>
               <span className="text-xs bg-blue-900 text-blue-200 px-2 py-0.5 rounded font-mono">
                 {ticker}
@@ -187,7 +188,7 @@ export default function ChatbotWidget() {
                 aria-label="最小化對話框"
                 title="最小化"
               >
-                ➖
+                <MinusIcon className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleClear}
@@ -195,7 +196,7 @@ export default function ChatbotWidget() {
                 aria-label="清除並關閉對話"
                 title="清除紀錄"
               >
-                ❌
+                <XMarkIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

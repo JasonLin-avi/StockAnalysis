@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { AlertTriangleIcon } from './ui/Icons';
 
 /**
  * Investment Advisory Panel Component
@@ -167,7 +168,10 @@ export default function InvestmentAdvicePanel({ advice = {} }) {
       {risk && (
         <div className="bg-rose-50/20 dark:bg-rose-950/5 border border-rose-100/50 dark:border-rose-900/30 rounded-xl p-4">
           <h4 className="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            ⚠️ 風險管理防守指引 (Risk Management)
+            <span className="inline-flex items-center gap-1.5">
+              <AlertTriangleIcon className="w-3.5 h-3.5 text-rose-500 inline-block" />
+              <span>風險管理防守指引 (Risk Management)</span>
+            </span>
           </h4>
           <div className="space-y-3">
             <div>

@@ -18,6 +18,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import EmbeddedBacktestPanel from '../../../components/backtest/EmbeddedBacktestPanel';
 import { calculateKD } from '../../../lib/technical-analysis/kd';
+import { CandlestickIcon, ZapIcon, SparklesIcon, CogIcon } from '../../../components/ui/Icons';
 
 
 /**
@@ -148,6 +149,7 @@ function SummaryPanel({ summary, isLoading, kdLatest, kdParams }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-base font-bold text-slate-100 flex items-center gap-1.5">
+          <ZapIcon className="w-4 h-4 text-cyan-400" />
           🧠 量化技術診斷
         </h4>
         {summary.date && (
@@ -737,7 +739,8 @@ export default function KlineTab({ symbol }) {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <span className="text-xl">📈</span> K線技術圖表 (TradingView)
+                <CandlestickIcon className="w-5 h-5 text-cyan-400" />
+                <span>K線技術圖表 (TradingView)</span>
               </h3>
               <span className="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">
                 {symbol}
@@ -775,7 +778,7 @@ export default function KlineTab({ symbol }) {
                   onClick={() => setInterval(it.value)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                     interval === it.value
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/10'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >
@@ -793,7 +796,7 @@ export default function KlineTab({ symbol }) {
                   onClick={() => setRange(r)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                     range === r
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/10'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >
@@ -812,7 +815,7 @@ export default function KlineTab({ symbol }) {
           <div className="relative w-full bg-[#0B0F19] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0B0F19]/80 backdrop-blur-sm space-y-3">
-                <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -863,7 +866,8 @@ export default function KlineTab({ symbol }) {
                   title="KD 指標設定"
                   className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs"
                 >
-                  <span>⚙️</span> 設定
+                  <CogIcon className="w-3.5 h-3.5 text-slate-400" />
+                  <span>設定</span>
                 </button>
 
                 {showKdSettings && (
@@ -890,7 +894,7 @@ export default function KlineTab({ symbol }) {
                         value={kdPeriod}
                         onChange={handlePeriodChange}
                         aria-label="RSV 週期"
-                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                       />
                     </div>
                     <div className="flex items-center justify-between gap-2">
@@ -905,7 +909,7 @@ export default function KlineTab({ symbol }) {
                         value={kdSmoothK}
                         onChange={handleSmoothKChange}
                         aria-label="K 平滑"
-                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                       />
                     </div>
                     <div className="flex items-center justify-between gap-2">
@@ -920,7 +924,7 @@ export default function KlineTab({ symbol }) {
                         value={kdSmoothD}
                         onChange={handleSmoothDChange}
                         aria-label="D 平滑"
-                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-16 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                       />
                     </div>
                     <button
@@ -963,7 +967,8 @@ export default function KlineTab({ symbol }) {
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
             }`}
           >
-            <span>🤖</span> 當前 AI 技術面解讀
+            <SparklesIcon className="w-3.5 h-3.5 text-cyan-400" />
+            <span>當前 AI 技術面解讀</span>
           </button>
           <button
             type="button"
@@ -1044,7 +1049,9 @@ function TechnicalAISummaryPanel({ symbol }) {
     <div className="border border-slate-900 bg-slate-900/30 rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl mt-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800/80 pb-4 mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🤖</span>
+          <div className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 shadow-sm">
+            <SparklesIcon className="w-5 h-5" />
+          </div>
           <div>
             <h3 className="text-lg font-bold text-slate-100">{symbol} 15年資深量化專家 AI 深度診斷</h3>
             <p className="text-xs text-slate-500">由 Google Gemini 結合長短線量化指標特徵分析生成</p>
@@ -1062,7 +1069,7 @@ function TechnicalAISummaryPanel({ symbol }) {
               aria-label="參考天數"
               value={presetDays}
               onChange={(e) => setPresetDays(e.target.value)}
-              className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
             >
               <option value="15">15 天</option>
               <option value="30">30 天 (預設)</option>
@@ -1079,7 +1086,7 @@ function TechnicalAISummaryPanel({ symbol }) {
                 value={customDays}
                 onChange={(e) => setCustomDays(e.target.value)}
                 placeholder="5-120"
-                className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-16 bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
             )}
           </div>
@@ -1088,16 +1095,18 @@ function TechnicalAISummaryPanel({ symbol }) {
             type="button"
             onClick={handleTriggerAI}
             disabled={isLoading}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            aria-label="🤖 執行 15年專家 AI 診斷"
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white shadow-lg shadow-cyan-500/20 transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
           >
-            🤖 執行 15年專家 AI 診斷
+            <SparklesIcon className="w-3.5 h-3.5" />
+            <span>執行 15年專家 AI 診斷</span>
           </button>
         </div>
       </div>
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <svg className="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>

@@ -1,8 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
-import { connectToDatabase }  from '../../external/database/connection';
-import { getAllAnalyzedStocks }  from '../../external/database/queries';
+import { connectToDatabase } from '../../external/database/connection';
+import { getAllAnalyzedStocks } from '../../external/database/queries';
+import { FolderIcon, DownloadIcon, ChartBarIcon } from '../../components/ui/Icons';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -23,10 +24,10 @@ export default async function ReportsPage() {
     <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
       <Header />
       
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">歷史分析報告</h1>
-          <p className="text-sm text-slate-400 mt-2">所有已儲存並持久化至資料庫中的分析報告清單。</p>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
+        <div className="mb-8 pb-4 border-b border-slate-800/80">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">歷史分析報告</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">所有已儲存並持久化至資料庫中的分析報告清單。</p>
         </div>
 
         {errorMsg && (
@@ -36,14 +37,21 @@ export default async function ReportsPage() {
         )}
 
         {reports.length === 0 ? (
-          <div className="border border-slate-900 bg-slate-900/10 rounded-2xl p-12 text-center text-slate-400">
-            <p className="mb-6">📂 尚未在資料庫中生成任何分析報告。</p>
-            <Link href="/" className="inline-block rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition-all shadow-lg">
+          <div className="border border-slate-800/80 bg-[#0B0F19]/60 rounded-2xl p-12 text-center text-slate-400 max-w-lg mx-auto">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-400">
+              <FolderIcon className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-semibold text-slate-300 mb-2">尚未在資料庫中生成任何分析報告</p>
+            <p className="text-xs text-slate-500 mb-6">在市場看板搜尋個股並執行分析後，系統將自動為您保存歷史記錄。</p>
+            <Link
+              href="/"
+              className="inline-block rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-xs font-semibold text-white hover:opacity-90 transition-all shadow-lg shadow-cyan-500/20"
+            >
               返回首頁進行搜尋分析
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {reports.map((report) => {
               const advice = report.advice || {};
               const buySell = advice.buySell || {};
@@ -58,7 +66,7 @@ export default async function ReportsPage() {
               return (
                 <div
                   key={report.symbol}
-                  className="border border-slate-900 bg-slate-900/20 rounded-2xl p-6 hover:border-slate-800 transition-all flex flex-col justify-between"
+                  className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -78,20 +86,22 @@ export default async function ReportsPage() {
                     {buySell.summary || '評估完成，維持當前策略。'}
                   </p>
 
-                  <div className="flex gap-4">
+                  <div className="flex gap-3">
                     <Link
                       href={`/stock/${report.symbol}`}
-                      className="flex-1 text-center rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold py-2.5 text-slate-200 transition-all"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 text-center rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold py-2.5 text-slate-200 transition-all hover:text-white"
                     >
-                      🖥️ 儀表板
+                      <ChartBarIcon className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>查看儀表板</span>
                     </Link>
                     <a
                       href={`/api/report?symbol=${report.symbol}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-center rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 text-xs font-semibold py-2.5 text-indigo-400 transition-all"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 text-center rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs font-semibold py-2.5 text-cyan-300 transition-all"
                     >
-                      📄 下載報告
+                      <DownloadIcon className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>下載報告</span>
                     </a>
                   </div>
                 </div>
