@@ -3,18 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../../../components/Header';
-import TechnicalIndicatorsChart from '../../../components/TechnicalIndicatorsChart';
 import FundamentalAnalysisChart from '../../../components/FundamentalAnalysisChart';
 import NewsSentimentChart from '../../../components/NewsSentimentChart';
 import FundamentalTab from './FundamentalTab';
 import FinancialTrendTab from './FinancialTrendTab';
-// Why: KlineTab provides interactive technical candlestick charts and indicator overlays.
+// Why: KlineTab provides TradingView interactive candlestick charts, KD indicator, and backtest sandbox.
 import KlineTab from './KlineTab';
 import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
-import CustomizableLayout from '../../../components/CustomizableLayout';
 import HistoryTracker from '../../../components/HistoryTracker';
 import WatchButton from '../../../components/WatchButton';
-import { ChartBarIcon, BankIcon, TrendUpIcon, CandlestickIcon, DownloadIcon } from '../../../components/ui/Icons';
+import { BankIcon, CandlestickIcon, DownloadIcon, DocumentTextIcon } from '../../../components/ui/Icons';
 
 // Why: We use client-side fetching to show a loading state while the heavy analysis API runs,
 // preventing the page navigation from blocking for several seconds.
@@ -22,7 +20,7 @@ export default function StockDetail({ params }) {
   const { symbol } = params;
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('technical'); // 'technical' | 'fundamental' | 'financial_trend' | 'kline'
+  const [activeTab, setActiveTab] = useState('technical'); // 'technical' | 'fundamental' | 'news'
   const [errorMsg, setErrorMsg] = useState(null);
   // Why: resolvedName is pre-fetched via the faster /api/prices call so the page title shows the
   // Chinese company name immediately, without waiting for the slower /api/analyze to complete.
@@ -179,7 +177,7 @@ export default function StockDetail({ params }) {
         {/* Generated Report Content */}
         {data && (
           <>
-            {/* Tab Navigation (4 Tabs) */}
+            {/* 3 Unified Tabs Navigation */}
             <div className="flex items-center justify-center sm:justify-start gap-2 mb-8 p-1.5 border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl backdrop-blur-md w-fit">
               <button
                 type="button"
@@ -190,8 +188,8 @@ export default function StockDetail({ params }) {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
                 }`}
               >
-                <ChartBarIcon className="w-4 h-4 text-cyan-400" />
-                <span>綜合技術指標</span>
+                <CandlestickIcon className="w-4 h-4 text-cyan-400" />
+                <span>技術看盤與量化決策</span>
               </button>
 
               <button
@@ -204,82 +202,64 @@ export default function StockDetail({ params }) {
                 }`}
               >
                 <BankIcon className="w-4 h-4 text-cyan-400" />
-                <span>基本面分析 (Gemini AI)</span>
+                <span>基本面與財務趨勢</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setActiveTab('financial_trend')}
+                onClick={() => setActiveTab('news')}
                 className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                  activeTab === 'financial_trend'
+                  activeTab === 'news'
                     ? 'bg-cyan-500/15 text-cyan-300 shadow-md shadow-cyan-500/10 border border-cyan-500/40'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
                 }`}
               >
-                <TrendUpIcon className="w-4 h-4 text-cyan-400" />
-                <span>5年財務趨勢 (Gemini AI)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('kline')}
-                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                  activeTab === 'kline'
-                    ? 'bg-cyan-500/15 text-cyan-300 shadow-md shadow-cyan-500/10 border border-cyan-500/40'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
-                }`}
-              >
-                <CandlestickIcon className="w-4 h-4 text-cyan-400" />
-                <span>K線技術分析</span>
+                <DocumentTextIcon className="w-4 h-4 text-cyan-400" />
+                <span>市場輿情與動態</span>
               </button>
             </div>
 
-            {/* Tab 1: 綜合技術指標 */}
+            {/* Tab 1: 技術看盤與量化決策 (TradingView + 量化診斷 + 投資建議面板) */}
             {activeTab === 'technical' && (
               <div className="space-y-8 animate-fadeIn">
-                {/* Advisory Decision Panel */}
-                <InvestmentAdvicePanel advice={data.advice} />
+                {/* 1. Interactive TradingView Candlestick & KD Sub-Chart & Quantitative Diagnostics */}
+                <KlineTab symbol={symbol} />
 
-                {/* Technical Charts & News Layout */}
-                <CustomizableLayout defaultWidgets={['technical', 'fundamental', 'news']}>
-                  <TechnicalIndicatorsChart 
-                    widgetId="technical"
-                    historicalData={data.historicalData} 
-                    maData={data.technical.ma} 
-                    symbol={data.symbol} 
-                  />
+                {/* 2. Advisory Decision & Risk Control Panel */}
+                <InvestmentAdvicePanel advice={data.advice} />
+              </div>
+            )}
+
+            {/* Tab 2: 基本面與財務趨勢 (五維雷達圖 + Gemini 護城河研報 + 5年財務演變) */}
+            {activeTab === 'fundamental' && (
+              <div className="space-y-8 animate-fadeIn">
+                {/* 1. Five-Dimension Fundamental Health Spider Radar Chart */}
+                <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 shadow-xl">
                   <FundamentalAnalysisChart 
                     widgetId="fundamental"
                     fundamentalData={data.fundamental} 
                     symbol={data.symbol} 
                   />
+                </div>
+
+                {/* 2. Wall Street Senior Fundamental Analysis (Gemini AI) */}
+                <FundamentalTab symbol={symbol} />
+
+                {/* 3. 5-Year Financial Trend Dynamics Breakdown (Gemini AI) */}
+                <FinancialTrendTab symbol={symbol} />
+              </div>
+            )}
+
+            {/* Tab 3: 市場輿情與動態 (社群新聞情緒 + 重大事件) */}
+            {activeTab === 'news' && (
+              <div className="space-y-8 animate-fadeIn">
+                <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 shadow-xl">
                   <NewsSentimentChart 
                     widgetId="news"
                     newsData={data.news} 
                     symbol={data.symbol} 
                   />
-                </CustomizableLayout>
-              </div>
-            )}
-
-            {/* Tab 2: 基本面分析 (Gemini AI) */}
-            {activeTab === 'fundamental' && (
-              <div className="animate-fadeIn">
-                <FundamentalTab symbol={symbol} />
-              </div>
-            )}
-
-            {/* Tab 3: 5年財務趨勢 (Gemini AI) */}
-            {activeTab === 'financial_trend' && (
-              <div className="animate-fadeIn">
-                <FinancialTrendTab symbol={symbol} />
-              </div>
-            )}
-
-            {/* Tab 4: K線技術分析 */}
-            {activeTab === 'kline' && (
-              <div className="animate-fadeIn">
-                <KlineTab symbol={symbol} />
+                </div>
               </div>
             )}
           </>
