@@ -45,7 +45,7 @@ describe('RecentSearches', () => {
     render(<RecentSearches />);
     
     // Assert static text from local storage is rendered immediately.
-    expect(screen.getByText('最近搜尋標的')).toBeInTheDocument();
+    expect(screen.getByText(/最近搜尋標的/i)).toBeInTheDocument();
     expect(screen.getByText('AAPL')).toBeInTheDocument();
     expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
 

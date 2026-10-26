@@ -12,11 +12,9 @@ import React, { useState } from 'react';
 import ResultCards from './ResultCards';
 
 export default function EmbeddedBacktestPanel({ symbol }) {
-  // Default cutoff date: 6 months ago
+  // Why: Default cutoff date to today so analysis is anchored on the present time by default.
   const defaultCutoff = () => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 6);
-    return d.toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
   };
 
   const [cutoffDate, setCutoffDate] = useState(defaultCutoff);
@@ -27,6 +25,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
   const [loading, setLoading] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [forecast, setForecast] = useState(null);
+  const [forecastMeta, setForecastMeta] = useState(null);
   const [evaluation, setEvaluation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -40,6 +39,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
     if (!cutoffDate || !activePredictionDays) return;
     setLoading(true);
     setForecast(null);
+    setForecastMeta(null);
     setEvaluation(null);
     setErrorMsg(null);
 
@@ -47,11 +47,23 @@ export default function EmbeddedBacktestPanel({ symbol }) {
       const res = await fetch('/api/backtest/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, cutoffDate, lookbackDays: activeLookbackDays })
+        body: JSON.stringify({
+          symbol,
+          cutoffDate,
+          lookbackDays: activeLookbackDays,
+          predictionDays: activePredictionDays
+        })
       });
       const data = await res.json();
       if (data.success) {
         setForecast(data.forecast);
+        setForecastMeta({
+          cutoffDate: data.cutoffDate || cutoffDate,
+          actualDate: data.actualDate || data.cutoffDate || cutoffDate,
+          basePrice: data.basePrice ?? data.forecast?.basePrice,
+          lookbackDays: data.lookbackDays || activeLookbackDays,
+          predictionDays: data.predictionDays || activePredictionDays
+        });
       } else {
         setErrorMsg(data.error || '預測服務發生錯誤');
       }
@@ -75,6 +87,7 @@ export default function EmbeddedBacktestPanel({ symbol }) {
         body: JSON.stringify({
           symbol,
           cutoffDate,
+          lookbackDays: activeLookbackDays,
           predictionDays: activePredictionDays,
           predictionResult: forecast
         })
@@ -140,6 +153,15 @@ export default function EmbeddedBacktestPanel({ symbol }) {
                   className="bg-slate-950 text-slate-100 text-xs rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors [color-scheme:dark] flex-1"
                 />
                 <div className="hidden sm:flex items-center gap-1 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCutoffDate(new Date().toISOString().split('T')[0]);
+                    }}
+                    className="px-2 py-1 rounded-md bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white transition-colors cursor-pointer border border-cyan-500/40 font-semibold"
+                  >
+                    今日
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -319,6 +341,12 @@ export default function EmbeddedBacktestPanel({ symbol }) {
           evaluation={evaluation}
           onReveal={handleReveal}
           evaluating={evaluating}
+          symbol={symbol}
+          cutoffDate={forecastMeta?.cutoffDate || cutoffDate}
+          actualDate={forecastMeta?.actualDate || cutoffDate}
+          basePrice={forecastMeta?.basePrice}
+          lookbackDays={forecastMeta?.lookbackDays || activeLookbackDays}
+          predictionDays={forecastMeta?.predictionDays || activePredictionDays}
         />
       )}
 

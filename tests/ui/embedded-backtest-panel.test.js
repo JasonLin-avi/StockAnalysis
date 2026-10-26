@@ -27,7 +27,11 @@ global.fetch = jest.fn((url) => {
         Promise.resolve({
           success: true,
           cutoffDate: '2024-03-01',
+          actualDate: '2024-03-01',
           symbol: '2330.TW',
+          basePrice: 880,
+          lookbackDays: 60,
+          predictionDays: 20,
           forecast: {
             trend: 'BULLISH',
             confidence: 9,
@@ -154,6 +158,46 @@ describe('EmbeddedBacktestPanel Component', () => {
           body: expect.stringContaining('"lookbackDays":20')
         })
       );
+    });
+  });
+
+  test('defaults cutoff date to today and provides today quick preset button', () => {
+    render(<EmbeddedBacktestPanel symbol="2330.TW" />);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dateInput = screen.getByLabelText(/歷史基準日/i);
+    expect(dateInput.value).toBe(todayStr);
+
+    const todayBtn = screen.getByRole('button', { name: /今日/i });
+    expect(todayBtn).toBeInTheDocument();
+
+    // Change date to something else, then click 今日 button
+    fireEvent.change(dateInput, { target: { value: '2023-01-01' } });
+    expect(dateInput.value).toBe('2023-01-01');
+
+    fireEvent.click(todayBtn);
+    expect(dateInput.value).toBe(todayStr);
+  });
+
+  test('passes predictionDays in predict API payload and renders baseline date & price in ResultCards', async () => {
+    render(<EmbeddedBacktestPanel symbol="2330.TW" />);
+
+    const submitBtn = screen.getByRole('button', { name: /開始歷史時點回測/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/backtest/predict',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"predictionDays":20')
+        })
+      );
+      // Verify point-in-time context banner is rendered
+      expect(screen.getAllByText(/歷史基準日期/i).length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText('基準日收盤價')).toBeInTheDocument();
+      expect(screen.getByText(/NT\$880/i)).toBeInTheDocument();
+      expect(screen.getByText('2024-03-01')).toBeInTheDocument();
     });
   });
 });

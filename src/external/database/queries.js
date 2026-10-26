@@ -666,7 +666,7 @@ function removeWatchlist(db, symbol) {
 function getCompanyNameFromDB(db, code) {
   return new Promise((resolve, reject) => {
     db.get(
-      `SELECT symbol, name, market FROM stocks WHERE symbol = ?;`,
+      `SELECT symbol, name, market, created_at FROM stocks WHERE symbol = ?;`,
       [String(code).toUpperCase().trim()],
       (err, row) => {
         if (err) return reject(new Error(`Failed to query stock by code: ${err.message}`));

@@ -36,7 +36,11 @@ export async function POST(req) {
       return NextResponse.json({
         success: true,
         cutoffDate,
+        actualDate: cachedRecord.forecast.actualDate || cutoffDate,
         symbol,
+        basePrice: cachedRecord.forecast.basePrice,
+        lookbackDays: activeLookbackDays,
+        predictionDays,
         forecast: cachedRecord.forecast,
         cached: true,
       });
@@ -171,6 +175,12 @@ ${markdownTable}
       };
     }
 
+    const actualDate = latestBar.date || latestBar.time || cutoffDate;
+
+    // Why: Attach base price and actual trading date to forecast object so cached hits preserve context.
+    forecast.basePrice = lastClose;
+    forecast.actualDate = actualDate;
+
     // Why: Save newly generated forecast into backtest_records for future cache hits.
     await saveBacktestForecast({
       symbol,
@@ -183,7 +193,11 @@ ${markdownTable}
     return NextResponse.json({
       success: true,
       cutoffDate,
+      actualDate,
       symbol,
+      basePrice: lastClose,
+      lookbackDays: activeLookbackDays,
+      predictionDays,
       forecast,
     });
   } catch (error) {

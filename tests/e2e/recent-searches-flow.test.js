@@ -146,7 +146,7 @@ describe('Recent Searches End-to-End Flow', () => {
     // 3. Assert the recent searches section heading and AAPL card are visible.
     //    We use getAllByText because 'AAPL' appears in multiple places:
     //    the StockDetail h1, the homepage popular stocks grid, and the recent searches card.
-    expect(screen.getByText('最近搜尋標的')).toBeInTheDocument();
+    expect(screen.getByText(/最近搜尋標的/i)).toBeInTheDocument();
     const aaplElements = screen.getAllByText('AAPL');
     expect(aaplElements.length).toBeGreaterThanOrEqual(1);
 

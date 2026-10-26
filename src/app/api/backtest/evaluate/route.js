@@ -11,7 +11,7 @@ import { callGemini } from '@/external/gemini/client';
 
 export async function POST(req) {
   try {
-    const { symbol, cutoffDate, predictionDays = 20, predictionResult } = await req.json();
+    const { symbol, cutoffDate, lookbackDays = 60, predictionDays = 20, predictionResult } = await req.json();
 
     if (!symbol || !cutoffDate) {
       return NextResponse.json(
@@ -20,11 +20,13 @@ export async function POST(req) {
       );
     }
 
+    const activeLookbackDays = parseInt(lookbackDays, 10) || 60;
+
     // Why: Check local database cache to prevent re-evaluating completed backtest cases.
     const cachedRecord = await getCachedBacktestRecord({
       symbol,
       cutoffDate,
-      lookbackDays: 60,
+      lookbackDays: activeLookbackDays,
       predictionDays,
     });
 
@@ -54,8 +56,12 @@ export async function POST(req) {
       });
     }
 
-    const startPrice = pastKlines[pastKlines.length - 1]?.close || futureKlines[0].open || futureKlines[0].close;
-    const endPrice = futureKlines[futureKlines.length - 1].close;
+    const startBar = pastKlines[pastKlines.length - 1] || futureKlines[0];
+    const startPrice = startBar?.close || startBar?.open;
+    const startDate = startBar?.date || startBar?.time || cutoffDate;
+    const endBar = futureKlines[futureKlines.length - 1];
+    const endPrice = endBar.close;
+    const endDate = endBar.date || endBar.time;
     const actualReturnPct = parseFloat((((endPrice - startPrice) / startPrice) * 100).toFixed(2));
     
     const directionCorrect =
@@ -63,9 +69,12 @@ export async function POST(req) {
       (predictionResult?.trend === 'BEARISH' && actualReturnPct < 0) ||
       (predictionResult?.trend === 'NEUTRAL' && Math.abs(actualReturnPct) <= 2.0);
 
-    const minTarget = predictionResult?.targetPriceRange?.[0];
-    const maxTarget = predictionResult?.targetPriceRange?.[1];
-    const priceRangeHit = minTarget && maxTarget ? (endPrice >= minTarget && endPrice <= maxTarget) : false;
+    const rawTarget = predictionResult?.targetPriceRange || [];
+    const minTarget = rawTarget.length >= 2 ? Math.min(Number(rawTarget[0]), Number(rawTarget[1])) : rawTarget[0];
+    const maxTarget = rawTarget.length >= 2 ? Math.max(Number(rawTarget[0]), Number(rawTarget[1])) : rawTarget[1];
+    const priceRangeHit = minTarget !== undefined && maxTarget !== undefined && !isNaN(minTarget) && !isNaN(maxTarget)
+      ? (endPrice >= minTarget && endPrice <= maxTarget)
+      : false;
 
     const prompt = `你是一位客觀嚴謹的金融裁判。
 請針對 Predictor LLM 在歷史時間點【${cutoffDate}】對 ${symbol} 發布的預測，對比【未來 ${futureKlines.length} 個交易日】的真實市場表現進行客觀評估：
@@ -77,8 +86,8 @@ export async function POST(req) {
 - 推理說明: ${predictionResult?.rationale || 'N/A'}
 
 【實際市場後續表現】
-- 基準日價格: $${startPrice}
-- 經過 ${futureKlines.length} 個交易日後收盤價: $${endPrice}
+- 基準日價格: $${startPrice} (${startDate})
+- 經過 ${futureKlines.length} 個交易日後收盤價: $${endPrice} (${endDate})
 - 實際漲跌幅: ${actualReturnPct}%
 - 方向是否正確: ${directionCorrect ? '是' : '否'}
 
@@ -109,11 +118,17 @@ export async function POST(req) {
       };
     }
 
+    // Attach verified prices and dates to evaluation
+    evaluation.startPrice = startPrice;
+    evaluation.endPrice = endPrice;
+    evaluation.startDate = startDate;
+    evaluation.endDate = endDate;
+
     // Why: Save evaluation into backtest_records for future cache hits.
     await updateBacktestEvaluation({
       symbol,
       cutoffDate,
-      lookbackDays: 60,
+      lookbackDays: activeLookbackDays,
       predictionDays,
       evaluation,
     });

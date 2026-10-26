@@ -5,6 +5,7 @@
  * 
  * Displays dual panel comparison cards:
  * 1. Predictor LLM Forecast Report: Generated strictly from point-in-time past data to prevent lookahead bias.
+ *    Anchored with clear baseline date, base price, and lookback/horizon context.
  * 2. Evaluator & Future Outcome Card: Displays actual performance after revealing future data and shows judge LLM evaluation scores.
  */
 
@@ -12,15 +13,88 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-export default function ResultCards({ forecast, evaluation, onReveal, evaluating }) {
+export default function ResultCards({
+  forecast,
+  evaluation,
+  onReveal,
+  evaluating,
+  symbol = '',
+  cutoffDate = '',
+  actualDate = '',
+  basePrice = null,
+  lookbackDays = 60,
+  predictionDays = 20,
+}) {
   if (!forecast) return null;
+
+  // Why: Adapt currency symbol based on ticker market to avoid showing USD "$" for Taiwan stocks.
+  const isTW = typeof symbol === 'string' && symbol.toUpperCase().includes('.TW');
+  const currency = isTW ? 'NT$' : '$';
+
+  // Helper to parse numeric price safely and remove extraneous characters
+  const parseNum = (val) => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+      const cleaned = val.replace(/[^0-9.-]/g, '');
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    }
+    return null;
+  };
+
+  const cleanBasePrice = parseNum(basePrice ?? forecast.basePrice);
+  const displayCutoff = cutoffDate || forecast.cutoffDate || 'N/A';
+  const displayActualDate = actualDate || forecast.actualDate;
+
+  // Process target price range safely
+  const rawRange = Array.isArray(forecast.targetPriceRange) ? forecast.targetPriceRange : [];
+  const parsedRange = rawRange.map(parseNum).filter(n => n !== null);
+  let minTarget = null;
+  let maxTarget = null;
+  if (parsedRange.length >= 2) {
+    minTarget = Math.min(parsedRange[0], parsedRange[1]);
+    maxTarget = Math.max(parsedRange[0], parsedRange[1]);
+  } else if (parsedRange.length === 1) {
+    minTarget = parsedRange[0];
+    maxTarget = parsedRange[0];
+  }
+
+  // Calculate percentage relative to base price for target price range
+  let targetRangeText = 'N/A';
+  let targetPctText = '';
+  if (minTarget !== null && maxTarget !== null) {
+    targetRangeText = minTarget === maxTarget
+      ? `${currency}${minTarget}`
+      : `${currency}${minTarget} - ${currency}${maxTarget}`;
+
+    if (cleanBasePrice && cleanBasePrice > 0) {
+      const minPct = (((minTarget - cleanBasePrice) / cleanBasePrice) * 100).toFixed(1);
+      const maxPct = (((maxTarget - cleanBasePrice) / cleanBasePrice) * 100).toFixed(1);
+      const minSign = Number(minPct) >= 0 ? '+' : '';
+      const maxSign = Number(maxPct) >= 0 ? '+' : '';
+      targetPctText = minTarget === maxTarget
+        ? `(${minSign}${minPct}%)`
+        : `(${minSign}${minPct}% ~ ${maxSign}${maxPct}%)`;
+    }
+  }
+
+  const stopLoss = parseNum(forecast.stopLossPrice);
+  let stopLossPctText = '';
+  if (stopLoss !== null && cleanBasePrice && cleanBasePrice > 0) {
+    const slPct = (((stopLoss - cleanBasePrice) / cleanBasePrice) * 100).toFixed(1);
+    stopLossPctText = ` (${Number(slPct) >= 0 ? '+' : ''}${slPct}%)`;
+  }
+
+  const keySupport = parseNum(forecast.keySupport);
+  const keyResistance = parseNum(forecast.keyResistance);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
       {/* Left Card: Predictor LLM Output */}
       <div className="bg-slate-900/90 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
         <div>
-          <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-800/80">
+          {/* Card Header */}
+          <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800/80">
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2.5">
               <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256">
@@ -46,34 +120,84 @@ export default function ResultCards({ forecast, evaluation, onReveal, evaluating
             </span>
           </div>
 
+          {/* Point-In-Time Anchor Context Banner */}
+          <div className="bg-slate-950/80 rounded-xl p-3.5 border border-slate-800/90 mb-4 shadow-inner">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div>
+                <span className="text-slate-400 block text-[11px] font-medium">歷史基準日期</span>
+                <span className="font-semibold text-slate-100 font-mono tracking-tight">
+                  {displayCutoff}
+                </span>
+                {displayActualDate && displayActualDate !== displayCutoff && (
+                  <span className="block text-[10px] text-slate-500 font-mono">
+                    (交易日: {displayActualDate})
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px] font-medium">基準日收盤價</span>
+                <span className="font-bold text-cyan-300 font-mono text-sm tracking-tight">
+                  {cleanBasePrice !== null ? `${currency}${cleanBasePrice}` : 'N/A'}
+                </span>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <span className="text-slate-400 block text-[11px] font-medium">分析設定區間</span>
+                <span className="font-medium text-slate-300 text-[11px] font-mono">
+                  參考 {lookbackDays}d / 展望 {predictionDays}d
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-3.5 text-sm text-slate-300">
+            {/* Target Price Range Row */}
             <div className="flex justify-between items-center bg-slate-950/60 px-3.5 py-3 rounded-xl border border-slate-800/80 shadow-inner">
               <span className="text-slate-400 text-xs font-medium">預測目標價區間:</span>
-              <span className="font-bold text-sm text-cyan-300 tracking-wide font-mono">
-                ${forecast.targetPriceRange ? forecast.targetPriceRange.join(' - $') : 'N/A'}
-              </span>
+              <div className="text-right">
+                <span className="font-bold text-sm text-cyan-300 tracking-wide font-mono">
+                  {targetRangeText}
+                </span>
+                {targetPctText && (
+                  <span className="text-xs text-slate-400 ml-1.5 font-mono">
+                    {targetPctText}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                 <span className="text-slate-400 block mb-1 font-medium">建議停損價:</span>
-                <span className="font-bold text-sm text-rose-400 font-mono">${forecast.stopLossPrice || 'N/A'}</span>
+                <span className="font-bold text-sm text-rose-400 font-mono">
+                  {stopLoss !== null ? `${currency}${stopLoss}` : 'N/A'}
+                  {stopLossPctText && (
+                    <span className="text-[11px] font-normal text-rose-300/80 ml-1">
+                      {stopLossPctText}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                 <span className="text-slate-400 block mb-1 font-medium">預測信心度:</span>
-                <span className="font-bold text-sm text-amber-400 font-mono">{forecast.confidence || 8} / 10</span>
+                <span className="font-bold text-sm text-amber-400 font-mono">
+                  {forecast.confidence ?? 8} / 10
+                </span>
               </div>
             </div>
 
-            {(forecast.keySupport || forecast.keyResistance) && (
+            {(keySupport !== null || keyResistance !== null) && (
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                   <span className="text-slate-400 block mb-1 font-medium">關鍵支撐:</span>
-                  <span className="font-semibold text-slate-200 font-mono">${forecast.keySupport || 'N/A'}</span>
+                  <span className="font-semibold text-slate-200 font-mono">
+                    {keySupport !== null ? `${currency}${keySupport}` : 'N/A'}
+                  </span>
                 </div>
                 <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                   <span className="text-slate-400 block mb-1 font-medium">關鍵壓力:</span>
-                  <span className="font-semibold text-slate-200 font-mono">${forecast.keyResistance || 'N/A'}</span>
+                  <span className="font-semibold text-slate-200 font-mono">
+                    {keyResistance !== null ? `${currency}${keyResistance}` : 'N/A'}
+                  </span>
                 </div>
               </div>
             )}
@@ -168,6 +292,24 @@ export default function ResultCards({ forecast, evaluation, onReveal, evaluating
                   <span className="text-xs font-normal text-slate-500 ml-1">/ 100</span>
                 </div>
               </div>
+
+              {/* Price Outcome Comparison Details */}
+              {(evaluation.startPrice !== undefined || evaluation.endPrice !== undefined) && (
+                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1">
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>基準日價格:</span>
+                    <span className="font-mono text-slate-200">
+                      {currency}{evaluation.startPrice} {evaluation.startDate ? `(${evaluation.startDate})` : ''}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>期間結束價:</span>
+                    <span className="font-mono text-slate-200">
+                      {currency}{evaluation.endPrice} {evaluation.endDate ? `(${evaluation.endDate})` : ''}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-between items-center bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 text-xs">
                 <span className="text-slate-400 font-medium">實際未來期間漲跌幅:</span>
