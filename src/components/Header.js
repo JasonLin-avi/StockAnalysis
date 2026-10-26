@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const [marketData, setMarketData] = useState({
@@ -15,6 +16,20 @@ export default function Header() {
   });
 
   const [lastUpdated, setLastUpdated] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Why: Safely read pathname to indicate active navigation items without breaking isolated test environments.
+  let pathname = '';
+  try {
+    pathname = usePathname() || '';
+  } catch (_) {
+    pathname = '';
+  }
+
+  // Why: Automatically close mobile dropdown menu upon route change.
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -70,6 +85,18 @@ export default function Header() {
     return () => clearInterval(interval);
   }, []);
 
+  const navItems = [
+    { href: '/', label: '市場看板' },
+    { href: '/funds-flow', label: '資金流向' },
+    { href: '/hub', label: '量化戰情室' },
+    { href: '/reports', label: '歷史報告' },
+  ];
+
+  const isNavActive = (href) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
+
   return (
     <div className="w-full">
       {/* Top Live Market Pulse Ticker Bar */}
@@ -86,14 +113,14 @@ export default function Header() {
           <div className="hidden sm:flex items-center gap-6">
             <span className="flex items-center gap-1.5">
               <span className="text-slate-400">台股加權:</span>
-              <span className={`${marketData.twii.color} font-semibold`}>{marketData.twii.displayPrice}</span>
-              <span className={`${marketData.twii.color} text-[10px]`}>{marketData.twii.displayChange}</span>
+              <span className={`${marketData.twii.color} font-semibold tabular-nums`}>{marketData.twii.displayPrice}</span>
+              <span className={`${marketData.twii.color} text-[10px] tabular-nums`}>{marketData.twii.displayChange}</span>
             </span>
             <span className="text-slate-700">|</span>
             <span className="flex items-center gap-1.5">
               <span className="text-slate-400">S&P 500:</span>
-              <span className={`${marketData.gspc.color} font-semibold`}>{marketData.gspc.displayPrice}</span>
-              <span className={`${marketData.gspc.color} text-[10px]`}>{marketData.gspc.displayChange}</span>
+              <span className={`${marketData.gspc.color} font-semibold tabular-nums`}>{marketData.gspc.displayPrice}</span>
+              <span className={`${marketData.gspc.color} text-[10px] tabular-nums`}>{marketData.gspc.displayChange}</span>
             </span>
             <span className="text-slate-700">|</span>
             <span className="flex items-center gap-1.5">
@@ -105,15 +132,16 @@ export default function Header() {
           {/* Dynamic last updated timestamp */}
           <div className="flex items-center gap-1.5 text-slate-400 text-xs font-mono">
             <span className="text-slate-500">最後更新:</span>
-            <span className="text-emerald-400 font-semibold">{lastUpdated || '--:--'}</span>
+            <span className="text-emerald-400 font-semibold tabular-nums">{lastUpdated || '--:--'}</span>
           </div>
         </div>
       </div>
 
       {/* Main Navigation Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-[#070A10]/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-[#070A10]/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
+            {/* Logo and Main Nav */}
             <div className="flex items-center gap-8">
               <Link href="/" className="flex items-center gap-2.5 group">
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 p-[1px] shadow-lg shadow-cyan-500/10">
@@ -131,46 +159,110 @@ export default function Header() {
                 </div>
               </Link>
 
-              {/* Restored Main Navigation Items according to Spec */}
-              <nav className="hidden md:flex items-center gap-1">
-                <Link 
-                  href="/" 
-                  className="px-3 py-2 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all"
-                >
-                  市場看板
-                </Link>
-                <Link 
-                  href="/hub" 
-                  className="px-3 py-2 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 transition-all"
-                >
-                  量化戰情室
-                </Link>
-                <Link 
-                  href="/reports" 
-                  className="px-3 py-2 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 transition-all"
-                >
-                  歷史報告
-                </Link>
+              {/* Desktop Navigation Links */}
+              <nav className="hidden md:flex items-center gap-1.5">
+                {navItems.map((item) => {
+                  const active = isNavActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                        active
+                          ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
+                          : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </nav>
             </div>
 
+            {/* Right Actions */}
             <div className="flex items-center gap-3">
-              {/* Restored Watchlist Link */}
+              {/* Watchlist Link with SVG Icon (No Emoji) */}
               <Link
                 href="/watchlist"
                 aria-label="我的關注"
-                className="text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-2 bg-[#0E1524] hover:bg-[#151F34] px-3.5 py-2 rounded-lg border border-slate-800 hover:border-slate-700 shadow-sm transition-all"
+                className={`text-xs font-semibold flex items-center gap-2 px-3.5 py-2 rounded-lg border shadow-sm transition-all ${
+                  isNavActive('/watchlist')
+                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-amber-500/10'
+                    : 'text-slate-200 hover:text-white bg-[#0E1524] hover:bg-[#151F34] border-slate-800 hover:border-slate-700'
+                }`}
               >
-                <span className="text-amber-400 text-sm">★</span>
+                <svg
+                  className="w-3.5 h-3.5 text-amber-400 fill-amber-400"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
                 <span>關注清單</span>
               </Link>
-              
+
               <div className="text-[11px] font-mono text-slate-500 px-2 py-1 rounded bg-slate-900/60 border border-slate-800/60 hidden sm:block">
                 v1.2.0-quant
               </div>
+
+              {/* Mobile Hamburger Button */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="開啟選單"
+                className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-800/80 bg-[#070A10]/95 backdrop-blur-xl px-4 py-3 space-y-1.5 animate-fadeIn">
+            {navItems.map((item) => {
+              const active = isNavActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    active
+                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+            <Link
+              href="/watchlist"
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                isNavActive('/watchlist')
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+              }`}
+            >
+              <svg
+                className="w-4 h-4 text-amber-400 fill-amber-400"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              <span>關注清單</span>
+            </Link>
+          </div>
+        )}
       </header>
     </div>
   );
