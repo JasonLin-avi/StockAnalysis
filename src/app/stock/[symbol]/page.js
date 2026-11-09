@@ -13,6 +13,8 @@ import InvestmentAdvicePanel from '../../../components/InvestmentAdvicePanel';
 import HistoryTracker from '../../../components/HistoryTracker';
 import WatchButton from '../../../components/WatchButton';
 import { BankIcon, CandlestickIcon, DownloadIcon, DocumentTextIcon } from '../../../components/ui/Icons';
+import ErrorBoundary from '../../../components/ui/ErrorBoundary';
+import { KlineChartSkeleton } from '../../../components/ui/Skeleton';
 
 // Why: We use client-side fetching to show a loading state while the heavy analysis API runs,
 // preventing the page navigation from blocking for several seconds.
@@ -161,16 +163,19 @@ export default function StockDetail({ params }) {
           )}
         </div>
 
-        {/* Loading State */}
+        {/* Loading State with Glassmorphic Skeleton */}
         {isLoading && (
-          <div className="flex flex-col justify-center items-center py-32 space-y-6">
-            <svg className="animate-spin h-12 w-12 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <div className="text-slate-400 text-lg font-medium tracking-wide animate-pulse">
-              正在即時為您運算量化分析報告...
+          <div className="space-y-8 animate-fadeIn" data-testid="stock-loading-skeleton">
+            <div className="flex flex-col justify-center items-center py-12 space-y-4">
+              <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <div className="text-slate-400 text-lg font-medium tracking-wide animate-pulse">
+                正在即時為您運算量化分析報告...
+              </div>
             </div>
+            <KlineChartSkeleton />
           </div>
         )}
 
@@ -223,10 +228,22 @@ export default function StockDetail({ params }) {
             {activeTab === 'technical' && (
               <div className="space-y-8 animate-fadeIn">
                 {/* 1. Interactive TradingView Candlestick & KD Sub-Chart & Quantitative Diagnostics */}
-                <KlineTab symbol={symbol} />
+                <ErrorBoundary
+                  fallbackTitle="K 線圖與技術指標區域載入失敗"
+                  fallbackMessage="K 線圖表或技術指標模組渲染發生異常，您可以點擊下方按鈕重新載入。"
+                  resetKeys={[symbol]}
+                >
+                  <KlineTab symbol={symbol} />
+                </ErrorBoundary>
 
                 {/* 2. Advisory Decision & Risk Control Panel */}
-                <InvestmentAdvicePanel advice={data.advice} />
+                <ErrorBoundary
+                  fallbackTitle="AI 交易員即時解讀面板載入失敗"
+                  fallbackMessage="投資決策與風控建議模組渲染發生異常，您可以點擊下方按鈕重新載入。"
+                  resetKeys={[symbol, data.advice]}
+                >
+                  <InvestmentAdvicePanel advice={data.advice} />
+                </ErrorBoundary>
               </div>
             )}
 
@@ -234,32 +251,56 @@ export default function StockDetail({ params }) {
             {activeTab === 'fundamental' && (
               <div className="space-y-8 animate-fadeIn">
                 {/* 1. Five-Dimension Fundamental Health Spider Radar Chart */}
-                <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 shadow-xl">
-                  <FundamentalAnalysisChart 
-                    widgetId="fundamental"
-                    fundamentalData={data.fundamental} 
-                    symbol={data.symbol} 
-                  />
-                </div>
+                <ErrorBoundary
+                  fallbackTitle="基本面五維度雷達圖與指標卡載入失敗"
+                  fallbackMessage="五維財務健康雷達圖或指標卡渲染發生異常，您可以點擊下方按鈕重新載入。"
+                  resetKeys={[symbol, data.fundamental]}
+                >
+                  <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 shadow-xl">
+                    <FundamentalAnalysisChart 
+                      widgetId="fundamental"
+                      fundamentalData={data.fundamental} 
+                      symbol={data.symbol} 
+                    />
+                  </div>
+                </ErrorBoundary>
 
                 {/* 2. Wall Street Senior Fundamental Analysis (Gemini AI) */}
-                <FundamentalTab symbol={symbol} />
+                <ErrorBoundary
+                  fallbackTitle="華爾街資深基本面報告載入失敗"
+                  fallbackMessage="基本面 AI 深度報告渲染發生異常，您可以點擊下方按鈕重新載入。"
+                  resetKeys={[symbol]}
+                >
+                  <FundamentalTab symbol={symbol} />
+                </ErrorBoundary>
 
                 {/* 3. 5-Year Financial Trend Dynamics Breakdown (Gemini AI) */}
-                <FinancialTrendTab symbol={symbol} />
+                <ErrorBoundary
+                  fallbackTitle="5年財務趨勢洞察載入失敗"
+                  fallbackMessage="5年財務趨勢動態模組渲染發生異常，您可以點擊下方按鈕重新載入。"
+                  resetKeys={[symbol]}
+                >
+                  <FinancialTrendTab symbol={symbol} />
+                </ErrorBoundary>
               </div>
             )}
 
             {/* Tab 3: 市場輿情與動態 (社群新聞情緒 + 重大事件) */}
             {activeTab === 'news' && (
               <div className="space-y-8 animate-fadeIn">
-                <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 shadow-xl">
-                  <NewsSentimentChart 
-                    widgetId="news"
-                    newsData={data.news} 
-                    symbol={data.symbol} 
-                  />
-                </div>
+                <ErrorBoundary
+                  fallbackTitle="市場輿情與情緒圖表載入失敗"
+                  fallbackMessage="社群情緒與新聞輿情模組渲染發生異常，您可以點擊下方按鈕重新載入。"
+                  resetKeys={[symbol, data.news]}
+                >
+                  <div className="border border-slate-800/80 bg-[#0B0F19]/80 rounded-2xl p-6 shadow-xl">
+                    <NewsSentimentChart 
+                      widgetId="news"
+                      newsData={data.news} 
+                      symbol={data.symbol} 
+                    />
+                  </div>
+                </ErrorBoundary>
               </div>
             )}
           </>

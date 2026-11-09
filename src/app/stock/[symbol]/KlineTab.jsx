@@ -19,6 +19,7 @@ import remarkGfm from 'remark-gfm';
 import EmbeddedBacktestPanel from '../../../components/backtest/EmbeddedBacktestPanel';
 import { calculateKD } from '../../../lib/technical-analysis/kd';
 import { CandlestickIcon, ZapIcon, SparklesIcon, CogIcon } from '../../../components/ui/Icons';
+import ErrorBoundary from '../../../components/ui/ErrorBoundary';
 
 
 /**
@@ -34,12 +35,30 @@ import { CandlestickIcon, ZapIcon, SparklesIcon, CogIcon } from '../../../compon
  * @param {Object|null} props.kdParams - Active KD parameters { period, smoothK, smoothD }
  */
 function SummaryPanel({ summary, isLoading, kdLatest, kdParams }) {
-  // Why: Show a pulse skeleton while the parent data fetch is in progress.
+  // Why: Show a glassmorphic pulse skeleton while the parent data fetch is in progress.
   if (isLoading) {
     return (
-      <div className="bg-slate-900/60 border border-slate-800 backdrop-blur-md rounded-2xl p-5 flex items-center justify-center min-h-[480px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-700 animate-pulse" />
+      <div className="bg-slate-900/60 border border-slate-800 backdrop-blur-md rounded-2xl p-5 flex flex-col justify-between min-h-[480px] animate-pulse">
+        <div className="flex items-center gap-3 pb-3 border-b border-slate-800/60">
+          <div className="w-8 h-8 rounded-xl bg-slate-800" />
+          <div className="space-y-1">
+            <div className="w-24 h-4 bg-slate-800 rounded" />
+            <div className="w-16 h-3 bg-slate-800/60 rounded" />
+          </div>
+        </div>
+        <div className="space-y-3 py-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/40 space-y-2">
+              <div className="flex justify-between">
+                <div className="w-16 h-3 bg-slate-800 rounded" />
+                <div className="w-10 h-3 bg-slate-800 rounded" />
+              </div>
+              <div className="w-20 h-5 bg-slate-800 rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-800/40 text-xs text-slate-500">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
           <span className="text-sm text-slate-400 animate-pulse">計算技術指標中...</span>
         </div>
       </div>
@@ -733,8 +752,15 @@ export default function KlineTab({ symbol }) {
 
   return (
     <div className="w-full space-y-4">
-      {/* Full-width Header Card with Title, Legend & Interval/Range Selectors */}
-      <div className="w-full bg-[#0B0F19] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+      {/* Section 1: K-Line Chart Canvas, KD Sub-Chart & Summary Diagnostics (Protected by ErrorBoundary) */}
+      <ErrorBoundary
+        fallbackTitle="K 線圖與副圖區域載入失敗"
+        fallbackMessage="K 線圖表或技術指標渲染時發生錯誤，您可以嘗試重新載入。"
+        resetKeys={[symbol, range, interval]}
+      >
+        <div className="w-full space-y-4">
+          {/* Full-width Header Card with Title, Legend & Interval/Range Selectors */}
+          <div className="w-full bg-[#0B0F19] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -954,6 +980,8 @@ export default function KlineTab({ symbol }) {
           />
         </div>
       </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Section 2: Sub-Tabs for Current AI Technical Interpretation & Backtest Sandbox */}
       <div className="space-y-4 mt-6">
@@ -984,9 +1012,21 @@ export default function KlineTab({ symbol }) {
         </div>
 
         {middleTab === 'ai_summary' ? (
-          <TechnicalAISummaryPanel symbol={symbol} />
+          <ErrorBoundary
+            fallbackTitle="AI 交易員即時解讀面板載入失敗"
+            fallbackMessage="當前 AI 技術解讀模組渲染時發生錯誤，您可以嘗試重新載入。"
+            resetKeys={[symbol]}
+          >
+            <TechnicalAISummaryPanel symbol={symbol} />
+          </ErrorBoundary>
         ) : (
-          <EmbeddedBacktestPanel symbol={symbol} />
+          <ErrorBoundary
+            fallbackTitle="回測實驗室面板載入失敗"
+            fallbackMessage="回測實驗室組件渲染時發生錯誤，您可以嘗試重新載入。"
+            resetKeys={[symbol]}
+          >
+            <EmbeddedBacktestPanel symbol={symbol} />
+          </ErrorBoundary>
         )}
       </div>
     </div>
@@ -1105,14 +1145,22 @@ function TechnicalAISummaryPanel({ symbol }) {
       </div>
 
       {isLoading && (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-          <span className="text-sm text-slate-400 font-medium animate-pulse">
-            AI 量化專家正在對 {symbol} 進行 {getActiveDays()} 天時態數據與 K 線指標深度分析...
-          </span>
+        <div className="space-y-4" data-testid="technical-ai-loading-state">
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span className="text-sm text-slate-400 font-medium animate-pulse">
+              AI 量化專家正在對 {symbol} 進行 {getActiveDays()} 天時態數據與 K 線指標深度分析...
+            </span>
+          </div>
+          <div className="space-y-3 p-4 rounded-xl bg-slate-900/40 border border-slate-800/80 animate-pulse">
+            <div className="w-1/3 h-5 bg-slate-800 rounded" />
+            <div className="w-full h-3.5 bg-slate-800/70 rounded" />
+            <div className="w-5/6 h-3.5 bg-slate-800/70 rounded" />
+            <div className="w-2/3 h-3.5 bg-slate-800/70 rounded" />
+          </div>
         </div>
       )}
 
