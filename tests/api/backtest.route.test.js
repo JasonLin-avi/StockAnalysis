@@ -12,6 +12,24 @@ import {
 } from '../../src/services/backtest.service';
 import { callGemini } from '../../src/external/gemini/client';
 
+const generateMockKlines = () => {
+  const klines = [];
+  const baseDate = new Date('2023-11-01');
+  for (let i = 0; i < 150; i++) {
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() + i);
+    klines.push({
+      date: d.toISOString().split('T')[0],
+      open: 100 + i * 0.5,
+      high: 105 + i * 0.5,
+      low: 95 + i * 0.5,
+      close: 102 + i * 0.5,
+      volume: 100000 + i * 1000
+    });
+  }
+  return klines;
+};
+
 jest.mock('../../src/services/backtest.service', () => {
   const actual = jest.requireActual('../../src/services/backtest.service');
   return {
@@ -20,6 +38,7 @@ jest.mock('../../src/services/backtest.service', () => {
     getCachedBacktestRecord: jest.fn(),
     saveBacktestForecast: jest.fn(),
     updateBacktestEvaluation: jest.fn(),
+    getOrSyncKlines: jest.fn().mockImplementation(() => Promise.resolve(generateMockKlines())),
   };
 });
 

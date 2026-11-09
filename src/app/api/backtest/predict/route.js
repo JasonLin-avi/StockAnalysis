@@ -9,6 +9,11 @@ import {
   saveBacktestForecast,
 } from '@/services/backtest.service';
 import { callGemini } from '@/external/gemini/client';
+import {
+  getBacktestPredictPrompt,
+  backtestPredictSchema,
+  parseWithZod,
+} from '@/lib/prompts';
 
 export async function POST(req) {
   try {
@@ -128,51 +133,36 @@ export async function POST(req) {
     const minClose = Math.min(...recentCloses);
     const maxClose = Math.max(...recentCloses);
 
-    // 7. Prompt with 15-year senior quant trader persona
-    const prompt = `你是一位擁有 15 年實戰經驗的資深量化交易員與技術分析專家。
-你目前身處在【${cutoffDate}】這個歷史時間點，你對這個日期之後的任何股市新聞、財報與價格走勢一無所知！
+    // 7. Prompt with 15-year senior quant trader persona from centralized library
+    const prompt = getBacktestPredictPrompt({
+      symbol,
+      cutoffDate,
+      lastClose,
+      recentPastLength: recentPast.length,
+      maxClose,
+      minClose,
+      avgClose,
+      markdownTable,
+    });
 
-請僅依據以下在 ${cutoffDate} 時刻獲得的 ${symbol} 歷史 K 線數據與技術指標時間序列進行客觀、嚴謹的技術分析與趨勢預測。
-請特別觀察型態學發展（如頭肩頂/底、雙重底、盤整突破）、價量關係、多空均線排列與動能指標（RSI, MACD 柱體）：
-
-【標的與時間點資訊】
-- 股票代碼: ${symbol}
-- 基準日期 (Cutoff Date): ${cutoffDate}
-- 基準日當天收盤價: $${lastClose}
-- 過去 ${recentPast.length} 個交易日區間最高價: $${maxClose}
-- 過去 ${recentPast.length} 個交易日區間最低價: $${minClose}
-- 過去 ${recentPast.length} 個交易日平均收盤價: $${avgClose.toFixed(2)}
-
-【歷史日 K 線與技術指標完整時間序列 (近 ${recentPast.length} 天)】
-${markdownTable}
-
-請根據上述數據與量化觀點，嚴格輸出 JSON 格式（不要包含 markdown 標籤或其餘文字）：
-{
-  "trend": "BULLISH" | "BEARISH" | "NEUTRAL",
-  "confidence": 1到10的數字,
-  "targetPriceRange": [最小預估價, 最大預估價],
-  "stopLossPrice": 數字,
-  "keySupport": 數字,
-  "keyResistance": 數字,
-  "rationale": "詳細推理分析說明 (請使用良好的 Markdown 格式排版，包含條列點、重點粗體、型態、均線、動能與價量關係)，請使用繁體中文撰寫，並提供精簡、專業且排版美觀的分析報告，包含清晰的小標題、重點列表項目與關鍵字強調。"
-}`;
+    const fallbackForecast = () => ({
+      trend: lastClose >= avgClose ? 'BULLISH' : 'BEARISH',
+      confidence: 7,
+      targetPriceRange: [Math.round(lastClose * 0.95), Math.round(lastClose * 1.08)],
+      stopLossPrice: Math.round(lastClose * 0.92),
+      keySupport: Math.round(minClose),
+      keyResistance: Math.round(maxClose),
+      rationale: `站在 ${cutoffDate} 時間點分析 ${symbol}：最新收盤價為 $${lastClose}（${recentPast.length} 日區間均價 $${avgClose.toFixed(2)}）。身為 15 年資深量化交易員，依據該時刻完整 daily 時間序列與 MA/RSI/MACD 技術數據評估未來短中線走向。`
+    });
 
     let forecast;
     try {
       const llmOutput = await callGemini(prompt, { tools: [] });
-      const cleanJsonStr = llmOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
-      forecast = JSON.parse(cleanJsonStr);
+      // Why: Defensively parse and validate JSON against Zod schema to avoid unhandled syntax or type errors.
+      forecast = parseWithZod(llmOutput, backtestPredictSchema, fallbackForecast);
     } catch (llmErr) {
       console.warn('Gemini JSON parse fallback triggered:', llmErr);
-      forecast = {
-        trend: lastClose >= avgClose ? 'BULLISH' : 'BEARISH',
-        confidence: 7,
-        targetPriceRange: [Math.round(lastClose * 0.95), Math.round(lastClose * 1.08)],
-        stopLossPrice: Math.round(lastClose * 0.92),
-        keySupport: Math.round(minClose),
-        keyResistance: Math.round(maxClose),
-        rationale: `站在 ${cutoffDate} 時間點分析 ${symbol}：最新收盤價為 $${lastClose}（${recentPast.length} 日區間均價 $${avgClose.toFixed(2)}）。身為 15 年資深量化交易員，依據該時刻完整 daily 時間序列與 MA/RSI/MACD 技術數據評估未來短中線走向。`
-      };
+      forecast = fallbackForecast();
     }
 
     const actualDate = latestBar.date || latestBar.time || cutoffDate;

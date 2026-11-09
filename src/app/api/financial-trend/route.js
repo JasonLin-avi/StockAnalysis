@@ -3,22 +3,9 @@ import { callGemini } from '../../../external/gemini/client';
 import { connectToDatabase } from '../../../external/database/connection.js';
 import { getRecentPromptAnalysis, savePromptAnalysis } from '../../../external/database/queries.js';
 import { getCompanyNameByCode, formatStockName } from '../../../lib/stock-map.js';
+import { getFinancialTrendPrompt } from '../../../lib/prompts';
 
 export const dynamic = 'force-dynamic';
-
-function getFinancialTrendPrompt(displayName) {
-  return `分析股票 ${displayName} 過去 5 年的財務數據。
-請拆解：
-• 營收成長
-• 淨利趨勢
-• 自由現金流
-• 利潤率
-• 負債水準
-• 股東權益報酬率（ROE）
-
-並判斷這家公司目前是財務體質正在變強，還是開始走弱。
-請以精簡、專業的 繁體中文 Markdown 格式輸出，包含清晰的小標題、重點清單與比較表格。`;
-}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
