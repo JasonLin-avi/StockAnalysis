@@ -23,3 +23,7 @@ scratch/
 # superpowers SDD workspace (task briefs/reports during execution)
 .superpowers/
 
+# git worktrees
+.worktrees/
+worktrees/
+

@@ -15,6 +15,15 @@ jest.mock('@/external/data-fetcher/yahoo-finance', () => ({
   fetchFundamentalData: jest.fn().mockResolvedValue({})
 }));
 
+// Mock news analysis to prevent Finnhub external API checks
+jest.mock('@/lib/news-analysis', () => ({
+  performNewsAnalysis: jest.fn().mockResolvedValue({
+    sentimentScore: 0.2,
+    sentiment: 'neutral',
+    articles: []
+  })
+}));
+
 // Mock stock-map service returning Chinese name
 jest.mock('@/lib/stock-map', () => ({
   getCompanyNameByCode: jest.fn().mockImplementation(async (symbol) => {

@@ -7,7 +7,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "jest",
+    "test": "jest --testPathIgnorePatterns=tests/integration/external",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:external": "jest tests/integration/external",
+    "test:e2e": "jest tests/e2e",
+    "test:ui": "jest tests/ui",
+    "test:all": "jest",
     "uipro": "uipro"
   },
   "dependencies": {
