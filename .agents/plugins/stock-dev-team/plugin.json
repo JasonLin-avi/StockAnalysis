@@ -1,0 +1,11 @@
+{
+  "name": "stock-dev-team",
+  "displayName": "StockAnalysis Coding Subagent Team",
+  "version": "1.0.0",
+  "description": "5-member specialized coding subagent team (Quant Engine, Data/DB Infra, AI/LLM Agent, Frontend Chart UI, QA & Architecture Reviewer) for developing the Antigravity Stock Analytics platform.",
+  "suggestedPrompts": [
+    "請調度 stock-dev-team 子代理團隊平行開發新的技術指標與前端圖表",
+    "請派發 qa-arch-reviewer 檢查目前分支是否符合 Clean Architecture 並執行 Jest 測試",
+    "請派發 quant-engine-dev 與 ai-agent-dev 優化歷史 K 線回測的預測準確度"
+  ]
+}
