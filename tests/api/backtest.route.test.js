@@ -32,10 +32,6 @@ const generateMockKlines = () => {
   }
   return klines;
 };
-    });
-  }
-  return klines;
-};
 
 jest.mock('../../src/services/backtest.service', () => {
   const actual = jest.requireActual('../../src/services/backtest.service');
@@ -46,7 +42,6 @@ jest.mock('../../src/services/backtest.service', () => {
     getCachedBacktestRecord: jest.fn(),
     saveBacktestForecast: jest.fn(),
     updateBacktestEvaluation: jest.fn(),
-    getOrSyncKlines: jest.fn().mockImplementation(() => Promise.resolve(generateMockKlines())),
   };
 });
 

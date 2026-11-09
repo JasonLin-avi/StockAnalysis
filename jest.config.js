@@ -42,26 +42,27 @@ const commonModuleNameMapper = {
 
 /** @type {import('jest').Config} */
 export default {
-  testTimeout: 20000,
   // Why: Cap parallel worker processes to 50% CPU allocation on Windows to eliminate file lock contention on SQLite.
   maxWorkers: '50%',
+  modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
 
   // Why: Multi-project configuration isolating Node-based backend/logic suites from JSDOM-based UI suites.
   projects: [
     {
       displayName: 'node',
       testEnvironment: 'node',
-      testTimeout: 20000,
+      modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
       testMatch: [
-        '**/tests/api/**/*.test.js',
-        '**/tests/services/**/*.test.js',
-        '**/tests/integration/**/*.test.js',
-        '**/tests/unit/**/*.test.js',
-        '**/tests/e2e/stock-analysis.test.js',
-        '**/tests/ui/customization.test.js',
+        '<rootDir>/tests/api/**/*.test.js',
+        '<rootDir>/tests/services/**/*.test.js',
+        '<rootDir>/tests/integration/**/*.test.js',
+        '<rootDir>/tests/unit/**/*.test.js',
+        '<rootDir>/tests/e2e/stock-analysis.test.js',
+        '<rootDir>/tests/ui/customization.test.js',
       ],
       testPathIgnorePatterns: [
         '/node_modules/',
+        '<rootDir>/.worktrees/',
         'tests[\\\\/]integration[\\\\/]external',
         // Why: Exclude UI/DOM-dependent test suites from Node environment to avoid missing window/document errors.
         'chatbot-widget',
@@ -84,29 +85,46 @@ export default {
     {
       displayName: 'jsdom',
       testEnvironment: 'jest-environment-jsdom',
-      testTimeout: 20000,
+      modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
       testMatch: [
-        '**/tests/ui/backtest-sandbox.test.js',
-        '**/tests/ui/embedded-backtest-panel.test.js',
-        '**/tests/ui/header-navigation.test.js',
-        '**/tests/ui/hub-page.test.js',
-        '**/tests/ui/kline-tab.test.js',
-        '**/tests/ui/reports-page.test.js',
-        '**/tests/ui/error-boundary.test.js',
-        '**/tests/ui/skeleton.test.js',
-        '**/tests/e2e/recent-searches-flow.test.js',
-        '**/tests/unit/chatbot-widget.test.js',
-        '**/tests/unit/components.test.js',
-        '**/tests/unit/historical-backtest-panel.test.js',
-        '**/tests/unit/HistoryTracker.test.js',
-        '**/tests/unit/popular-stocks-error-fix.test.js',
-        '**/tests/unit/recent-searches-ui.test.js',
-        '**/tests/unit/RecentSearches.test.js',
-        '**/tests/unit/ui-stock-name-display.test.js',
+        '<rootDir>/tests/ui/backtest-sandbox.test.js',
+        '<rootDir>/tests/ui/embedded-backtest-panel.test.js',
+        '<rootDir>/tests/ui/header-navigation.test.js',
+        '<rootDir>/tests/ui/hub-page.test.js',
+        '<rootDir>/tests/ui/kline-tab.test.js',
+        '<rootDir>/tests/ui/reports-page.test.js',
+        '<rootDir>/tests/ui/error-boundary.test.js',
+        '<rootDir>/tests/ui/skeleton.test.js',
+        '<rootDir>/tests/e2e/recent-searches-flow.test.js',
+        '<rootDir>/tests/unit/chatbot-widget.test.js',
+        '<rootDir>/tests/unit/components.test.js',
+        '<rootDir>/tests/unit/historical-backtest-panel.test.js',
+        '<rootDir>/tests/unit/HistoryTracker.test.js',
+        '<rootDir>/tests/unit/popular-stocks-error-fix.test.js',
+        '<rootDir>/tests/unit/recent-searches-ui.test.js',
+        '<rootDir>/tests/unit/RecentSearches.test.js',
+        '<rootDir>/tests/unit/ui-stock-name-display.test.js',
       ],
       testPathIgnorePatterns: [
         '/node_modules/',
+        '<rootDir>/.worktrees/',
         'tests[\\\\/]integration[\\\\/]external',
+      ],
+      moduleNameMapper: commonModuleNameMapper,
+      transform: {
+        '^.+\\.(js|jsx)$': ['@swc/jest', swcConfig],
+      },
+    },
+    {
+      displayName: 'external',
+      testEnvironment: 'node',
+      modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
+      testMatch: [
+        '<rootDir>/tests/integration/external/**/*.test.js',
+      ],
+      testPathIgnorePatterns: [
+        '/node_modules/',
+        '<rootDir>/.worktrees/',
       ],
       moduleNameMapper: commonModuleNameMapper,
       transform: {

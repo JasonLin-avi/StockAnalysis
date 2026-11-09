@@ -6,10 +6,10 @@
  * - Isolated from standard unit test suites.
  */
 
-import { performFullAnalysis } from '../../src/services/analysis.service';
-import { generateReport } from '../../src/lib/report-generator';
-import { connectToDatabase } from '../../src/external/database/connection';
-import { saveStockData, saveAnalysisResults } from '../../src/external/database/queries';
+import { performFullAnalysis } from '@/services/analysis.service';
+import { generateReport } from '@/lib/report-generator';
+import { connectToDatabase } from '@/external/database/connection';
+import { saveStockData, saveAnalysisResults } from '@/external/database/queries';
 
 describe('Live Full Analysis Pipeline Integration Test', () => {
   let db;
