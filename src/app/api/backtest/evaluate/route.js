@@ -8,6 +8,11 @@ import {
   updateBacktestEvaluation,
 } from '@/services/backtest.service';
 import { callGemini } from '@/external/gemini/client';
+import {
+  getBacktestEvaluatePrompt,
+  backtestEvaluateSchema,
+  parseWithZod,
+} from '@/lib/prompts';
 
 export async function POST(req) {
   try {
@@ -76,46 +81,43 @@ export async function POST(req) {
       ? (endPrice >= minTarget && endPrice <= maxTarget)
       : false;
 
-    const prompt = `你是一位客觀嚴謹的金融裁判。
-請針對 Predictor LLM 在歷史時間點【${cutoffDate}】對 ${symbol} 發布的預測，對比【未來 ${futureKlines.length} 個交易日】的真實市場表現進行客觀評估：
+    // Why: Use centralized prompt generator to guarantee consistent versioning and criteria.
+    const prompt = getBacktestEvaluatePrompt({
+      symbol,
+      cutoffDate,
+      futureDays: futureKlines.length,
+      predictionResult,
+      startPrice,
+      startDate,
+      endPrice,
+      endDate,
+      actualReturnPct,
+      directionCorrect,
+      priceRangeHit,
+      minTarget,
+      maxTarget,
+    });
 
-【AI 歷史預測內容】
-- 看法方向: ${predictionResult?.trend || 'N/A'}
-- 目標價區間: $${minTarget || 'N/A'} - $${maxTarget || 'N/A'}
-- 建議停損價: $${predictionResult?.stopLossPrice || 'N/A'}
-- 推理說明: ${predictionResult?.rationale || 'N/A'}
-
-【實際市場後續表現】
-- 基準日價格: $${startPrice} (${startDate})
-- 經過 ${futureKlines.length} 個交易日後收盤價: $${endPrice} (${endDate})
-- 實際漲跌幅: ${actualReturnPct}%
-- 方向是否正確: ${directionCorrect ? '是' : '否'}
-
-請嚴格輸出 JSON 格式（不要包含 markdown 標籤或其餘文字）：
-{
-  "accuracyScore": 0到100的整數數字,
-  "directionCorrect": ${directionCorrect},
-  "priceRangeHit": ${priceRangeHit},
-  "actualReturnPct": ${actualReturnPct},
-  "evaluationSummary": "詳細精簡的覆盤評語"
-}`;
-
-    let evaluation;
-    try {
-      const llmOutput = await callGemini(prompt, { tools: [] });
-      const cleanJsonStr = llmOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
-      evaluation = JSON.parse(cleanJsonStr);
-    } catch (llmErr) {
-      console.warn('Gemini Evaluator JSON parse fallback triggered:', llmErr);
+    const fallbackEvaluation = () => {
       const baseScore = directionCorrect ? 80 : 40;
       const hitBonus = priceRangeHit ? 15 : 0;
-      evaluation = {
+      return {
         accuracyScore: Math.min(100, baseScore + hitBonus),
         directionCorrect,
         priceRangeHit,
         actualReturnPct,
         evaluationSummary: `在 ${cutoffDate} 之後的 ${futureKlines.length} 個交易日內，${symbol} 實際變幅為 ${actualReturnPct}%。AI 預測方向為 ${predictionResult?.trend}，評估判定 ${directionCorrect ? '方向符合' : '方向偏差'}。`
       };
+    };
+
+    let evaluation;
+    try {
+      const llmOutput = await callGemini(prompt, { tools: [] });
+      // Why: Defensively parse JSON output and validate against Zod schema with auto-repair and fallback.
+      evaluation = parseWithZod(llmOutput, backtestEvaluateSchema, fallbackEvaluation);
+    } catch (llmErr) {
+      console.warn('Gemini Evaluator JSON parse fallback triggered:', llmErr);
+      evaluation = fallbackEvaluation();
     }
 
     // Attach verified prices and dates to evaluation

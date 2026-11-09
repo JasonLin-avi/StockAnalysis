@@ -17,18 +17,21 @@ import { callGemini } from '../../src/external/gemini/client';
 // hermetic, deterministic, and sub-millisecond execution.
 const generateMockKlines = () => {
   const klines = [];
-  // 100 days prior to cutoffDate (2023-11-20 to 2024-03-01)
-  const baseDate = new Date('2023-11-20');
+  const baseDate = new Date('2023-11-01');
   for (let i = 0; i < 150; i++) {
     const d = new Date(baseDate);
-    d.setDate(d.getDate() + i);
+    d.setDate(baseDate.getDate() + i);
     klines.push({
-      date: d.toISOString().slice(0, 10),
-      open: 500 + (i % 20),
-      high: 510 + (i % 20),
-      low: 490 + (i % 20),
-      close: 505 + (i % 20),
-      volume: 10000000,
+      date: d.toISOString().split('T')[0],
+      open: 100 + i * 0.5,
+      high: 105 + i * 0.5,
+      low: 95 + i * 0.5,
+      close: 102 + i * 0.5,
+      volume: 100000 + i * 1000,
+    });
+  }
+  return klines;
+};
     });
   }
   return klines;
@@ -43,6 +46,7 @@ jest.mock('../../src/services/backtest.service', () => {
     getCachedBacktestRecord: jest.fn(),
     saveBacktestForecast: jest.fn(),
     updateBacktestEvaluation: jest.fn(),
+    getOrSyncKlines: jest.fn().mockImplementation(() => Promise.resolve(generateMockKlines())),
   };
 });
 

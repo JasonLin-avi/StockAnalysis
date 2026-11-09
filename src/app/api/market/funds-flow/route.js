@@ -17,19 +17,27 @@ async function handleRequest(market, date) {
     const result = await getMarketFundsFlowService(market, date);
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('API_FUNDS_FLOW', 'Funds flow API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.error('API_FUNDS_FLOW', 'Error fetching funds flow:', error);
+    return NextResponse.json({ error: error.message || 'Failed to fetch funds flow' }, { status: 500 });
   }
 }
 
-export async function POST(req) {
-  const { market, date } = await req.json();
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const market = searchParams.get('market');
+  const date = searchParams.get('date');
+
   return handleRequest(market, date);
 }
 
-export async function GET(req) {
-  const url = new URL(req.url);
-  const market = url.searchParams.get('market');
-  const date = url.searchParams.get('date');
+export async function POST(request) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch (e) {
+    // ignore json parse error
+  }
+  const { market, date } = body;
+
   return handleRequest(market, date);
 }

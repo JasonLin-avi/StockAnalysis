@@ -14,26 +14,9 @@ import { connectToDatabase } from '../external/database/connection.js';
 import { getRecentPromptAnalysis, savePromptAnalysis } from '../external/database/queries.js';
 import { getCompanyNameByCode, formatStockName } from '../lib/stock-map.js';
 import logger from '../lib/logger.js';
+import { getFinancialTrendPrompt } from '../lib/prompts/index.js';
 
-/**
- * Generates prompt for 5-year financial trend analysis.
- * 
- * @param {string} displayName - Formatted company name and symbol
- * @returns {string} Prompt text
- */
-export function getFinancialTrendPrompt(displayName) {
-  return `分析股票 ${displayName} 過去 5 年的財務數據。
-請拆解：
-• 營收成長
-• 淨利趨勢
-• 自由現金流
-• 利潤率
-• 負債水準
-• 股東權益報酬率（ROE）
-
-並判斷這家公司目前是財務體質正在變強，還是開始走弱。
-請以精簡、專業的 繁體中文 Markdown 格式輸出，包含清晰的小標題、重點清單與比較表格。`;
-}
+export { getFinancialTrendPrompt };
 
 /**
  * Performs 5-year financial trend AI stock analysis with 7-day SQLite cache check.
