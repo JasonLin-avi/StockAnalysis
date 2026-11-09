@@ -12,6 +12,28 @@ import {
 } from '../../src/services/backtest.service';
 import { callGemini } from '../../src/external/gemini/client';
 
+// Why: Generates mock historical kline series spanning before and after 2024-03-01.
+// Unit tests should never invoke live network endpoints (Yahoo Finance / Gemini) to guarantee
+// hermetic, deterministic, and sub-millisecond execution.
+const generateMockKlines = () => {
+  const klines = [];
+  // 100 days prior to cutoffDate (2023-11-20 to 2024-03-01)
+  const baseDate = new Date('2023-11-20');
+  for (let i = 0; i < 130; i++) {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + i);
+    klines.push({
+      date: d.toISOString().slice(0, 10),
+      open: 500 + (i % 20),
+      high: 510 + (i % 20),
+      low: 490 + (i % 20),
+      close: 505 + (i % 20),
+      volume: 10000000,
+    });
+  }
+  return klines;
+};
+
 jest.mock('../../src/services/backtest.service', () => {
   const actual = jest.requireActual('../../src/services/backtest.service');
   return {
@@ -20,17 +42,26 @@ jest.mock('../../src/services/backtest.service', () => {
     getCachedBacktestRecord: jest.fn(),
     saveBacktestForecast: jest.fn(),
     updateBacktestEvaluation: jest.fn(),
+    getOrSyncKlines: jest.fn().mockImplementation(() => Promise.resolve(generateMockKlines())),
   };
 });
 
-jest.mock('../../src/external/gemini/client', () => {
-  const actual = jest.requireActual('../../src/external/gemini/client');
-  return {
-    __esModule: true,
-    ...actual,
-    callGemini: jest.fn(actual.callGemini),
-  };
-});
+jest.mock('../../src/external/gemini/client', () => ({
+  __esModule: true,
+  // Why: Mock callGemini with structured JSON output so route tests evaluate deterministically without API keys.
+  callGemini: jest.fn().mockResolvedValue(JSON.stringify({
+    trend: 'BULLISH',
+    confidence: 0.85,
+    targetPriceRange: [520, 560],
+    stopLossPrice: 480,
+    rationale: 'Moving averages and momentum indicators exhibit positive divergence.',
+    accuracyScore: 85,
+    directionCorrect: true,
+    priceRangeHit: true,
+    actualReturnPct: 4.2,
+    evaluationSummary: 'Trend correctly identified with tight price target convergence.',
+  })),
+}));
 
 describe('Backtest API Routes', () => {
   beforeEach(() => {
