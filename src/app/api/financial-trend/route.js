@@ -1,24 +1,13 @@
+/**
+ * @fileoverview Financial Trend API Route
+ * Presentation layer controller that delegates financial trend analysis to financial-trend.service.js.
+ */
+
 import { NextResponse } from 'next/server';
-import { callGemini } from '../../../external/gemini/client';
-import { connectToDatabase } from '../../../external/database/connection.js';
-import { getRecentPromptAnalysis, savePromptAnalysis } from '../../../external/database/queries.js';
-import { getCompanyNameByCode, formatStockName } from '../../../lib/stock-map.js';
+import { getFinancialTrendAnalysis } from '../../../services/financial-trend.service';
+import logger from '../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
-
-function getFinancialTrendPrompt(displayName) {
-  return `分析股票 ${displayName} 過去 5 年的財務數據。
-請拆解：
-• 營收成長
-• 淨利趨勢
-• 自由現金流
-• 利潤率
-• 負債水準
-• 股東權益報酬率（ROE）
-
-並判斷這家公司目前是財務體質正在變強，還是開始走弱。
-請以精簡、專業的 繁體中文 Markdown 格式輸出，包含清晰的小標題、重點清單與比較表格。`;
-}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -28,42 +17,11 @@ export async function GET(request) {
   }
 
   try {
-    const db = await connectToDatabase();
-    const today = new Date().toISOString().split('T')[0];
-
-    // Query cache using 7-day window to avoid re-generating structural financial analysis repeatedly
-    const cached = await getRecentPromptAnalysis(db, symbol, 'financial_trend', 7);
-    if (cached) {
-      return NextResponse.json({ markdown: cached }, { status: 200 });
-    }
-
-    // Resolve stock Chinese company name for Taiwan stocks or DB stocks to prevent LLM hallucinations
-    let displayName = symbol;
-    try {
-      const nameInfo = await getCompanyNameByCode(symbol, { db });
-      if (nameInfo && nameInfo.success && nameInfo.name) {
-        displayName = formatStockName(nameInfo.name, symbol);
-      }
-    } catch (e) {
-      // Fallback to original symbol if name lookup fails
-    }
-
-    // Generate prompt & call Gemini with Google Search tool grounding
-    const prompt = getFinancialTrendPrompt(displayName);
-    const markdown = await callGemini(prompt, {
-      tools: [{ googleSearch: {} }]
-    });
-
-    if (!markdown || !markdown.trim()) {
-      throw new Error('AI 財務趨勢分析生成內容為空');
-    }
-
-    // Save to cache
-    await savePromptAnalysis(db, symbol, 'financial_trend', today, markdown);
-
-    return NextResponse.json({ markdown }, { status: 200 });
+    logger.info('API_FINANCIAL_TREND', `Processing financial trend analysis request for ${symbol}`);
+    const result = await getFinancialTrendAnalysis(symbol);
+    return NextResponse.json(result, { status: 200 });
   } catch (err) {
-    console.error('Error in financial-trend API:', err);
+    logger.error('API_FINANCIAL_TREND', 'Error in financial-trend API:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

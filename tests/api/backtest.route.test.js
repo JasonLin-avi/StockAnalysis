@@ -12,11 +12,26 @@ import {
 } from '../../src/services/backtest.service';
 import { callGemini } from '../../src/external/gemini/client';
 
+const mockKlines = Array.from({ length: 150 }, (_, i) => {
+  const d = new Date('2023-11-01');
+  d.setDate(d.getDate() + i * 2);
+  const dateStr = d.toISOString().split('T')[0];
+  return {
+    date: dateStr,
+    open: 500 + i,
+    high: 510 + i,
+    low: 490 + i,
+    close: 505 + i,
+    volume: 10000 + i * 100
+  };
+});
+
 jest.mock('../../src/services/backtest.service', () => {
   const actual = jest.requireActual('../../src/services/backtest.service');
   return {
     __esModule: true,
     ...actual,
+    getOrSyncKlines: jest.fn().mockImplementation(() => Promise.resolve(mockKlines)),
     getCachedBacktestRecord: jest.fn(),
     saveBacktestForecast: jest.fn(),
     updateBacktestEvaluation: jest.fn(),

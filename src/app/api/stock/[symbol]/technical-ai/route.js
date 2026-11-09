@@ -1,59 +1,16 @@
 /**
  * @fileoverview Technical AI Interpretation API Route
- * Generates and caches senior quantitative trader AI interpretation of K-line technical data
- * using Gemini model with Grounding enabled.
- * 
- * Why this architecture is selected:
- * - SQLite caching (`stock_prompt_analysis`) prevents redundant costly Gemini API calls for the same symbol on the same day.
- * - Minimum 60-day historical data threshold guarantees indicator stability (MA60, MACD signal line, KD stochastic)
- *   before feeding structured features into the LLM prompt.
- * - Grounding enabled via `googleSearch: {}` allows Gemini to incorporate recent macro news context into technical analysis.
+ * Presentation layer controller that delegates business logic, prompt formulation,
+ * and caching to technical-ai.service.js in compliance with Clean Architecture.
  * 
  * @module api/stock/[symbol]/technical-ai
  */
 
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '../../../../../external/database/connection';
-import { saveStock, getHistoricalPricesFromDB, getPromptAnalysis, savePromptAnalysis, getMaxPriceDate } from '../../../../../external/database/queries';
-import { syncStockPrices } from '../../../../../services/data-sync.service';
-import { generateLLMTimeSeriesSummary } from '../../../../../lib/technical-analysis/klineanalysis';
-import { callGemini } from '../../../../../external/gemini/client';
-import { getCompanyNameByCode, formatStockName } from '../../../../../lib/stock-map';
+import { getTechnicalAIAnalysis } from '../../../../../services/technical-ai.service';
+import logger from '../../../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Formats the prompt using senior quantitative trader persona with time-series data table.
- * 
- * Why persona is injected into prompt:
- * Establishing a 15-year senior quantitative trader persona produces balanced, risk-controlled analysis
- * covering both long-term trend positioning and short-term entry/exit timing instead of basic summary text.
- * 
- * @param {string} displayName - Formatted stock name and ticker (e.g. "台中銀 (2812.TW)")
- * @param {Object|string} timeSeriesSummary - Structured time-series output containing markdownTable
- * @param {number} days - Selected reference days
- * @returns {string} Formatted prompt string for Gemini LLM
- */
-function getTechnicalAIPrompt(displayName, timeSeriesSummary, days) {
-  const table = typeof timeSeriesSummary === 'string' ? timeSeriesSummary : timeSeriesSummary.markdownTable;
-  return `# Role (角色設定)
-你是一位擁有 15 年經驗的資深量化交易員與資產配置專家。你的分析風格兼顧宏觀趨勢與微觀進出，既看重長線價值與波段結構，也重視短線的風險報酬比（Risk/Reward Ratio），絕不給予絕對且不負責任的保證。
-
-# Target Stock (分析標的)
-${displayName} (近 ${days} 個交易日時間序列數據)
-
-# Task (任務說明)
-請根據下方提供的歷史 K 線時間序列技術數據表格（包含價格、成交量、MA5、MA20、MA60、RSI14 與 MACD 柱體），進行全方位的技術面與趨勢解讀，並針對該標的提出**「長線波段佈局」**與**「短線操作節奏」**的綜合建議與風險控管方針。
-
-# Input Data (輸入數據)
-${table}
-
-請以精簡、專業且排版美觀的 繁體中文 Markdown 格式輸出分析報告。
-要求包含：
-• 清晰的小標題 (###)
-• 重點列表項目（Bullet Points 與層級縮排）
-• 關鍵字強調與總結建議（粗體字）`;
-}
 
 export async function GET(request, context) {
   try {
@@ -71,77 +28,12 @@ export async function GET(request, context) {
     if (isNaN(days)) days = 30;
     days = Math.max(5, Math.min(120, days));
 
-    const upperSymbol = symbol.toUpperCase();
-    const cacheKey = `${upperSymbol}_technical_ai_${days}`;
-    const db = await connectToDatabase();
+    logger.info('API_TECHNICAL_AI', `Processing technical AI request for ${symbol} with days=${days}`);
+    const result = await getTechnicalAIAnalysis(symbol, days);
 
-    // Ensure stock record exists and sync incremental price data first
-    const stockId = await saveStock(db, {
-      symbol: upperSymbol,
-      market: upperSymbol.includes('.') ? 'TW' : 'US'
-    });
-
-    if (typeof syncStockPrices === 'function') {
-      try {
-        await syncStockPrices(db, stockId, upperSymbol);
-      } catch (syncErr) {
-        console.warn(`[API_TECHNICAL_AI] Incremental sync warning for ${upperSymbol}:`, syncErr.message);
-      }
-    }
-
-    // Determine latest price date in DB (max_date) to use as cache date key
-    const maxDate = await getMaxPriceDate(db, stockId);
-    const cacheDate = maxDate || new Date().toISOString().split('T')[0];
-
-    // Check DB cache first to avoid unnecessary database lookups and API calls
-    const cached = await getPromptAnalysis(db, cacheKey, 'technical', cacheDate);
-    if (cached) {
-      return NextResponse.json({ markdown: cached, days }, { status: 200 });
-    }
-
-    const prices = await getHistoricalPricesFromDB(db, stockId);
-
-    // Minimum 60 trading days required to accurately compute MA60 and longer term trend metrics
-    if (!prices || prices.length < 60) {
-      const fallbackMarkdown = `### ⚠️ 數據不足提示\n\n歷史交易數據不足（少於 60 個交易日），無法計算完整長短線指標與生成 AI 深度技術解讀。`;
-      return NextResponse.json({ markdown: fallbackMarkdown, days }, { status: 200 });
-    }
-
-    const rawData = {
-      dates: prices.map(p => p.date),
-      opens: prices.map(p => p.open),
-      highs: prices.map(p => p.high),
-      lows: prices.map(p => p.low),
-      closes: prices.map(p => p.close),
-      volumes: prices.map(p => p.volume)
-    };
-
-    let displayName = upperSymbol;
-    try {
-      const nameInfo = await getCompanyNameByCode(upperSymbol, { db });
-      if (nameInfo && nameInfo.success && nameInfo.name) {
-        displayName = formatStockName(nameInfo.name, upperSymbol);
-      }
-    } catch (e) {
-      // Fallback
-    }
-
-    const timeSeriesSummary = generateLLMTimeSeriesSummary(rawData, days);
-    const prompt = getTechnicalAIPrompt(displayName, timeSeriesSummary, days);
-
-    const markdown = await callGemini(prompt, {
-      tools: [{ googleSearch: {} }]
-    });
-
-    if (!markdown || !markdown.trim()) {
-      throw new Error('AI 技術面分析生成內容為空');
-    }
-
-    await savePromptAnalysis(db, cacheKey, 'technical', cacheDate, markdown);
-
-    return NextResponse.json({ markdown, days }, { status: 200 });
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error('[API_TECHNICAL_AI] Exception in GET:', error);
+    logger.error('API_TECHNICAL_AI', 'Exception in GET:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

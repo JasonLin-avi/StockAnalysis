@@ -1,8 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
-import { connectToDatabase } from '../../external/database/connection';
-import { getAllAnalyzedStocks } from '../../external/database/queries';
+import { getAllReports } from '../../services/report.service';
 import { FolderIcon, DownloadIcon, ChartBarIcon } from '../../components/ui/Icons';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +12,7 @@ export default async function ReportsPage() {
   let errorMsg = null;
 
   try {
-    const db = await connectToDatabase();
-    reports = await getAllAnalyzedStocks(db);
+    reports = await getAllReports();
   } catch (err) {
     console.error('Error loading reports:', err);
     errorMsg = err.message;

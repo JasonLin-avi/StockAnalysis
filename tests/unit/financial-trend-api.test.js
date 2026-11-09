@@ -12,6 +12,10 @@ import { callGemini } from '../../src/external/gemini/client';
 jest.mock('../../src/external/database/connection');
 jest.mock('../../src/external/database/queries');
 jest.mock('../../src/external/gemini/client');
+jest.mock('../../src/lib/stock-map', () => ({
+  getCompanyNameByCode: jest.fn().mockResolvedValue({ success: true, name: '台積電' }),
+  formatStockName: jest.fn((name, symbol) => `${name} (${symbol})`)
+}));
 
 describe('GET /api/financial-trend', () => {
   const mockDb = {};

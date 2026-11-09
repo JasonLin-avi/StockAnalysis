@@ -52,7 +52,8 @@ function connectToDatabase(dbPath = 'data/stock.db') {
 
       // We run connections in serialized mode to ensure schema setup runs sequentially.
       db.serialize(() => {
-        // Enable foreign keys for referential integrity constraint enforcement.
+        // Set busy timeout and enable foreign keys for referential integrity constraint enforcement.
+        db.run('PRAGMA busy_timeout = 5000;');
         db.run('PRAGMA foreign_keys = ON;', (pragmaErr) => {
           if (pragmaErr) {
             return reject(new Error(`Failed to enable foreign keys: ${pragmaErr.message}`));
